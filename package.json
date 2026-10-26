@@ -1,0 +1,30 @@
+{
+  "name": "yahyasogut-com",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "npx serve out",
+    "new": "node scripts/new-content.mjs",
+    "linkedin:auth": "node scripts/linkedin-auth.mjs",
+    "linkedin:publish": "node scripts/linkedin-publish.mjs"
+  },
+  "dependencies": {
+    "framer-motion": "^14.6.0",
+    "gray-matter": "^4.0.3",
+    "marked": "^18.1.1",
+    "next": "^16.4.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/typography": "^0.5.20",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2"
+  }
+}
