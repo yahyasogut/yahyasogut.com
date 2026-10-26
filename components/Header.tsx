@@ -48,9 +48,13 @@ export default function Header({ lang, t }: { lang: Locale; t: Dict }) {
     >
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 md:px-8">
         <Link href={`/${lang}/`} className="group flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-ink font-display text-sm text-paper transition-colors group-hover:bg-accent">
-            {site.initials}
-          </span>
+          <img
+            src="/logo-mark.jpg"
+            alt=""
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-lg ring-1 ring-line transition-shadow group-hover:shadow-[0_0_14px_var(--accent)]"
+          />
           <span className="font-medium tracking-tight">{site.name}</span>
         </Link>
 

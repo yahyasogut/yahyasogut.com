@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: Loc
   return {
     title: e.title,
     description: e.summary,
-    openGraph: { type: "article", title: e.title, description: e.summary, publishedTime: e.date, images: e.cover ? [e.cover] : ["/og.png"] },
+    openGraph: { type: "article", title: e.title, description: e.summary, publishedTime: e.date, images: e.cover ? [e.cover] : ["/og.jpg"] },
   };
 }
 

@@ -9,7 +9,9 @@ export const site = {
   initials: "YS",
   email: "yahyasogut@icloud.com",
   linkedin: "https://www.linkedin.com/in/yhysgt/",
-  location: { tr: "İstanbul, Türkiye", en: "Istanbul, Türkiye" },
+  location: { tr: "Antalya, Türkiye", en: "Antalya, Türkiye" },
+  // Portre fotoğrafı: public/portrait.jpg yükleyip aşağıya "/portrait.jpg" yaz. Boşsa logo gösterilir.
+  portrait: "",
 
   role: {
     tr: "Bilgi Teknolojileri Grup Müdürü",
@@ -34,10 +36,21 @@ export const site = {
     tr: ["Yapay zekâ", "BT yönetimi", "Otomasyon", "BT güvenliği", "Sistem altyapısı", "Proje yönetimi", "SAP S/4HANA & Cloud proje ve lisans yönetimi"],
     en: ["Artificial intelligence", "IT management", "Automation", "IT security", "Systems infrastructure", "Project management", "SAP S/4HANA & Cloud project and licence management"],
   },
-  // Hakkımda sayfasındaki zaman çizelgesi — TODO: kendi kariyerinle değiştir
-  timeline: [
-    { year: "2026", tr: "Bilgi Teknolojileri Grup Müdürü · Ankutsan", en: "IT Group Manager · Ankutsan" },
+  // Hakkımda → Kariyer yolculuğu (en yeniden eskiye)
+  career: [
+    {
+      period: { tr: "Bugün", en: "Present" },
+      title: { tr: "Bilgi Teknolojileri Grup Müdürü", en: "IT Group Manager" },
+      org: "",
+      place: { tr: "Antalya", en: "Antalya" },
+      desc: {
+        tr: "BT yönetimi, sistem altyapısı, BT güvenliği, SAP S/4HANA ve bulut projeleri, lisans yönetimi ve kurum içi yapay zekâ çözümleri.",
+        en: "IT management, systems infrastructure, IT security, SAP S/4HANA and cloud projects, licence management and in-house AI solutions.",
+      },
+    },
   ],
+  // Hakkımda → Eğitim
+  education: [] as { period: string; school: string; degree: { tr: string; en: string } }[],
 } as const;
 
 export type Site = typeof site;

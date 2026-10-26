@@ -19,7 +19,7 @@ npm install
 npm run dev          # http://localhost:3000/tr
 ```
 Kişisel bilgilerini **`site.config.ts`** dosyasından düzenle (isim, unvan, biyografi, e-posta, LinkedIn linki, kariyer zaman çizelgesi).
-Fotoğrafını `public/portrait.jpg` olarak ekle (Hakkımda sayfasındaki TODO notuna bak), paylaşım görseli için `public/og.png` (1200×630) koy.
+Fotoğrafını `public/portrait.jpg` olarak ekleyip `site.config.ts` içindeki `portrait` alanına `"/portrait.jpg"` yaz. Logo `public/logo.jpg`, paylaşım görseli `public/og.jpg`.
 
 ### b) GitHub'a yükle ve yayınla (ücretsiz)
 1. GitHub'da `yahyasogut.com` adında bir repo aç, bu klasörü gönder.

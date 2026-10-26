@@ -17,7 +17,7 @@
 
 /* ── Renk sistemi ─────────────────────────────────────────
    Yerleşim: geniş tek sütun, büyük grotesk başlıklar, teknik (mono) meta satırları.
-   Beton beyazı zemin + grafit metin + "blueprint" kobalt vurgu.
+   Beton beyazı zemin + grafit metin + logodaki camgöbeği (cyan) vurgu.
    Rengi değiştirmek için sadece bu değişkenleri düzenle. */
 :root {
   --paper: #f2f3f0;
@@ -25,8 +25,8 @@
   --ink: #121417;
   --ink-2: #565c63;
   --line: #d5d8d3;
-  --accent: #2742d6;
-  --accent-soft: #dfe4fb;
+  --accent: #0a7c8c;
+  --accent-soft: #d3eef1;
 }
 .dark {
   --paper: #0f1113;
@@ -34,8 +34,8 @@
   --ink: #eceef0;
   --ink-2: #9aa1a8;
   --line: #262a2f;
-  --accent: #8199ff;
-  --accent-soft: #1b2348;
+  --accent: #4fdbe6;
+  --accent-soft: #0c2d33;
 }
 
 @theme inline {
