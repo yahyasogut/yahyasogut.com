@@ -22,7 +22,7 @@ export default async function Home({ params }: { params: Promise<{ lang: Locale 
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
             </span>
-            {site.role[lang]} · {site.location[lang]}
+            {site.role[lang]} · {site.org} · {site.location[lang]}
           </p>
         </Reveal>
         <SplitHeadline text={site.headline[lang]} className="max-w-5xl font-display text-[2.6rem] leading-[1.05] tracking-tight sm:text-6xl md:text-7xl lg:text-[5.4rem]" />
