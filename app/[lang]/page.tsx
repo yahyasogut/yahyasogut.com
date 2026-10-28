@@ -55,6 +55,18 @@ export default async function Home({ params }: { params: Promise<{ lang: Locale 
         </Reveal>
       </section>
 
+      {/* RAKAMLAR */}
+      <section className="pt-16">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-3 md:grid-cols-5">
+          {site.stats.map((s, i) => (
+            <Reveal key={i} delay={i * 0.05} className={`bg-paper px-5 py-6 ${i === site.stats.length - 1 ? "col-span-2 sm:col-span-1" : ""}`}>
+              <p className="font-display text-4xl tabular-nums text-accent md:text-5xl">{s.value}</p>
+              <p className="mt-1.5 text-sm text-ink-2">{s.label[lang]}</p>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
       {/* PROJELER */}
       <section className="pt-28">
         <SectionHead title={t.sections.latestProjects} href={`/${lang}/projects/`} more={t.sections.seeAll} />

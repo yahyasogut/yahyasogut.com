@@ -10,8 +10,8 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: Loc
 }
 
 const label = {
-  tr: { eyebrow: "Hakkımda", story: "Hikâyem", career: "Kariyer", projects: "Öne çıkan projeler", edu: "Eğitim", cert: "Sertifika", lang: "Diller", contact: "İletişime geç", linkedin: "LinkedIn profili" },
-  en: { eyebrow: "About", story: "My story", career: "Career", projects: "Selected projects", edu: "Education", cert: "Certification", lang: "Languages", contact: "Get in touch", linkedin: "LinkedIn profile" },
+  tr: { eyebrow: "Hakkımda", story: "Hikâyem", scope: "Sorumluluk alanım", scopeLead: "Ankutsan Grubu'nun tüm şirketlerinde BT altyapısı, güvenliği ve kurumsal uygulamaları tek bir standartla yönetiyorum.", companies: "şirket", locations: "lokasyon", career: "Kariyer", projects: "Öne çıkan projeler", edu: "Eğitim", cert: "Sertifika", lang: "Diller", contact: "İletişime geç", linkedin: "LinkedIn profili" },
+  en: { eyebrow: "About", story: "My story", scope: "My scope", scopeLead: "I run IT infrastructure, security and enterprise applications to one standard across every Ankutsan Group company.", companies: "companies", locations: "locations", career: "Career", projects: "Selected projects", edu: "Education", cert: "Certification", lang: "Languages", contact: "Get in touch", linkedin: "LinkedIn profile" },
 };
 
 function SectionTitle({ children, kicker }: { children: React.ReactNode; kicker: string }) {
@@ -61,9 +61,9 @@ export default async function Page({ params }: { params: Promise<{ lang: Locale 
       </section>
 
       {/* ── RAKAMLAR ──────────────────────────────────────── */}
-      <section className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-5">
         {site.stats.map((s, i) => (
-          <Reveal key={i} delay={i * 0.05} className="bg-paper p-6 md:p-8">
+          <Reveal key={i} delay={i * 0.05} className={`bg-paper p-6 md:p-7 ${i === site.stats.length - 1 ? "col-span-2 md:col-span-1" : ""}`}>
             <p className="font-display text-5xl tabular-nums text-accent md:text-6xl">{s.value}</p>
             <p className="mt-2 text-sm text-ink-2">{s.label[lang]}</p>
           </Reveal>
@@ -90,9 +90,48 @@ export default async function Page({ params }: { params: Promise<{ lang: Locale 
         </ol>
       </section>
 
+      {/* ── SORUMLULUK ALANI ───────────────────────────────── */}
+      <section className="pt-20">
+        <SectionTitle kicker="02">{L.scope}</SectionTitle>
+        <div className="mt-12 grid gap-8 overflow-hidden rounded-3xl border border-line md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)] md:gap-0">
+          <Reveal className="flex flex-col justify-between gap-10 bg-[#0b1114] p-8 text-[#eceef0] md:p-10">
+            <p className="max-w-[36ch] text-lg leading-relaxed opacity-80">{L.scopeLead}</p>
+            <div className="flex gap-10">
+              <div>
+                <p className="font-display text-7xl tabular-nums md:text-8xl">{site.group.length}</p>
+                <p className="mt-1 font-mono text-xs uppercase tracking-wider opacity-70">{L.companies}</p>
+              </div>
+              <div>
+                <p className="font-display text-7xl tabular-nums text-[#4fdbe6] md:text-8xl">{site.group.reduce((a, g) => a + g.count, 0)}</p>
+                <p className="mt-1 font-mono text-xs uppercase tracking-wider opacity-70">{L.locations}</p>
+              </div>
+            </div>
+          </Reveal>
+          <ul className="divide-y divide-line px-6 md:px-10">
+            {site.group.map((g, i) => (
+              <Reveal key={g.name} delay={i * 0.05}>
+                <li className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 py-6">
+                  <div className="min-w-0">
+                    <h3 className="font-display text-xl md:text-2xl">{g.name}</h3>
+                    <p className="mt-1 font-mono text-xs uppercase tracking-wider text-ink-2">{g.sites[lang]}</p>
+                  </div>
+                  {g.count > 0 && (
+                    <div className="flex gap-1.5" aria-hidden>
+                      {Array.from({ length: g.count }).map((_, k) => (
+                        <span key={k} className="h-3 w-3 rounded-full bg-accent shadow-[0_0_0_3px_var(--accent-soft)]" />
+                      ))}
+                    </div>
+                  )}
+                </li>
+              </Reveal>
+            ))}
+          </ul>
+        </div>
+      </section>
+
       {/* ── KARİYER ───────────────────────────────────────── */}
       <section className="pt-20">
-        <SectionTitle kicker="02">{L.career}</SectionTitle>
+        <SectionTitle kicker="03">{L.career}</SectionTitle>
         <div className="mt-12 grid gap-6">
           {site.career.map((co, ci) => (
             <Reveal key={ci} delay={ci * 0.05}>
@@ -121,7 +160,7 @@ export default async function Page({ params }: { params: Promise<{ lang: Locale 
 
       {/* ── PROJELER ──────────────────────────────────────── */}
       <section className="pt-28">
-        <SectionTitle kicker="03">{L.projects}</SectionTitle>
+        <SectionTitle kicker="04">{L.projects}</SectionTitle>
         <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-2">
           {site.projects.map((g, i) => (
             <Reveal key={i} delay={i * 0.05} className="bg-paper p-6 md:p-8">
@@ -138,7 +177,7 @@ export default async function Page({ params }: { params: Promise<{ lang: Locale 
 
       {/* ── EĞİTİM ────────────────────────────────────────── */}
       <section className="pt-28">
-        <SectionTitle kicker="04">{L.edu}</SectionTitle>
+        <SectionTitle kicker="05">{L.edu}</SectionTitle>
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {site.education.map((e, i) => (
             <Reveal key={i} delay={i * 0.05}>

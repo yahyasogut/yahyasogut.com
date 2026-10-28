@@ -25,18 +25,27 @@ export const site = {
   // Hakkımda sayfasının giriş paragrafı
   bio: {
     tr: [
-      "2011'de sahada sistem teknisyeni olarak başladığım yolculuk, bugün Ankutsan A.Ş.'de Bilgi Teknolojileri Grup Müdürlüğü ile devam ediyor. 15 yılı aşkın sürede bilgi teknolojileri, süreç geliştirme, saha otomasyonu ve yazılım tarafında birçok projenin kurulumunda ve yürütülmesinde yer aldım.",
+      "2011'de sahada sistem teknisyeni olarak başladığım yolculuk, bugün Ankutsan Grubu'nda 5 şirket ve 10 lokasyonun bilgi teknolojilerinden sorumlu Grup Müdürlüğü ile devam ediyor. 15 yılı aşkın sürede bilgi teknolojileri, süreç geliştirme, saha otomasyonu ve yazılım tarafında birçok projenin kurulumunda ve yürütülmesinde yer aldım.",
     ],
     en: [
-      "The journey I began in 2011 as a field system technician continues today as IT Group Manager at Ankutsan A.Ş. Over more than 15 years I have helped set up and run many projects across information technology, process improvement, shop-floor automation and software.",
+      "The journey I began in 2011 as a field system technician continues today as IT Group Manager at Ankutsan Group, responsible for IT across 5 companies and 10 locations. Over more than 15 years I have helped set up and run many projects across information technology, process improvement, shop-floor automation and software.",
     ],
   },
   // Hakkımda → rakamlarla
   stats: [
     { value: "15+", label: { tr: "yıl BT deneyimi", en: "years in IT" } },
-    { value: "11+", label: { tr: "yıl Ankutsan", en: "years at Ankutsan" } },
-    { value: "4", label: { tr: "fabrikada BT yönetimi", en: "plants under IT management" } },
+    { value: "12+", label: { tr: "yıl Ankutsan Grubu", en: "years with Ankutsan Group" } },
+    { value: "5", label: { tr: "grup şirketi", en: "group companies" } },
+    { value: "10", label: { tr: "lokasyonda BT yönetimi", en: "locations under IT management" } },
     { value: "13+", label: { tr: "kurumsal proje", en: "enterprise projects" } },
+  ],
+  // Hakkımda → Sorumluluk alanı (grup şirketleri ve lokasyonlar)
+  group: [
+    { name: "Ankutsan A.Ş.", sites: { tr: "5 fabrika · 1 ofis", en: "5 plants · 1 office" }, count: 6 },
+    { name: "Ankutsan Geri Dönüşüm", sites: { tr: "2 tesis", en: "2 facilities" }, count: 2 },
+    { name: "Ankutsan Palet", sites: { tr: "1 tesis", en: "1 facility" }, count: 1 },
+    { name: "Ankutsan Packaging", sites: { tr: "1 depo", en: "1 warehouse" }, count: 1 },
+    { name: "MR Packaging", sites: { tr: "Grup şirketi", en: "Group company" }, count: 0 },
   ],
   // Hakkımda → Hikâyem (bölümler, eskiden yeniye)
   story: [
@@ -52,8 +61,8 @@ export const site = {
       years: "2013 – 2015",
       title: { tr: "İlk ekip, ilk sorumluluk", en: "First team, first responsibility" },
       text: {
-        tr: "AC Group'ta Teknik Servis Müdürü olarak ilk kez bir ekibin ve müşteri memnuniyetinin sorumluluğunu üstlendim. 2014'te sistem ve ağ uzmanı olarak dış kaynak modeliyle Ankutsan'da çalışmaya başladığımda, yolculuğumun ana durağını da bulmuş oldum.",
-        en: "As Technical Service Manager at AC Group I took responsibility for a team and for customer satisfaction for the first time. In 2014 I began working at Ankutsan as an outsourced system and network specialist, and found the main stop of my journey.",
+        tr: "AC Group'ta Teknik Servis Müdürü olarak ilk kez bir ekibin ve müşteri memnuniyetinin sorumluluğunu üstlendim. Eylül 2014'te sistem ve ağ uzmanı olarak dış kaynak modeliyle Ankutsan'da çalışmaya başladığımda, yolculuğumun ana durağını da bulmuş oldum.",
+        en: "As Technical Service Manager at AC Group I took responsibility for a team and for customer satisfaction for the first time. In September 2014 I began working at Ankutsan as an outsourced system and network specialist, and found the main stop of my journey.",
       },
     },
     {
@@ -76,8 +85,8 @@ export const site = {
       years: "2025 – ",
       title: { tr: "Grup ölçeğinde liderlik", en: "Leading at group scale" },
       text: {
-        tr: "Şubat 2025'ten bu yana Bilgi Teknolojileri Grup Müdürü olarak grup genelindeki BT stratejisinden sorumluyum. Koç Üniversitesi Executive Development Program ile yönetim bakışımı güçlendirdim. Bugünkü odağım; yapay zekâ ve otomasyonu kurumun gerçek ihtiyaçlarıyla buluşturmak, bunu yaparken altyapıyı güvenli ve sürdürülebilir tutmak.",
-        en: "Since February 2025 I have been IT Group Manager, responsible for IT strategy across the group. The Koç University Executive Development Program sharpened my management perspective. My focus today is matching AI and automation to real business needs while keeping the infrastructure secure and sustainable.",
+        tr: "Şubat 2025'ten bu yana Bilgi Teknolojileri Grup Müdürü olarak Ankutsan A.Ş., Ankutsan Packaging, Ankutsan Geri Dönüşüm, MR Packaging ve Ankutsan Palet'ten oluşan 5 şirketin 10 lokasyondaki BT stratejisinden ve operasyonundan sorumluyum. Koç Üniversitesi Executive Development Program ile yönetim bakışımı güçlendirdim. Bugünkü odağım; yapay zekâ ve otomasyonu kurumun gerçek ihtiyaçlarıyla buluşturmak, bunu yaparken altyapıyı güvenli ve sürdürülebilir tutmak.",
+        en: "Since February 2025 I have been IT Group Manager, responsible for IT strategy and operations across 10 locations of five companies: Ankutsan A.Ş., Ankutsan Packaging, Ankutsan Geri Dönüşüm, MR Packaging and Ankutsan Palet. The Koç University Executive Development Program sharpened my management perspective. My focus today is matching AI and automation to real business needs while keeping the infrastructure secure and sustainable.",
       },
     },
   ],
@@ -90,9 +99,9 @@ export const site = {
   career: [
     {
       org: "Ankutsan A.Ş.",
-      span: { tr: "2015 – bugün", en: "2015 – present" },
+      span: { tr: "Eyl 2014 – bugün · dış kaynak dahil", en: "Sep 2014 – present · incl. outsourcing" },
       roles: [
-        { period: { tr: "Şub 2025 – bugün", en: "Feb 2025 – present" }, title: { tr: "Bilgi Teknolojileri Grup Müdürü", en: "IT Group Manager" }, place: "Antalya", desc: { tr: "Grup genelinde BT stratejisi, altyapı, BT güvenliği ve kurumsal uygulamalar.", en: "Group-wide IT strategy, infrastructure, IT security and enterprise applications." } },
+        { period: { tr: "Şub 2025 – bugün", en: "Feb 2025 – present" }, title: { tr: "Bilgi Teknolojileri Grup Müdürü", en: "IT Group Manager" }, place: "Antalya", desc: { tr: "5 grup şirketi ve 10 lokasyonda BT stratejisi, altyapı, BT güvenliği ve kurumsal uygulamalar.", en: "IT strategy, infrastructure, IT security and enterprise applications across 5 group companies and 10 locations." } },
         { period: { tr: "Şub 2019 – Şub 2025", en: "Feb 2019 – Feb 2025" }, title: { tr: "Bilgi Teknolojileri Müdürü", en: "IT Manager" }, place: "", desc: { tr: "SAP ERP ve bulut S/4HANA proje yönetimi, BT departman ve bütçe yönetimi, proje takibi.", en: "SAP ERP and cloud S/4HANA project management, IT department and budget management, project tracking." } },
         { period: { tr: "Şub 2017 – Şub 2025", en: "Feb 2017 – Feb 2025" }, title: { tr: "BT Yöneticisi", en: "Manager of Information Technology" }, place: "", desc: { tr: "Ankara, Antalya ve Mersin fabrikalarının bilgi teknolojileri yönetimi.", en: "IT management for the Ankara, Antalya and Mersin plants." } },
         { period: { tr: "Nis 2015 – Şub 2017", en: "Apr 2015 – Feb 2017" }, title: { tr: "BT Uzmanı", en: "IT Specialist" }, place: "", desc: { tr: "Ankutsan Antalya, Mersin ve Ankara fabrikaları ile Kutay Kutu İstanbul fabrikası.", en: "Ankutsan's Antalya, Mersin and Ankara plants and Kutay Kutu's Istanbul plant." } },
@@ -102,8 +111,8 @@ export const site = {
       org: "AC Group (AC-YT Bilgisayar)",
       span: { tr: "2013 – 2015", en: "2013 – 2015" },
       roles: [
-        { period: { tr: "Eki 2014 – Nis 2015", en: "Oct 2014 – Apr 2015" }, title: { tr: "Sistem ve Ağ Uzmanı", en: "System and Network Specialist" }, place: "", desc: { tr: "Dış kaynak modeliyle Ankutsan A.Ş.'de görev.", en: "Outsourced to Ankutsan A.Ş." } },
-        { period: { tr: "Nis 2013 – Eki 2014", en: "Apr 2013 – Oct 2014" }, title: { tr: "Teknik Servis Müdürü", en: "Technical Service Manager" }, place: "", desc: { tr: "", en: "" } },
+        { period: { tr: "Eyl 2014 – Nis 2015", en: "Sep 2014 – Apr 2015" }, title: { tr: "Sistem ve Ağ Uzmanı", en: "System and Network Specialist" }, place: "", desc: { tr: "Dış kaynak modeliyle Ankutsan A.Ş.'de görev.", en: "Outsourced to Ankutsan A.Ş." } },
+        { period: { tr: "Nis 2013 – Eyl 2014", en: "Apr 2013 – Sep 2014" }, title: { tr: "Teknik Servis Müdürü", en: "Technical Service Manager" }, place: "", desc: { tr: "", en: "" } },
       ],
     },
     {
