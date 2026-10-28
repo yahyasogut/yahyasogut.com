@@ -3,6 +3,7 @@ import { dict, type Locale } from "@/lib/i18n";
 import { getEntries } from "@/lib/content";
 import { site } from "@/site.config";
 import { Reveal, SplitHeadline } from "@/components/motion";
+import ContactGrid from "@/components/ContactGrid";
 import { ArticleRow, PostCard, ProjectCard, SectionHead } from "@/components/Cards";
 
 export default async function Home({ params }: { params: Promise<{ lang: Locale }> }) {
@@ -89,6 +90,14 @@ export default async function Home({ params }: { params: Promise<{ lang: Locale 
         <div className="columns-1 gap-5 md:columns-3">
           {posts.map((e, i) => <PostCard key={e.slug} e={e} lang={lang} t={t} i={i} />)}
         </div>
+      </section>
+
+      {/* İLETİŞİM */}
+      <section className="pt-28">
+        <SectionHead title={t.contact.heading} href={`/${lang}/contact/`} more={t.nav.contact} />
+        <Reveal>
+          <ContactGrid lang={lang} t={t} />
+        </Reveal>
       </section>
     </>
   );

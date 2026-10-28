@@ -7,7 +7,9 @@ export const site = {
   url: "https://yahyasogut.com",
   name: "Yahya Söğüt",
   initials: "YS",
-  email: "yahyasogut@icloud.com",
+  email: "yahyasogut@icloud.com", // bireysel (varsayılan)
+  emailWork: "yahya.sogut@ankutsan.com", // kurumsal
+  whatsapp: "yhysgt", // WhatsApp kullanıcı adı (@ olmadan)
   linkedin: "https://www.linkedin.com/in/yhysgt/",
   location: { tr: "Antalya, Türkiye", en: "Antalya, Türkiye" },
   // Portre fotoğrafı: public/portrait.jpg yükleyip aşağıya "/portrait.jpg" yaz. Boşsa logo gösterilir.

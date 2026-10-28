@@ -25,7 +25,7 @@ export const dict = {
       contact: { title: "İletişim", lead: "Bir proje, konuşma ya da iş birliği fikrin mi var? Yaz." },
     },
     meta: { readOn: "LinkedIn'de görüntüle", minRead: "dk okuma", back: "Geri", publishedOn: "Yayın tarihi", tags: "Etiketler", empty: "Yakında burada içerik olacak." },
-    contact: { email: "E-posta", linkedin: "LinkedIn", location: "Konum", write: "E-posta gönder" },
+    contact: { email: "E-posta", emailWork: "Kurumsal e-posta", emailPersonal: "Bireysel e-posta", whatsapp: "WhatsApp", whatsappHint: "Kullanıcı adıyla ara", linkedin: "LinkedIn", location: "Konum", write: "E-posta gönder", copy: "Kopyala", copied: "Kopyalandı", heading: "Birlikte konuşalım" },
     footer: "Tüm içerikler LinkedIn ile senkron yayınlanır.",
   },
   en: {
@@ -46,7 +46,7 @@ export const dict = {
       contact: { title: "Contact", lead: "Have a project, a conversation or a collaboration in mind? Get in touch." },
     },
     meta: { readOn: "View on LinkedIn", minRead: "min read", back: "Back", publishedOn: "Published", tags: "Tags", empty: "Content coming soon." },
-    contact: { email: "Email", linkedin: "LinkedIn", location: "Location", write: "Send an email" },
+    contact: { email: "Email", emailWork: "Work email", emailPersonal: "Personal email", whatsapp: "WhatsApp", whatsappHint: "Search by username", linkedin: "LinkedIn", location: "Location", write: "Send an email", copy: "Copy", copied: "Copied", heading: "Let's talk" },
     footer: "All content is published in sync with LinkedIn.",
   },
 } as const;
