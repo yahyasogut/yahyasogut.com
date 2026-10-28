@@ -17,7 +17,9 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   return {
     metadataBase: new URL(site.url),
     title: { default: `${site.name} — ${site.role[l]}`, template: `%s · ${site.name}` },
-    description: site.headline[l],
+    description: `${site.name}, ${site.role[l]} (${site.org}). ${site.headline[l]}`,
+    authors: [{ name: site.name, url: site.url }],
+    creator: site.name,
     alternates: {
       canonical: `/${l}/`,
       languages: { tr: "/tr/", en: "/en/" },
@@ -37,11 +39,42 @@ export default async function LangLayout({ children, params }: { children: React
   if (!isLocale(lang)) notFound();
   const t = dict[lang];
 
+  // Google için yapılandırılmış veri (kişi + web sitesi) — arama sonuçlarında kimliği netleştirir
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Person",
+        "@id": `${site.url}/#person`,
+        name: site.name,
+        alternateName: ["Yahya SOGUT", "Yahya Sogut"],
+        url: site.url,
+        image: `${site.url}${site.portrait || "/logo.jpg"}`,
+        jobTitle: site.role[lang],
+        worksFor: { "@type": "Organization", name: site.org },
+        address: { "@type": "PostalAddress", addressLocality: "Antalya", addressCountry: "TR" },
+        email: `mailto:${site.email}`,
+        sameAs: [site.linkedin],
+        alumniOf: site.education.map((e) => ({ "@type": "CollegeOrUniversity", name: e.school })),
+        knowsAbout: [...site.focus[lang]],
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${site.url}/#website`,
+        url: site.url,
+        name: site.name,
+        inLanguage: lang === "tr" ? "tr-TR" : "en",
+        publisher: { "@id": `${site.url}/#person` },
+      },
+    ],
+  };
+
   return (
     <html lang={lang} suppressHydrationWarning>
       <head>
         <link rel="preload" href="/fonts/bricolage-grotesque-latin-wght-normal.woff2" as="font" type="font/woff2" crossOrigin="" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       </head>
       <body className="grain min-h-screen font-sans">
         <Header lang={lang} t={t} />
