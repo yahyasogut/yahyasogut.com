@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Stok">
+<meta name="theme-color" content="#0a7c8c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Stok Sayım</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <button id="btnBack" class="icon-btn" aria-label="Geri" hidden>&#8249;</button>
+  <div class="top-title"><span class="logo">YS</span><span id="title">Stok Sayım</span></div>
+  <button id="btnUser" class="chip" hidden></button>
+</header>
+<main id="view"></main>
+<div id="toast" role="status"></div>
+<div id="print-area"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
