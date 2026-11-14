@@ -1,4 +1,4 @@
-# Elmaslar Damga Takip — teknik not (v5 · 14 Kasım 2026)
+# Elmaslar Damga Takip — teknik not (v7 · 14 Kasım 2026)
 
 Ayrı proje olarak yahyasogut.com reposunun içinde, kendi klasörlerinde yaşar. Next.js sitesinden bağımsızdır; `public/damga/` statik olarak `/damga/` adresine kopyalanır.
 
@@ -54,6 +54,17 @@ docs/DAMGA-KURULUM.md   adım adım kurulum
 
 ## Sürüm geçmişi
 
+- **v7 · 14.11.2026:**
+  - **Esnek içe aktarma.** Tanınmayan Excel biçimlerinde başlık satırı (ilk 15 satır içinde) ve sayfa otomatik bulunuyor. Sütunlar eş anlamlılarla sistem alanlarına eşleniyor (örn. "Mağaza İsmi" → firma, "Serial No" → seri no, "Kapasite" → max, "KOD" → mağaza kodu). Önizlemede "Sütun eşleştirme" ile elle düzeltilebiliyor.
+  - Kural tüm yeni müşteri aktarımlarında geçerli: aynı firma + marka + seri no varsa satır eklenmiyor.
+  - Seri no veya marka olmayan satırlar ("BILA") ayrı listeleniyor; varsayılan olarak eklenmiyor, istenirse işaretlenip ekleniyor.
+  - **Raporlar sekmesi.** Müşteri bazlı ve cihaz bazlı çarşaf rapor; il, ilçe, durum ve arama filtresi; filtrelenmiş verinin tamamı CSV olarak (Excel uyumlu, ; ayraçlı) indiriliyor.
+- **v6 · 14.11.2026:**
+  - Yeni müşteri şablonu: `public/damga/elmaslar-yeni-musteri-sablonu.xlsx`. Panelde "Yeni müşteri şablonunu indir" düğmesi var.
+  - Şablon içe aktarımında sistemde aynı firma + marka + seri no varsa satır eklenmiyor. Dosya içindeki tekrarlar ve zorunlu alanı eksik satırlar da eklenmiyor; önizlemede satır numarasıyla listeleniyor ve CSV rapor olarak indirilebiliyor.
+  - Aynı marka + seri başka bir firmada kayıtlıysa (cihaz el değiştirmiş olabilir) varsayılan olarak atlanıyor; yönetici isterse işaretleyip ekleyebiliyor.
+  - Firma sistemde aynı adresle zaten varsa yeni cihazlar o lokasyona ekleniyor. Yetkili kişi bilgisi `contacts` tablosuna yazılıyor.
+  - Önbellek için dosya sürümleri ?v=6 oldu.
 - **v5 · 14.11.2026:**
   - Telefonla giriş (SMS kodu). Yönetici, Planlar & ekip ekranındaki "Telefonla giriş listesi"ne ad ve numara ekler; toplu yapıştırma da var. Bu numarayla ilk kez kod alıp giren kişi otomatik etkin olur ve rolünü listeden alır. Listede olmayan numaralar pasif kalır.
   - Henüz giriş yapmamış kişiye de plan atanabiliyor; kişi ilk girişte planına otomatik bağlanıyor. WhatsApp mesajı yine o numaraya gidiyor.

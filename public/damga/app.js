@@ -44,7 +44,7 @@ let LOCS = [], BY = {}, DEVS = [], DEVBY = {}, DEVID = {}, S = null;
 function devTuple(r){ return [r.id, r.cins||"", r.marka||"", r.model||"", r.seri_no||"", r.max_cap||"", r.son_damga_yili ? String(r.son_damga_yili) : "", r.kullanim_yeri||"", r.aktif === false ? "kapsamdisi" : (r.durum_grup||"bekliyor"), r.durum_ham||"", r.fatura_notu||"", r.qr_no||("ID"+r.id), r.max_cap||"", r.kime_ait||"", r.bilgi||"", r.seri_flag||"", r.sinif||"III", r.excel_row||"", r.e||"", r.qr_key||"", r.tip||"", r.min_cap||"", r.d||"", r.aktif !== false]; }
 const PREC = { google: "ok", elle: "ok", "yaklasik-mah": "mah" };
 function buildData(biz, devs){
-  BY = {}; LOCS = biz.map(b => { const l = { k: b.id, n: b.unvan || "", a: b.adres || "", i: b.ilce || "", t: b.tel || b.gsm || "", lat: b.lat ?? ILCE_C[b.ilce]?.[0] ?? DEPOT.lat, lng: b.lng ?? ILCE_C[b.ilce]?.[1] ?? DEPOT.lng, p: PREC[b.geo_src] || "ilce", src: b.geo_src, dep: !!b.is_depot, d: [] }; BY[l.k] = l; return l; });
+  BY = {}; LOCS = biz.map(b => { const l = { k: b.id, n: b.unvan || "", a: b.adres || "", i: b.ilce || "", il: b.il || "ANTALYA", t: b.tel || b.gsm || "", lat: b.lat ?? ILCE_C[b.ilce]?.[0] ?? DEPOT.lat, lng: b.lng ?? ILCE_C[b.ilce]?.[1] ?? DEPOT.lng, p: PREC[b.geo_src] || "ilce", src: b.geo_src, dep: !!b.is_depot, d: [] }; BY[l.k] = l; return l; });
   DEVS = []; DEVBY = {}; DEVID = {};
   devs.forEach(r => { const l = BY[r.business_id]; if (!l) return; const d = devTuple(r); l.d.push(d); const o = { d, l }; DEVS.push(o); DEVBY[d[11]] = o; DEVID[d[0]] = o; });
   LOCS = LOCS.filter(l => l.d.length || l.dep);
@@ -83,7 +83,8 @@ const st = {
   dd: null, ddq: { ilce: "", cust: "" }, poolView: "liste",
   sel: [], routes: null, editing: null, confirmDel: null, shared: null, showMsg: null,
   cfg: { date: todayISO(), start: "08:30", end: "18:00", svc: 15, costKm: 6, ret: true, teams: 1, perLink: 10 },
-  fieldPlan: null, open: null, reasonFor: null, draft: {}, imp: null, geoRun: null
+  fieldPlan: null, open: null, reasonFor: null, draft: {}, imp: null, geoRun: null,
+  rp: { view: "musteri", il: "", ilce: "", durum: "", q: "", page: 0 }
 };
 
 /* ---------------- store ---------------- */
@@ -209,7 +210,7 @@ function softRender(){ const a = document.activeElement; if (a && (a.tagName ===
 function render(){
   if (!st.ready) return;
   const tabs = st.isAdmin && st.role === "admin"
-    ? [["ozet","Yönetici özeti"],["planla","Rota planla"],["planlar","Planlar & ekip"],["cihazlar","Cihazlar & QR"],["veri","Veri & ayarlar"]]
+    ? [["ozet","Yönetici özeti"],["planla","Rota planla"],["planlar","Planlar & ekip"],["cihazlar","Cihazlar & QR"],["raporlar","Raporlar"],["veri","Veri & ayarlar"]]
     : [["saha","Bugünkü rotam"],["cihazlar","Cihaz bul"]];
   if (st.view !== "cihaz" && !tabs.some(t => t[0] === st.view)) st.view = tabs[0][0];
   const cur = st.view === "cihaz" ? "cihazlar" : st.view;
@@ -218,7 +219,7 @@ function render(){
   $("#who").innerHTML = `${st.isAdmin ? `<button class="btn sm" data-act="role" title="Görünümü değiştir">${st.role==="admin"?"Saha görünümü":"Yönetici görünümü"}</button>` : ""}
     <span class="pill ${st.isAdmin && st.role==="admin"?"admin":""}" title="${esc(st.profile?.email||"")}">${esc(nm.split(" ")[0] || "Hesap")} · ${st.isAdmin ? (st.role==="admin" ? "Yönetici" : "Saha önizleme") : "Saha"}</span>
     <button class="btn sm" data-act="logout">Çıkış</button>`;
-  const v = { ozet: viewSummary, planla: viewPlanner, planlar: viewPlans, saha: viewField, cihazlar: viewDevices, cihaz: viewDevice, veri: viewData }[st.view];
+  const v = { ozet: viewSummary, planla: viewPlanner, planlar: viewPlans, saha: viewField, cihazlar: viewDevices, cihaz: viewDevice, veri: viewData, raporlar: viewReports }[st.view];
   if (!LOCS.length && st.view !== "veri"){
     $("#main").innerHTML = st.isAdmin ? `<div class="card empty" style="max-width:640px;margin:40px auto">Henüz cihaz verisi yok. <button class="link" data-act="view" data-v="veri">Veri & ayarlar</button> sekmesinden 2026 damga Excel'ini içe aktarın.</div>`
       : `<div class="card empty" style="max-width:640px;margin:40px auto">Henüz veri yok. Yöneticiniz cihaz listesini yüklediğinde burada görünecek.</div>`;
@@ -902,7 +903,7 @@ function resetPlanner(){ st.editing = null; st.editIds = null; st.editGid = null
 document.addEventListener("click", async e => {
   if (st.dd && !e.target.closest(".dd")){ st.dd = null; if (st.view === "planla") renderPool(); }
   const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
-  if (["pick","devchk","ddpick","rstaff","mv","dpick","pf"].includes(a)) return; // change handlers
+  if (["pick","devchk","ddpick","rstaff","mv","dpick","pf","impmap"].includes(a)) return; // change handlers
   if (["optimize","saveplan","up","down","rm","add","newplan"].includes(a)) readCfg();
   switch (a){
     case "view": st.view = b.dataset.v; clearHash(); render(); window.scrollTo(0,0); break;
@@ -950,6 +951,12 @@ document.addEventListener("click", async e => {
     case "poolview": st.poolView = b.dataset.v; gmap = null; hydratePlanner(); renderPlannerHead(); break;
     case "logout": await sb.auth.signOut(); location.reload(); break;
     case "impgo": runImport(); break;
+    case "rpview": st.rp.view = b.dataset.v; st.rp.page = 0; render(); break;
+    case "rppage": st.rp.page = Math.max(0, +b.dataset.p); render(); window.scrollTo(0, 0); break;
+    case "rpcsv": rpCSV(); break;
+    case "impreport": { const d = st.imp?.data; if (!d) break; const rows = [["Satır","Firma","Marka","Seri No","Durum"]];
+      d.skipped.forEach(s => rows.push([s.row, s.unvan, s.marka, s.seri, "Atlandı · " + s.reason])); d.other.forEach(s => rows.push([s.row, s.unvan, s.marka, s.seri, (st.imp.includeOther ? "Eklendi · " : "Atlandı · ") + s.reason])); d.errors.forEach(s => rows.push([s.row, s.unvan, "", "", s.reason])); (d.noSerial||[]).forEach(s => rows.push([s.row, s.unvan, s.marka, s.seri, (st.imp.includeNoSerial ? "Eklendi · " : "Atlandı · ") + s.reason]));
+      downloadFile(`ice-aktarma-raporu-${todayISO()}.csv`, "\ufeff" + rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(";")).join("\r\n")); break; }
     case "geocode": runGeocode(); break;
     case "assignqr": try { const n = await q(sb.rpc("assign_qr_numbers")); await reloadDevices(); toast(`${n} cihaza QR numarası verildi`); render(); } catch(err){ toast("Hata: " + err.message); } break;
     case "pactive": { const s = staffBy(b.dataset.id); if (!s) break; try { await q(sb.from("profiles").update({ aktif: s.aktif === false }).eq("id", s.id)); await loadDynamic(); render(); toast(s.aktif === false ? "Etkinleştirildi" : "Pasifleştirildi; artık giriş yapsa da veri göremez"); } catch(err){ toast("Hata: " + err.message); } break; }
@@ -1027,6 +1034,13 @@ document.addEventListener("change", e => {
   if (t.id === "fregion"){ st.f.region = t.value; const r = st.regions.find(x => String(x.id) === t.value); st.f.ilce = r ? (r.ilceler || []).slice() : []; if (gmap) gmap.__fitted = false; renderPool(); return; }
   if (a === "pf"){ const f = t.dataset.f; let v = t.value; if (f === "bolge_id") v = v ? +v : null;
     q(sb.from("profiles").update({ [f]: v }).eq("id", t.dataset.id)).then(() => loadDynamic()).then(() => toast("Kaydedildi")).catch(err => toast("Kaydedilemedi: " + err.message)); return; }
+  if (a === "impmap"){ const P = st.imp; if (!P?.data?.G) return; const G = P.data.G; if (t.value === "") delete G.map[t.dataset.k]; else G.map[t.dataset.k] = +t.value;
+    P.data = parseGeneric(G, P.year || YEAR); render(); return; }
+  if (t.id === "rp-il"){ st.rp.il = t.value; st.rp.ilce = ""; st.rp.page = 0; render(); return; }
+  if (t.id === "rp-ilce"){ st.rp.ilce = t.value; st.rp.page = 0; render(); return; }
+  if (t.id === "rp-durum"){ st.rp.durum = t.value; st.rp.page = 0; render(); return; }
+  if (t.id === "impnosn"){ if (st.imp) st.imp.includeNoSerial = t.checked; return; }
+  if (t.id === "impother"){ if (st.imp) st.imp.includeOther = t.checked; return; }
   if (t.id === "impfile" && t.files[0]){ const year = +($("#impyear")?.value) || YEAR; st.imp = { name: t.files[0].name, year };
     readImportFile(t.files[0], year).then(d => { st.imp.data = d; render(); }).catch(err => { st.imp.err = "Dosya okunamadı: " + err.message; render(); }); return; }
   if (t.id === "fplan"){ st.fieldPlan = t.value; st.open = null; render(); return; }
@@ -1037,6 +1051,7 @@ document.addEventListener("change", e => {
 });
 document.addEventListener("input", e => {
   const id = e.target.id || "";
+  if (id === "rp-q"){ st.rp.q = e.target.value; st.rp.page = 0; clearTimeout(cfgT); cfgT = setTimeout(() => { const pos = e.target.selectionStart; render(); const n = document.getElementById("rp-q"); if (n){ n.focus(); try { n.setSelectionRange(pos, pos); } catch(_){} } }, 250); }
   if (id === "dq"){ st.df.q = e.target.value; st.df.page = 0; clearTimeout(cfgT); cfgT = setTimeout(() => { const pos = e.target.selectionStart; render(); const n = document.getElementById("dq"); if (n){ n.focus(); try { n.setSelectionRange(pos, pos); } catch(_){} } }, 250); }
   if (id === "fq"){ st.f.q = e.target.value; renderPool(); e.target.focus(); }
   if (id.startsWith("ddq-")){ const k = id.slice(4); st.ddq[k] = e.target.value; const el = document.getElementById("ddlist-" + k); if (el) el.innerHTML = ddListHTML(k); }
@@ -1206,21 +1221,116 @@ function splitMatches(data){
   return { ...data, devs: ins, upd, biz: data.biz.filter(b => bizUsed.has(b.id)) };
 }
 
+
+/* ---- Esnek içe aktarma: başlıkları tanıyıp sistem alanlarına eşler (şablon, HTF listesi, farklı firmaların Excel'leri) ----
+   Kural: sistemde aynı FİRMA + MARKA + SERİ NO varsa satır eklenmez. */
+const HN = s => TRU(s).replace(/[^0-9A-ZÇĞİÖŞÜ]/g, "");
+const GFIELDS = [
+  ["unvan","Firma / mağaza adı",true,["FİRMAÜNVANI","ÜNVAN","UNVAN","MÜŞTERİADI","MÜŞTERİÜNVANI","MÜŞTERİ","FİRMA","FİRMAADI","CARİ","CARİADI","CARİÜNVANI","MAĞAZAİSMİ","MAĞAZAADI","MAĞAZA","İŞLETME","İŞLETMEADI"]],
+  ["kod","Mağaza / cari kodu",false,["KOD","MAĞAZAKODU","ŞUBEKODU","CARİKOD","CARİKODU","MÜŞTERİKODU"]],
+  ["sube","Şube adı",false,["ŞUBE","ŞUBEADI","ŞUBEMAĞAZAADI","LOKASYON"]],
+  ["adres","Adres",true,["ADRES","AÇIKADRES","ADRESİ"]],
+  ["ilce","İlçe",true,["İLÇE","ILCE"]],
+  ["il","İl",false,["İL","IL","ŞEHİR"]],
+  ["tel","Telefon",false,["TELEFON","TELEFONNO","TEL","TELNO","İŞTELEFONU"]],
+  ["yetkili","Yetkili kişi",false,["YETKİLİKİŞİ","YETKİLİ","SORUMLU","İLGİLİKİŞİ"]],
+  ["ycep","Yetkili cep",false,["YETKİLİCEP","CEPTELEFONU","CEP","GSM"]],
+  ["vkn","Vergi no",false,["VERGİNO","VKN","TCKN","VERGİNUMARASI"]],
+  ["tip","Cihaz tipi",false,["CİHAZTİPİ","TİP"]],
+  ["cins","Cinsi",false,["CİNSİ","CİNS","ÖLÇÜALETİ","CİHAZ"]],
+  ["marka","Marka",true,["MARKA","BRAND"]],
+  ["model","Model",false,["MODEL"]],
+  ["seri","Seri no",true,["SERİNO","SERİALNO","SERIALNO","SERİAL","SERIAL","SERİ","SN","SERİNUMARASI"]],
+  ["sinif","Sınıf",false,["SINIF","SINIFI","DOĞRULUKSINIFI"]],
+  ["max","Kapasite (Max)",false,["MAXKAPASİTE","KAPASİTE","MAX","ÇEKERİ","ÇEKER"]],
+  ["min","Min",false,["MIN","MİN"]],
+  ["e","e (doğrulama bölüntüsü)",false,["EDOĞRULAMABÖLÜNTÜSÜ","E"]],
+  ["d","d (okuma bölüntüsü)",false,["DOKUMABÖLÜNTÜSÜ","D"]],
+  ["uretim","Üretim yılı",false,["ÜRETİMYILI","ÜRETİM"]],
+  ["son","Son damga yılı",false,["SONDAMGAYILI","SDAMGAYILI","DAMGAYILI"]],
+  ["yer","Kullanım yeri",false,["KULLANIMYERİ","KULLANILDIĞIYER"]],
+  ["not","Not",false,["NOT","AÇIKLAMA","YORUM"]]];
+const CUST_STOP = new Set(["LTD","ŞTİ","STİ","AŞ","AS","SAN","TİC","VE","LİMİTED","ŞİRKETİ","ANONİM","SANAYİ","TİCARET","İNŞ","TUR"]);
+const custNorm = n => TRU(String(n || "").split(" · ")[0]).replace(/[.,;:()\-'"/]/g, " ").split(/\s+/).filter(w => w && !CUST_STOP.has(w)).join(" ");
+function autoMap(head){
+  const hn = head.map(HN), used = new Set(), map = {};
+  [true, false].forEach(exact => GFIELDS.forEach(([k,, , syn]) => { if (map[k] !== undefined) return;
+    const idx = hn.findIndex((h, i) => !used.has(i) && h && syn.some(s => exact ? h === s : (s.length > 2 && h.startsWith(s))));
+    if (idx >= 0){ map[k] = idx; used.add(idx); } }));
+  return map;
+}
+function pickSheet(wb){
+  let best = null;
+  wb.SheetNames.forEach(n => { const rows = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: "", raw: true });
+    for (let r = 0; r < Math.min(15, rows.length); r++){ const m = autoMap(rows[r] || []); const score = Object.keys(m).length + (m.marka !== undefined && m.seri !== undefined ? 5 : 0);
+      if (!best || score > best.score) best = { sheet: n, rows, hr: r, score }; } });
+  return best;
+}
+function prepGeneric(wb){ const b = pickSheet(wb); if (!b || b.score < 7) throw new Error("Başlık satırı tanınamadı. En az firma adı, marka ve seri no sütunları olmalı.");
+  const head = (b.rows[b.hr] || []).map(cellStr); return { sheet: b.sheet, rows: b.rows, hr: b.hr, head, map: autoMap(head), sheets: wb.SheetNames }; }
+function parseGeneric(G, listYear){
+  const v = (r, k) => G.map[k] !== undefined && G.map[k] !== "" && G.map[k] >= 0 ? cellStr(r[G.map[k]]) : "";
+  const exTriple = new Map(), exPair = new Map();
+  DEVS.forEach(o => { const p = devKey(o.d[2], o.d[4]); if (!p) return; exTriple.set(custNorm(o.l.n) + "#" + p, o); if (!exPair.has(p)) exPair.set(p, o); });
+  const locBy = new Map(); LOCS.forEach(l => { if (!l.dep) locBy.set(custNorm(l.n) + "#" + normAddr(l.a, l.i), l.k); });
+  const biz = new Map(), devs = [], contacts = [], skipped = [], other = [], errors = [], noSerial = [], inFile = new Set(); let nRows = 0;
+  const req = GFIELDS.filter(f => f[2]).map(f => f[0]);
+  G.rows.slice(G.hr + 1).forEach((r, i) => {
+    const row = G.hr + i + 2, unvan = v(r, "unvan");
+    if (!unvan && !v(r, "marka") && !v(r, "seri")) return;
+    if (/^ÖRNEK/.test(TRU(unvan)) || /ÖRNEK SATIR/.test(TRU(v(r, "not")))) return;
+    nRows++;
+    const miss = req.filter(k => k === "seri" ? !seriOf(v(r, k)) : !v(r, k)).map(k => GFIELDS.find(f => f[0] === k)[1]);
+    const idOnly = miss.length && miss.every(m => m === "Seri no" || m === "Marka");
+    if (miss.length && !idOnly){ errors.push({ row, unvan, reason: "Eksik: " + miss.join(", ") }); return; }
+    const marka = v(r, "marka"), seri = seriOf(v(r, "seri")), cn = custNorm(unvan);
+    const pk = idOnly ? "NOSN|" + row : devKey(marka, seri), tk = cn + "#" + pk;
+    if (exTriple.has(tk)){ skipped.push({ row, unvan, marka, seri, reason: "Sistemde kayıtlı (" + (exTriple.get(tk).d[11] || "") + ")" }); return; }
+    if (inFile.has(tk)){ skipped.push({ row, unvan, marka, seri, reason: "Dosyada tekrar eden satır" }); return; }
+    inFile.add(tk);
+    const ilce = normIlce(v(r, "ilce")), adres = v(r, "adres"), kod = v(r, "kod"), sube = v(r, "sube");
+    const name = unvan + (kod ? " · " + kod : "") + (sube && TRU(sube) !== TRU(unvan) ? " · " + sube : "");
+    const reuse = locBy.get(cn + "#" + normAddr(adres, ilce));
+    const bid = reuse || ("b" + hkey(TRU(name) + "|" + TRU(adres) + "|" + ilce));
+    const sonY = +v(r, "son"); const son = sonY >= 1990 && sonY <= YEAR + 1 ? sonY : null; const valid = son && son + 2 > YEAR;
+    const sin = TRU(v(r, "sinif")).replace(/[^IV3]/g, "").replace(/^3$/, "III");
+    const dev = { import_key: hkey("G|" + tk), business_id: bid, tip: v(r, "tip") || "Otomatik olmayan tartı aleti", cins: v(r, "cins") === "NAWI" ? "Otomatik olmayan tartı aleti" : (v(r, "cins") || "Terazi"),
+      marka, model: v(r, "model"), seri_no: seri, seri_flag: "", sinif: sin || "III", max_cap: normCap(v(r, "max")), min_cap: v(r, "min"), e: v(r, "e"), d: v(r, "d"),
+      uretim_yili: +v(r, "uretim") || null, son_damga_yili: son, durum_grup: valid ? "tamam" : "bekliyor",
+      durum_ham: `Yeni kayıt (${G.fileName || "Excel"})` + (valid ? " · damga geçerli" : son ? ` · son damga ${son}` : ""), bilgi: v(r, "not"), kullanim_yeri: v(r, "yer"), excel_row: row };
+    if (idOnly){ dev.seri_flag = "seri-yok"; dev.import_key = hkey("GN|" + cn + "|" + TRU(adres) + "|" + row + "|" + (G.fileName || "")); noSerial.push({ row, unvan, marka, seri: v(r, "seri"), reason: "Eksik: " + miss.join(", ") + " · mükerrer kontrolü yapılamaz", dev }); }
+    else if (exPair.has(pk)){ const o = exPair.get(pk); other.push({ row, unvan, marka, seri, reason: `Aynı marka + seri “${titleTR(o.l.n)}” firmasında kayıtlı (devir olabilir)`, dev, bid, b: { name, adres, ilce, r } }); }
+    else devs.push(dev);
+    if (!reuse && !biz.has(bid)){ const c = approxCoord(ilce, mahOf(adres), bid);
+      biz.set(bid, { id: bid, unvan: name, sube, adres, mahalle: mahOf(adres), ilce, il: TRU(v(r, "il")) || "ANTALYA", tel: fmtTel(v(r, "tel")), vkn: v(r, "vkn"), lat: c.lat, lng: c.lng, geo_src: c.src, is_depot: false });
+      if (v(r, "yetkili") || v(r, "ycep")) contacts.push({ business_id: bid, ad: v(r, "yetkili"), tel: fmtTel(v(r, "ycep")) }); }
+  });
+  const cats = devs.reduce((m, d) => (m[d.durum_grup] = (m[d.durum_grup] || 0) + 1, m), {});
+  const used = new Set(devs.map(x => x.business_id));
+  return { biz: [...biz.values()].filter(b => used.has(b.id)), bizAll: [...biz.values()], devs, contacts, skipped, other, errors, noSerial, cats, rows: nRows, upd: [],
+    format: G.sheet === "Cihazlar" && G.head.some(h => /FİRMA ÜNVANI/.test(TRU(h))) ? "Elmaslar yeni müşteri şablonu" : `Yeni müşteri listesi (“${G.sheet}” sayfası, ${G.hr + 1}. satır başlık)`, template: true, G };
+}
+function isElmaslarList(wb){ const ws = wb.Sheets[wb.SheetNames[0]]; const h = (XLSX.utils.sheet_to_json(ws, { header: 1, range: 0 })[0] || []).map(TRU); return h.some(x => x.startsWith("MÜŞTERİ ADI")) && h.includes("DURUMU"); }
+
 let xlsxP = null;
 function loadXLSX(){ if (window.XLSX) return Promise.resolve(); if (xlsxP) return xlsxP;
   xlsxP = new Promise((res, rej) => { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload = res; s.onerror = () => { xlsxP = null; rej(new Error("Excel okuyucu yüklenemedi")); }; document.head.appendChild(s); });
   return xlsxP; }
 async function readImportFile(file, listYear){
   await loadXLSX(); const buf = await file.arrayBuffer(); const wb = XLSX.read(buf, { type: "array" });
-  const data = isMigrosFormat(wb) ? parseMigros(wb, listYear) : { ...parseWorkbook(wb, listYear), format: "Elmaslar damga listesi" };
-  return splitMatches(data);
+  if (isMigrosFormat(wb)) return splitMatches(parseMigros(wb, listYear));
+  if (isElmaslarList(wb)) return splitMatches({ ...parseWorkbook(wb, listYear), format: "Elmaslar damga listesi" });
+  const G = prepGeneric(wb); G.fileName = file.name; return parseGeneric(G, listYear);
 }
 async function runImport(){
   const P = st.imp; if (!P || !P.data || P.busy) return; P.busy = true; P.log = []; render();
   const step = (m) => { P.log.push(m); const el = $("#implog"); if (el) el.textContent = P.log.join("\n"); };
   try {
-    const B = P.data.biz, D = P.data.devs;
+    const D = P.data.devs.concat(P.data.template && P.includeOther ? (P.data.other || []).map(x => x.dev) : [], P.data.template && P.includeNoSerial ? (P.data.noSerial || []).map(x => x.dev) : []);
+    const usedB = new Set(D.map(x => x.business_id)); const B = (P.data.bizAll || P.data.biz).filter(b => !P.data.template || usedB.has(b.id));
+    if (P.data.contacts) P.data.contacts = P.data.contacts.filter(c => usedB.has(c.business_id));
     for (let i = 0; i < B.length; i += 500){ await q(sb.from("businesses").upsert(B.slice(i, i + 500), { onConflict: "id", ignoreDuplicates: true })); step(`İşletmeler: ${Math.min(i + 500, B.length)} / ${B.length}`); }
+    if ((P.data.contacts || []).length){ try { await q(sb.from("contacts").insert(P.data.contacts)); step(`Yetkili kişi: ${P.data.contacts.length}`); } catch(e){ step("Yetkili kişiler eklenemedi: " + e.message); } }
     for (let i = 0; i < D.length; i += 500){ await q(sb.from("devices").upsert(D.slice(i, i + 500), { onConflict: "import_key", ignoreDuplicates: true })); step(`Cihazlar: ${Math.min(i + 500, D.length)} / ${D.length}`); }
     const U = P.data.upd || []; let done = 0;
     for (let i = 0; i < U.length; i += 8){ await Promise.all(U.slice(i, i + 8).filter(u => Object.keys(u.patch).length).map(u => q(sb.from("devices").update(u.patch).eq("id", u.id)))); done = Math.min(i + 8, U.length); if (done % 80 === 0 || done === U.length) step(`Mevcut cihaz güncellendi: ${done} / ${U.length}`); }
@@ -1262,11 +1372,23 @@ function viewData(){
   <div><div class="eyebrow">Yönetici</div><h2>Veri ve ayarlar</h2></div>
   <div class="card pad stack" style="gap:10px"><h3>Excel'den içe aktar</h3>
     <p class="muted" style="margin:0;font-size:.9rem">Elmaslar damga listesi ya da Migros/YMS “kalanlar” listesi (.xlsx) seçin; biçim otomatik tanınır. Aynı satırlar ikinci kez eklenmez; daha önce bulunan konumlar ve QR numaraları korunur. Mevcut kayıt: ${fmt(DEVS.length)} cihaz, ${fmt(LOCS.length)} lokasyon.</p>
+    <div class="row" style="font-size:.88rem"><a class="btn sm" href="elmaslar-yeni-musteri-sablonu.xlsx" download>Yeni müşteri şablonunu indir (.xlsx)</a><span class="muted">Yeni müşterileri bu şablonla gönderin; sistemde aynı firma + marka + seri no varsa satır eklenmez.</span></div>
     <div class="row"><input id="impfile" type="file" accept=".xlsx,.xls"><label class="f" style="flex-direction:row;align-items:center;gap:8px">Liste yılı <input id="impyear" type="number" value="${P.year || YEAR}" min="2020" max="2040" style="width:90px"></label></div>
     ${d ? `<div class="muted" style="font-size:.86rem">Biçim: <b>${esc(d.format||"")}</b>. ${d.upd?.length ? `${fmt(d.upd.length)} cihaz sistemde zaten var (marka + seri no); yeni kayıt açılmadan durumları güncellenecek.` : ""}</div>
       <div class="metrics"><div><b>${fmt(d.rows)}</b><span>satır</span></div><div><b>${fmt(d.biz.length)}</b><span>yeni lokasyon</span></div><div><b>${fmt(d.devs.length)}</b><span>yeni cihaz</span></div><div><b>${fmt(d.upd?.length||0)}</b><span>güncellenecek</span></div>
       ${Object.entries(d.cats).map(([k,n]) => `<div><b>${fmt(n)}</b><span>${CAT[k]?.l || k}</span></div>`).join("")}<div><b>${fmt(d.devs.filter(x=>x.seri_flag).length)}</b><span>seri no sorunlu</span></div></div>
       <div class="row"><button class="btn primary" data-act="impgo" ${P.busy||P.done?"disabled":""}>${P.busy ? "Aktarılıyor…" : P.done ? "Aktarıldı" : `İçe aktar (${fmt(d.devs.length)} yeni, ${fmt(d.upd?.length||0)} güncelleme)`}</button><span class="muted" style="font-size:.84rem">${esc(P.name||"")}</span></div>` : ""}
+    ${d && d.G ? `<details ${d.errors.length > d.rows / 3 ? "open" : ""}><summary>Sütun eşleştirme (${Object.keys(d.G.map).length} alan tanındı) · yanlışsa buradan düzeltin</summary>
+      <div class="mapgrid">${GFIELDS.map(([k, lab, rq]) => `<label class="f">${esc(lab)}${rq ? " *" : ""}<select data-act="impmap" data-k="${k}"><option value="">—</option>${d.G.head.map((h, i) => h ? `<option value="${i}" ${d.G.map[k] === i ? "selected" : ""}>${esc(h)}</option>` : "").join("")}</select></label>`).join("")}</div></details>` : ""}
+    ${d && d.template ? `<div class="stack" style="gap:8px">
+      ${d.skipped.length ? `<details><summary>${fmt(d.skipped.length)} satır atlanacak (aynı firma + marka + seri no zaten var)</summary><div class="tbl-wrap" style="margin-top:6px"><table><tbody>${d.skipped.slice(0,200).map(s => `<tr><td class="mono">${s.row}</td><td>${esc(titleTR(s.unvan))}</td><td>${esc(s.marka)}</td><td class="mono">${esc(s.seri)}</td><td class="muted">${esc(s.reason)}</td></tr>`).join("")}</tbody></table></div></details>` : ""}
+      ${d.other.length ? `<details open><summary>${fmt(d.other.length)} cihazın marka + seri numarası başka firmada kayıtlı</summary><div class="tbl-wrap" style="margin-top:6px"><table><tbody>${d.other.slice(0,200).map(s => `<tr><td class="mono">${s.row}</td><td>${esc(titleTR(s.unvan))}</td><td>${esc(s.marka)}</td><td class="mono">${esc(s.seri)}</td><td class="muted">${esc(s.reason)}</td></tr>`).join("")}</tbody></table></div>
+        <label class="row" style="font-size:.86rem;margin-top:6px"><input id="impother" type="checkbox" ${P.includeOther?"checked":""}> Bunları da yeni kayıt olarak ekle (cihaz el değiştirmişse). İşaretsizse atlanır.</label></details>` : ""}
+      ${(d.noSerial||[]).length ? `<details open><summary>${fmt(d.noSerial.length)} satırda seri no veya marka yok (“BILA” gibi)</summary><div class="tbl-wrap" style="margin-top:6px"><table><tbody>${d.noSerial.slice(0,200).map(s => `<tr><td class="mono">${s.row}</td><td>${esc(titleTR(s.unvan))}</td><td>${esc(s.marka||"—")}</td><td class="mono">${esc(s.seri||"—")}</td><td class="muted">${esc(s.reason)}</td></tr>`).join("")}</tbody></table></div>
+        <label class="row" style="font-size:.86rem;margin-top:6px"><input id="impnosn" type="checkbox" ${P.includeNoSerial?"checked":""}> Bunları da ekle (seri no sahada tamamlanır). İşaretsizse eklenmez.</label></details>` : ""}
+      ${d.errors.length ? `<details open><summary class="warnbox" style="display:list-item">${fmt(d.errors.length)} satırda zorunlu alan eksik, eklenmeyecek</summary><div class="tbl-wrap" style="margin-top:6px"><table><tbody>${d.errors.slice(0,200).map(s => `<tr><td class="mono">${s.row}</td><td>${esc(titleTR(s.unvan||"—"))}</td><td class="muted">${esc(s.reason)}</td></tr>`).join("")}</tbody></table></div></details>` : ""}
+      ${(d.skipped.length + d.errors.length + d.other.length + (d.noSerial||[]).length) ? `<div><button class="btn sm" data-act="impreport">Atlanan ve eksik satırları CSV indir</button></div>` : ""}
+    </div>` : ""}
     ${P.err ? `<div class="warnbox">${esc(P.err)}</div>` : ""}
     <pre id="implog" class="log" ${P.log?.length ? "" : "hidden"}>${esc((P.log||[]).join("\n"))}</pre>
   </div>
@@ -1285,6 +1407,75 @@ function viewData(){
     <div class="row" style="gap:16px;font-size:.9rem"><span class="st tamam">Supabase bağlı</span><span class="st ${CFG.GOOGLE_MAPS_KEY?"tamam":"tekrar"}">Google Maps ${CFG.GOOGLE_MAPS_KEY?"tanımlı":"tanımlı değil"}</span><span class="st ${window.qrcode?"tamam":"tekrar"}">QR kütüphanesi ${window.qrcode?"yüklü":"yüklenemedi"}</span></div>
     <div class="muted" style="font-size:.84rem">Panel: <span class="mono">${esc(APP_URL)}</span> · Atölye: ${esc(DEPOT.a)}</div>
   </div></div>`;
+}
+/* ---- Raporlar: müşteri bazlı durum ve cihaz detayı (çarşaf), CSV ---- */
+const RP_OUT = ["cihazyok","kapsamdisi","baskasi"];
+function rpLocRow(l){
+  const c = { tamam:0, islenecek:0, bekliyor:0, tekrar:0, tutanak:0, out:0 }; let nextMin = null;
+  l.d.forEach(d => { const g = d[8]; if (RP_OUT.includes(g)) c.out++; else c[g] = (c[g] || 0) + 1; const si = stampInfo({ d, l }); if (si.next && si.s !== "pasif") nextMin = nextMin ? Math.min(nextMin, si.next) : si.next; });
+  const open = c.bekliyor + c.tekrar + c.tutanak, act = l.d.length - c.out;
+  const genel = !act ? "Kapsam dışı" : open ? (c.tamam + c.islenecek ? "Kısmen tamamlandı" : "Açık") : c.islenecek ? "Sisteme işlenecek" : "Tamamlandı";
+  const lr = lastResult(l.k);
+  return { l, c, n: l.d.length, open, genel, next: nextMin, last: lr ? `${lr.st === "tamam" ? "Tamamlandı" : (RL[lr.st]?.[1] || lr.st)} · ${lr.at.slice(0,10).split("-").reverse().join(".")}` : "" };
+}
+function rpData(){
+  const f = st.rp, q = f.q.trim().toLocaleUpperCase("tr-TR");
+  const locs = LOCS.filter(l => !l.dep && (!f.il || l.il === f.il) && (!f.ilce || l.i === f.ilce) && (!q || l.n.toLocaleUpperCase("tr-TR").includes(q) || l.a.toLocaleUpperCase("tr-TR").includes(q)))
+    .sort((a, b) => a.il.localeCompare(b.il, "tr") || a.i.localeCompare(b.i, "tr") || a.n.localeCompare(b.n, "tr"));
+  const okDev = d => !f.durum || (f.durum === "out" ? RP_OUT.includes(d[8]) : d[8] === f.durum);
+  if (f.view === "musteri") return locs.filter(l => !f.durum || l.d.some(okDev)).map(rpLocRow);
+  const out = []; locs.forEach(l => l.d.filter(okDev).forEach(d => out.push({ l, d, si: stampInfo({ d, l }), lr: lastResult(l.k) }))); return out;
+}
+const RP_GROUPS = [["","Tüm durumlar"],["tamam","Tamamlandı"],["islenecek","Yapıldı · sisteme işlenecek"],["bekliyor","Bekliyor"],["tekrar","Tekrar ziyaret"],["tutanak","Tutanak"],["out","Kapsam dışı"]];
+function viewReports(){
+  const f = st.rp, data = rpData(), per = 100, pages = Math.max(1, Math.ceil(data.length / per)); if (f.page >= pages) f.page = 0;
+  const page = data.slice(f.page * per, f.page * per + per);
+  const ils = [...new Set(LOCS.filter(l => !l.dep).map(l => l.il))].sort((a,b)=>a.localeCompare(b,"tr"));
+  const ilces = [...new Set(LOCS.filter(l => !l.dep && (!f.il || l.il === f.il)).map(l => l.i))].filter(Boolean).sort((a,b)=>a.localeCompare(b,"tr"));
+  let tot; if (f.view === "musteri"){ tot = data.reduce((a, r) => { a.n += r.n; a.tamam += r.c.tamam; a.isl += r.c.islenecek; a.open += r.open; a.out += r.c.out; return a; }, { n:0, tamam:0, isl:0, open:0, out:0 }); }
+  const st_ = g => `<span class="st ${g==="out"?"kapsamdisi":g}">${esc(RP_GROUPS.find(x=>x[0]===g)?.[1] || CAT[g]?.l || g)}</span>`;
+  const genelCls = { "Tamamlandı":"tamam", "Sisteme işlenecek":"islenecek", "Kısmen tamamlandı":"tekrar", "Açık":"bekliyor", "Kapsam dışı":"kapsamdisi" };
+  const table = f.view === "musteri"
+    ? `<table class="rptbl"><thead><tr><th>Müşteri</th><th>İl</th><th>İlçe</th><th>Adres</th><th>Telefon</th><th class="r">Cihaz</th><th class="r">Tamam</th><th class="r">İşlenecek</th><th class="r">Açık</th><th class="r">Kapsam dışı</th><th>Genel durum</th><th>Sonraki damga</th><th>Son saha sonucu</th></tr></thead><tbody>
+      ${page.map(r => `<tr><td><b>${esc(titleTR(r.l.n))}</b></td><td>${esc(titleTR(r.l.il))}</td><td>${esc(titleTR(r.l.i))}</td><td class="muted">${esc(titleTR(r.l.a))}</td><td class="mono">${esc(r.l.t||"")}</td>
+        <td class="r">${r.n}</td><td class="r">${r.c.tamam||""}</td><td class="r">${r.c.islenecek||""}</td><td class="r"><b>${r.open||""}</b></td><td class="r">${r.c.out||""}</td>
+        <td><span class="st ${genelCls[r.genel]}">${r.genel}</span></td><td class="mono">${r.next||"—"}</td><td class="muted">${esc(r.last)}</td></tr>`).join("")}</tbody></table>`
+    : `<table class="rptbl"><thead><tr><th>Müşteri</th><th>İl</th><th>İlçe</th><th>Marka</th><th>Model</th><th>Seri no</th><th>Max</th><th>Sınıf</th><th>Durum</th><th>Son damga</th><th>Sonraki</th><th>QR</th><th>Son saha sonucu</th></tr></thead><tbody>
+      ${page.map(x => `<tr><td><button class="link rowlink" data-act="dev" data-c="${x.d[11]}">${esc(titleTR(x.l.n))}</button></td><td>${esc(titleTR(x.l.il))}</td><td>${esc(titleTR(x.l.i))}</td><td>${esc(x.d[2])}</td><td>${esc(x.d[3])}</td><td class="mono">${esc(x.d[4]||"—")}</td>
+        <td class="mono">${esc(x.d[12]||"")}</td><td>${esc(x.d[16])}</td><td>${st_(RP_OUT.includes(x.d[8])?"out":x.d[8])}</td><td class="mono">${x.si.last||"—"}</td><td class="mono">${x.si.next||"—"}</td><td class="mono">${esc(x.d[11])}</td>
+        <td class="muted">${x.lr ? esc((x.lr.st==="tamam"?"Tamamlandı":(RL[x.lr.st]?.[1]||x.lr.st)) + " · " + x.lr.at.slice(0,10).split("-").reverse().join(".")) : ""}</td></tr>`).join("")}</tbody></table>`;
+  return `<div class="stack">
+  <div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Raporlar</div><h2>${f.view === "musteri" ? "Müşteri bazlı durum raporu" : "Cihaz bazlı durum raporu"}</h2></div>
+    <div class="seg" role="group" aria-label="Rapor türü"><button class="segb" data-act="rpview" data-v="musteri" aria-pressed="${f.view==="musteri"}">Müşteri bazlı</button><button class="segb" data-act="rpview" data-v="cihaz" aria-pressed="${f.view==="cihaz"}">Cihaz bazlı</button></div></div>
+  <div class="card pad stack" style="gap:10px">
+    <div class="row">
+      <select id="rp-il" aria-label="İl"><option value="">Tüm iller</option>${ils.map(x=>`<option ${f.il===x?"selected":""} value="${esc(x)}">${esc(titleTR(x))}</option>`).join("")}</select>
+      <select id="rp-ilce" aria-label="İlçe"><option value="">Tüm ilçeler</option>${ilces.map(x=>`<option ${f.ilce===x?"selected":""} value="${esc(x)}">${esc(titleTR(x))}</option>`).join("")}</select>
+      <select id="rp-durum" aria-label="Durum">${RP_GROUPS.map(([k,lab])=>`<option ${f.durum===k?"selected":""} value="${k}">${lab}</option>`).join("")}</select>
+      <input id="rp-q" type="search" placeholder="Müşteri veya adres ara" value="${esc(f.q)}" style="flex:1 1 200px">
+      <button class="btn primary" data-act="rpcsv">CSV indir (${fmt(data.length)} satır)</button>
+    </div>
+    ${f.view === "musteri" ? `<div class="row" style="gap:16px;font-size:.88rem"><span><b>${fmt(data.length)}</b> müşteri/lokasyon</span><span><b>${fmt(tot.n)}</b> cihaz</span><span class="st tamam">Tamam ${fmt(tot.tamam)}</span><span class="st islenecek">İşlenecek ${fmt(tot.isl)}</span><span class="st bekliyor">Açık ${fmt(tot.open)}</span><span class="st kapsamdisi">Kapsam dışı ${fmt(tot.out)}</span></div>`
+      : `<div class="muted" style="font-size:.88rem">${fmt(data.length)} cihaz</div>`}
+    ${f.durum && f.view === "musteri" ? `<div class="muted" style="font-size:.82rem">Seçili durumda en az bir cihazı olan müşteriler listeleniyor; sayılar müşterinin tüm cihazlarını gösterir.</div>` : ""}
+  </div>
+  <div class="card"><div class="tbl-wrap">${data.length ? table : `<div class="empty">Bu filtrelerle kayıt yok.</div>`}</div>
+    ${pages>1?`<div class="row" style="justify-content:center;padding:12px"><button class="btn sm" data-act="rppage" data-p="${f.page-1}" ${f.page?"":"disabled"}>‹ Önceki</button><span class="mono muted">${f.page+1} / ${pages}</span><button class="btn sm" data-act="rppage" data-p="${f.page+1}" ${f.page<pages-1?"":"disabled"}>Sonraki ›</button></div>`:""}</div>
+  </div>`;
+}
+function rpCSV(){
+  const f = st.rp, data = rpData(); let rows;
+  if (f.view === "musteri"){
+    rows = [["Müşteri","İl","İlçe","Adres","Telefon","Cihaz","Tamamlandı","Sisteme işlenecek","Bekliyor","Tekrar ziyaret","Tutanak","Kapsam dışı","Genel durum","Sonraki damga","Son saha sonucu","Konum"]];
+    data.forEach(r => rows.push([r.l.n, r.l.il, r.l.i, r.l.a, r.l.t, r.n, r.c.tamam, r.c.islenecek, r.c.bekliyor, r.c.tekrar, r.c.tutanak, r.c.out, r.genel, r.next || "", r.last, r.l.p === "ok" ? "Doğrulandı" : "Yaklaşık"]));
+  } else {
+    rows = [["Müşteri","İl","İlçe","Adres","Telefon","Cinsi","Marka","Model","Seri no","Max","e","Sınıf","Durum","Ham durum","Son damga","Sonraki damga","QR no","Son saha sonucu","Excel satır"]];
+    data.forEach(x => rows.push([x.l.n, x.l.il, x.l.i, x.l.a, x.l.t, x.d[1], x.d[2], x.d[3], x.d[4], x.d[12], x.d[18], x.d[16], CAT[x.d[8]]?.l || x.d[8], x.d[9], x.si.last || "", x.si.next || "", x.d[11],
+      x.lr ? (x.lr.st === "tamam" ? "Tamamlandı" : (RL[x.lr.st]?.[1] || x.lr.st)) + " " + x.lr.at.slice(0,10) : "", x.d[17]]));
+  }
+  const tag = [f.il, f.ilce, f.durum].filter(Boolean).map(s => s.toLocaleLowerCase("tr-TR")).join("-");
+  downloadFile(`damga-${f.view === "musteri" ? "musteri" : "cihaz"}-raporu${tag ? "-" + tag : ""}-${todayISO()}.csv`, "﻿" + rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(";")).join("\r\n"));
+  toast(`${fmt(rows.length - 1)} satır CSV olarak indirildi`);
 }
 /* ---------------- boot & giriş ---------------- */
 function showScreen(id){ ["setup","login","loading","app"].forEach(s => { const el = document.getElementById("scr-" + s); if (el) el.hidden = s !== id; }); }

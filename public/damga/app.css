@@ -239,3 +239,8 @@ details summary{cursor:pointer;font-weight:600}
 .center{display:grid;place-items:center;min-height:60vh;text-align:center;color:var(--muted);padding:16px}
 .setup{max-width:640px;margin:0 auto;padding:10vh 16px}
 .setup code{font-family:var(--f-mono);background:var(--sunk);padding:1px 5px;border-radius:4px}
+
+.mapgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-top:8px}
+.mapgrid select{font-size:.84rem}
+.rptbl td,.rptbl th{font-size:.82rem;white-space:nowrap}
+.rptbl td.muted{white-space:normal;min-width:180px}
