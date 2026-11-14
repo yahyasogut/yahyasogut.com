@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v16 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v17 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -2220,7 +2220,20 @@ function fatRows(k){
   return [...by.values()].map(arr => ({ l: arr[0].l, devs: arr.sort((a, b) => (a.d[26] || 0) - (b.d[26] || 0)) }))
     .sort((a, b) => b.devs.length - a.devs.length || a.l.n.localeCompare(b.l.n, "tr"));
 }
+function fatOptions(cur){ const keys = new Set(S.faturaAll.map(x => x[0]).concat(["FATURA KESİLECEK","FATURA KESİLDİ","EFT","NAKİT","KREDİ KARTI","CEZALI"]));
+  return [...keys].map(x => `<option value="${esc(x)}" ${cur === x ? "selected" : ""}>${esc(titleTR(x))}</option>`).join("") + `<option value="__new">+ Yeni not yaz…</option><option value="__clear">Notu kaldır</option>`; }
+function fatSelect(d){ return `<select class="edin" data-act="fatone" data-id="${d[0]}" aria-label="Fatura notu">${fatOptions(fatKey(d[10]))}</select>`; }
+async function fatSave(ids, val){
+  if (val === "__clear") val = ""; else if (val === "__new"){ val = (prompt("Yeni fatura / ödeme notu") || "").trim(); if (!val) return false; }
+  val = fatKey(val);
+  const dirty = new Map(ids.filter(id => DEVID[id] && fatKey(DEVID[id].d[10]) !== val).map(id => [id, { fatura_notu: val }]));
+  if (!dirty.size){ toast("Değişiklik yok"); return false; }
+  try { const r = await saveEdits(dirty); await reloadDevices(); st.fsel.clear(); render();
+    toast(`${fmt(dirty.size)} cihazın notu “${val ? titleTR(val) : "boş"}” yapıldı${r.fail ? ` · ${r.fail} hata` : ""}`); return true; }
+  catch(e){ toast("Kaydedilemedi: " + e.message); render(); return false; }
+}
 function viewFatura(){
+  if (!st.fsel) st.fsel = new Set();
   const k = st.fk || "", all = S.faturaAll, rows = fatRows(k), nDev = rows.reduce((s, r) => s + r.devs.length, 0);
   const qq = TRU(st.fq || ""), shown = qq ? rows.filter(r => TRU(r.l.n + " " + r.l.a + " " + r.l.i + " " + r.devs.map(o => o.d[4] + " " + o.d[11]).join(" ")).includes(qq)) : rows;
   const tamam = rows.reduce((s, r) => s + r.devs.filter(o => o.d[8] === "tamam").length, 0);
@@ -2244,12 +2257,15 @@ function viewFatura(){
         <div style="min-width:0"><div class="muted mono" style="font-size:.76rem">Lok. ${lno(l)}${l.g ? ` · <span class="gtag">${esc(l.g)}</span>` : ""}</div>
           <b>${esc(titleTR(l.n))}</b><div class="muted" style="font-size:.86rem">${esc(titleTR(l.a))} · ${esc(titleTR(l.i))} / ${esc(titleTR(l.il))}</div>
           <div style="font-size:.86rem">${l.t ? `Tel: <a href="tel:${esc(String(l.t).replace(/\s/g, ""))}">${esc(l.t)}</a>` : `<span class="muted">Telefon yok</span>`} · ${fmt(l.d.length)} cihaz (bu dönem) · konum ${l.p === "ok" ? "doğrulandı" : "yaklaşık"}</div></div>
-        <span class="pill admin">${fmt(r.devs.length)} cihaz</span></div>
-      <div class="tbl-wrap"><table class="rptbl"><thead><tr><th class="r">Cihaz no</th><th>QR</th><th>Marka / model</th><th>Seri no</th><th>Max</th><th>Durum</th><th>Son damga</th>${k ? "" : "<th>Not</th>"}<th>Durum açıklaması</th></tr></thead><tbody>
-        ${r.devs.map(o => { const d = o.d, si = stampInfo(o); return `<tr><td class="r mono">${cno(d)}</td><td class="mono"><button class="link" data-act="dev" data-c="${d[11]}">${esc(d[11])}</button></td><td>${esc(d[2])} ${esc(d[3])}</td><td class="mono">${esc(d[4] || "—")}</td><td class="mono">${esc(d[12] || "")}</td>
-          <td><span class="st ${RP_OUT.includes(d[8]) ? "kapsamdisi" : d[8]}">${esc(CAT[d[8]]?.l || d[8])}</span></td><td class="mono">${si.last || "—"}</td>${k ? "" : `<td>${esc(titleTR(fatKey(d[10])))}</td>`}<td class="muted">${esc(d[9])}</td></tr>`; }).join("")}
+        <div class="row" style="gap:6px"><span class="pill admin">${fmt(r.devs.length)} cihaz</span>
+          <select data-act="fatcust" data-k="${esc(l.k)}" aria-label="Bu müşterinin tüm cihazları" style="font-size:.82rem"><option value="">Tümünü değiştir…</option>${fatOptions("")}</select></div></div>
+      <div class="tbl-wrap"><table class="rptbl"><thead><tr><th><input type="checkbox" data-act="fatall" data-k="${esc(l.k)}" ${r.devs.every(o => st.fsel.has(o.d[0])) ? "checked" : ""} title="Bu müşterinin tüm cihazları"></th><th class="r">Cihaz no</th><th>QR</th><th>Marka / model</th><th>Seri no</th><th>Max</th><th>Durum</th><th>Son damga</th><th>Fatura / ödeme notu</th><th>Durum açıklaması</th></tr></thead><tbody>
+        ${r.devs.map(o => { const d = o.d, si = stampInfo(o); return `<tr><td><input type="checkbox" data-act="fatsel" data-id="${d[0]}" ${st.fsel.has(d[0]) ? "checked" : ""}></td><td class="r mono">${cno(d)}</td><td class="mono"><button class="link" data-act="dev" data-c="${d[11]}">${esc(d[11])}</button></td><td>${esc(d[2])} ${esc(d[3])}</td><td class="mono">${esc(d[4] || "—")}</td><td class="mono">${esc(d[12] || "")}</td>
+          <td><span class="st ${RP_OUT.includes(d[8]) ? "kapsamdisi" : d[8]}">${esc(CAT[d[8]]?.l || d[8])}</span></td><td class="mono">${si.last || "—"}</td><td>${fatSelect(d)}</td><td class="muted">${esc(d[9])}</td></tr>`; }).join("")}
       </tbody></table></div></div>`; }).join("") || `<div class="empty">Kayıt yok.</div>`}
     ${shown.length > 300 ? `<div class="muted">İlk 300 müşteri gösteriliyor; tamamı için CSV indirin.</div>` : ""}
+    ${st.fsel.size ? `<div class="bulkbar"><b>${fmt(st.fsel.size)} cihaz seçili</b><span>Fatura / ödeme notunu değiştir:</span>
+      <select id="fat-bulk">${fatOptions("")}</select><button class="btn primary sm" data-act="fatbulk">Uygula</button><button class="link" data-act="fatclear">Seçimi temizle</button></div>` : ""}
   </div></div>`;
 }
 function fatCSV(){
@@ -2261,13 +2277,26 @@ function fatCSV(){
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (!b) return;
-  if (b.dataset.act === "fatpage"){ st.fk = b.dataset.k || ""; st.fq = ""; st.view = "fatura"; render(); window.scrollTo(0, 0); }
+  if (b.dataset.act === "fatpage"){ st.fk = b.dataset.k || ""; st.fq = ""; st.fsel = new Set(); st.view = "fatura"; render(); window.scrollTo(0, 0); }
   if (b.dataset.act === "fatcsv") fatCSV();
 });
 document.addEventListener("input", e => {
   if (e.target.id !== "fat-q") return;
   st.fq = e.target.value; clearTimeout(cfgT);
   cfgT = setTimeout(() => { const pos = e.target.selectionStart; render(); const n = document.getElementById("fat-q"); if (n){ n.focus(); try { n.setSelectionRange(pos, pos); } catch(_){} } }, 250);
+});
+document.addEventListener("change", async e => {
+  const t = e.target, a = t.dataset.act; if (!a || !a.startsWith("fat")) return; if (!st.fsel) st.fsel = new Set();
+  if (a === "fatsel"){ t.checked ? st.fsel.add(+t.dataset.id) : st.fsel.delete(+t.dataset.id); render(); return; }
+  if (a === "fatall"){ const r = fatRows(st.fk || "").find(x => x.l.k === t.dataset.k); (r ? r.devs : []).forEach(o => t.checked ? st.fsel.add(o.d[0]) : st.fsel.delete(o.d[0])); render(); return; }
+  if (a === "fatone"){ const ok = await fatSave([+t.dataset.id], t.value); if (!ok) render(); return; }
+  if (a === "fatcust"){ if (!t.value) return; const r = fatRows(st.fk || "").find(x => x.l.k === t.dataset.k); const ids = (r ? r.devs : []).map(o => o.d[0]);
+    if (!confirm(`${titleTR(BY[t.dataset.k]?.n || "")}: ${ids.length} cihazın notu değiştirilsin mi?`)){ t.value = ""; return; } const ok = await fatSave(ids, t.value); if (!ok) render(); return; }
+});
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  if (b.dataset.act === "fatclear"){ st.fsel.clear(); render(); }
+  if (b.dataset.act === "fatbulk"){ const v = $("#fat-bulk").value, ids = [...st.fsel]; if (!confirm(`${ids.length} cihazın fatura / ödeme notu değiştirilsin mi?`)) return; await fatSave(ids, v); }
 });
 /* ---------------- SMS (Sanal Santral, Supabase Edge Function "sms-gonder") ---------------- */
 const SMS_TPL = "Sayın {firma}, {donem} yılı periyodik damga (muayene) çalışması kapsamında ekibimiz {ilce} bölgesinde olacaktır. {cihaz} cihazınız için bilgilendirme. Elmaslar Elektronik Tartı";
