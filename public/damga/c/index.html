@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tartı Aleti Muayene Kartı · Elmaslar</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:wdth,wght@100..125,500..800&family=Figtree:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#F3F4F9;--surface:#fff;--ink:#15163A;--muted:#5C5F82;--line:#D9DBEA;--brand:#2D2A8E;
+  --ok:#1C8A57;--ok-soft:#E1F3EA;--wait:#B98000;--wait-soft:#FBF0D3;--bad:#C2333B;--bad-soft:#FBE3E4;--off:#8A8CA6;--off-soft:#ECECF2}
+@media (prefers-color-scheme: dark){:root{--bg:#0E0F1F;--surface:#171931;--ink:#E7E8F6;--muted:#9C9FC4;--line:#2B2E50;--brand:#9B98FF;
+  --ok:#4CC88B;--ok-soft:#163626;--wait:#E7B53C;--wait-soft:#3A2F10;--bad:#F06A70;--bad-soft:#3E1C20;--off:#8E91AE;--off-soft:#23243A;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Figtree,system-ui,sans-serif}
+main{max-width:560px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
+.wm{width:150px;aspect-ratio:732/164;background:var(--brand);-webkit-mask:url(../wordmark.png) center/contain no-repeat;mask:url(../wordmark.png) center/contain no-repeat}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.eyebrow{font:600 .72rem Saira,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font:700 1.35rem/1.2 Saira,sans-serif;font-stretch:110%;margin:2px 0 0}
+.head{padding:16px}
+.status{margin:0 16px 14px;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:2px}
+.status b{font:700 1.3rem Saira,sans-serif;font-stretch:110%}
+.s-ok{background:var(--ok-soft);color:var(--ok)}.s-wait{background:var(--wait-soft);color:var(--wait)}.s-bad{background:var(--bad-soft);color:var(--bad)}.s-off{background:var(--off-soft);color:var(--off)}
+.status span{color:var(--ink);opacity:.85;font-size:.88rem}
+dl{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);margin:0 16px 16px;border-radius:8px;overflow:hidden}
+dl div{background:var(--surface);padding:9px 10px;min-width:0}
+dt{font:600 .7rem Saira,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+dd{margin:0;font-weight:600;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.code{font-family:"JetBrains Mono",monospace;font-size:.8rem;color:var(--muted);padding:0 16px 14px}
+p.note{font-size:.82rem;color:var(--muted);margin:0;text-align:center}
+.empty{padding:24px 16px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <div class="wm" role="img" aria-label="Elmaslar"></div>
+  <div id="out" class="card"><div class="empty">Cihaz bilgisi yükleniyor…</div></div>
+  <p class="note">Elmaslar Elektronik Tartı Sistemleri ve Kalibrasyon Hizmetleri · Bu kart, tartı aletinin periyodik muayene (damga) durumunu gösterir. Periyodik muayene 2 yılda bir yapılır; başvurular Ocak–Şubat aylarında alınır.</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="../config.js?v=1"></script>
+<script>
+(function(){
+  const out = document.getElementById("out");
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const titleTR = s => String(s||"").toLocaleLowerCase("tr-TR").replace(/(^|[\s\-\/(.])(\S)/g,(m,a,b)=>a+b.toLocaleUpperCase("tr-TR"));
+  const fail = m => out.innerHTML = `<div class="empty">${m}</div>`;
+  const code = (new URLSearchParams(location.search).get("k") || "").trim();
+  const C = window.DAMGA_CONFIG || {};
+  if (!code) return fail("QR kodu okunamadı. Etiketi yeniden okutun.");
+  if (!C.SUPABASE_URL || !window.supabase) return fail("Sistem şu an kullanılamıyor.");
+  const sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+  Promise.resolve(sb.rpc("public_device", { p_code: code })).then(({ data: d, error }) => {
+    if (error) return fail("Bilgi alınamadı. Lütfen daha sonra tekrar deneyin.");
+    if (!d) return fail(`Bu QR koduna ait cihaz bulunamadı (${esc(code.split("-").slice(0,2).join("-"))}).`);
+    const Y = new Date().getFullYear(), last = d.son_damga_yili, next = last ? last + 2 : null;
+    let cls, label, sub;
+    if (d.aktif === false || ["cihazyok","kapsamdisi"].includes(d.durum_grup)){ cls = "s-off"; label = "Takip dışı"; sub = "Bu cihaz periyodik muayene takibinden çıkarılmış."; }
+    else if (!last){ cls = "s-off"; label = "Damga bilgisi yok"; sub = "Son muayene yılı kayıtlı değil."; }
+    else if (next > Y){ cls = "s-ok"; label = "Damga geçerli"; sub = `Sonraki periyodik muayene ${next}. Başvuru Ocak–Şubat ${next}.`; }
+    else if (next === Y){ cls = "s-wait"; label = `${Y} muayenesi bekliyor`; sub = `Başvurusu yapılan cihaz 31 Aralık ${Y} tarihine kadar damgalanmalı.`; }
+    else { cls = "s-bad"; label = "Muayene süresi geçmiş"; sub = `Son damga ${last}. Cihaz muayene edilene kadar ticari tartımda kullanılmamalı.`; }
+    const spec = [["İşletme", titleTR(d.unvan) + (d.ilce ? " · " + titleTR(d.ilce) : "")],["Tip", d.tip || "—"],["Marka / model", `${d.marka||"—"} ${d.model||""}`],["Seri no", d.seri_no || "—"],
+      ["Max", d.max_cap || "—"],["Min", d.min_cap || "—"],["e / d", `${d.e || "—"} / ${d.d || "—"}`],["Doğruluk sınıfı", d.sinif || "—"],["Son damga", last || "—"],["Sonraki damga", next || "—"]];
+    document.title = `${d.qr_no} · ${label} · Elmaslar`;
+    out.innerHTML = `<div class="head"><div class="eyebrow">Tartı aleti periyodik muayene kartı</div><h1>${esc(titleTR(d.cins) || "Tartı aleti")} · ${esc(d.marka||"")}</h1></div>
+      <div class="status ${cls}"><b>${esc(label)}</b><span>${esc(sub)}</span></div>
+      <dl>${spec.map(([k,v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+      <div class="code">QR ${esc(d.qr_no)}</div>`;
+  }).catch(() => fail("Bağlantı kurulamadı."));
+})();
+</script>
+</body>
+</html>
