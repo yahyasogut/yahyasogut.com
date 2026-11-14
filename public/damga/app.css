@@ -269,3 +269,9 @@ details summary{cursor:pointer;font-weight:600}
 .edin:focus{border-color:var(--brand);background:var(--surface);outline:none}
 .edin.dirty{background:var(--wait-soft);border-color:var(--wait)}
 .edtbl tr.chg td:first-child{box-shadow:inset 3px 0 0 var(--wait)}
+/* v14 · sıralanabilir başlıklar, mükerrer grupları */
+.sorth{all:unset;cursor:pointer;display:inline-flex;gap:4px;align-items:center;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;white-space:nowrap}
+.sorth span{opacity:.35;font-size:.8em}
+.sorth:hover span,.sorth.on span{opacity:1;color:var(--brand)}
+.sorth:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:3px}
+.edtbl tr.grph td{background:var(--sunk);font-size:.82rem;padding:6px 8px;white-space:normal}

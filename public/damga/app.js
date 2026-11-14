@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v13 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v14 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -347,26 +347,22 @@ function viewSummary(){
       <div class="card pad"><h3 style="margin-bottom:6px">Sahadan gelen sonuçlar</h3>${live}</div>
     </div>
   </section>
-  <section class="grid2" style="margin-bottom:16px">
-    <div class="card pad"><h2>Son damga yılı</h2><p class="muted" style="margin:.2rem 0 0;font-size:.85rem">Cihazların güncel son damga yılı; ${fmt(S.yilNA)} cihazda bilinmiyor.</p><div class="vbars">${vb}</div></div>
-    <div class="card pad"><h2 style="margin-bottom:8px">Fatura / ödeme notları</h2><p class="muted" style="margin:0 0 8px;font-size:.85rem">Başlıksız Q sütunundan. ${S.fatura["FATURA KESİLECEK"]||0} cihaz için fatura henüz kesilmemiş.</p>
-      <div class="tbl-wrap"><table><tbody>${fat}</tbody></table></div></div>
-  </section>
-  <section class="grid2">
-    <div class="card pad"><h2 style="margin-bottom:8px">Veri kalitesi</h2>
+  <section class="grid2" style="align-items:start">
+    <div class="stack" style="gap:16px">
+      <div class="card pad"><h2>Son damga yılı</h2><p class="muted" style="margin:.2rem 0 0;font-size:.85rem">Cihazların güncel son damga yılı; ${fmt(S.yilNA)} cihazda bilinmiyor.</p><div class="vbars">${vb}</div></div>
+      <div class="card pad"><h2 style="margin-bottom:8px">Veri kalitesi</h2>
       <ul style="margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:6px;font-size:.9rem">
-        <li><b>${q.durumBos}</b> satırda durum boş; ${S.dep.cats.bekliyor||0} tanesi atölye stoku (Elmaslar adresi).</li>
-        <li>Durum sütununda <b>${q.durumYazim}</b> farklı yazım var (YAPILDI / tutanak / yok / YOKK…). Sabit seçim listesine geçilmeli.</li>
-        <li>Marka sütununda <b>${q.markaVar}</b> yazım var (BİZERBA, BIZERBA, BİZERBAA gibi).</li>
-        <li>Seri no: <b>${q.seriYok}</b> cihazda boş, <b>${q.seriTekrar}</b> cihazda tekrar ediyor.</li>
-        <li><b>${q.adresKisa}</b> satırda adres 20 karakterden kısa (“KAŞ”, “DEPO”, “BELEK”). “Veri & ayarlar” sekmesinden Google ile konum bulunabilir.</li>
-        <li>Q–T sütunlarının başlığı yok (fatura, ödeme şekli, tutar). Başlık verilmeli.</li>
+      <li><b>${q.durumBos}</b> satırda durum boş; ${S.dep.cats.bekliyor||0} tanesi atölye stoku (Elmaslar adresi).</li>
+      <li>Durum sütununda <b>${q.durumYazim}</b> farklı yazım var (YAPILDI / tutanak / yok / YOKK…). Sabit seçim listesine geçilmeli.</li>
+      <li>Marka sütununda <b>${q.markaVar}</b> yazım var (BİZERBA, BIZERBA, BİZERBAA gibi).</li>
+      <li>Seri no: <b>${q.seriYok}</b> cihazda boş, <b>${q.seriTekrar}</b> cihazda tekrar ediyor.</li>
+      <li><b>${q.adresKisa}</b> satırda adres 20 karakterden kısa (“KAŞ”, “DEPO”, “BELEK”). “Veri & ayarlar” sekmesinden Google ile konum bulunabilir.</li>
+      <li>Q–T sütunlarının başlığı yok (fatura, ödeme şekli, tutar). Başlık verilmeli.</li>
       </ul>
       <div class="row" style="margin-top:12px"><button class="btn primary" data-act="goeditor">Bu verileri düzenle</button><button class="btn sm" data-act="goeditor" data-mode="dupseri">Tekrar eden seri numaraları</button></div></div>
-    <div class="card pad"><h2 style="margin-bottom:8px">Durum eşleme tablosu</h2>
-      <details><summary>Ham değer → grup (${S.raw.length} satır)</summary>
-      <div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Grup</th><th>Excel'deki değer</th><th class="r">Cihaz</th></tr></thead><tbody>${rawRows}</tbody></table></div></details>
-      <p class="muted" style="font-size:.85rem;margin:.6rem 0 0">“Tutanak” rotaya varsayılan olarak alınmadı; planlayıcıda tek tıkla eklenebilir. Bu eşleme tartışmaya açık.</p></div>
+    </div>
+    <div class="card pad"><h2 style="margin-bottom:8px">Fatura / ödeme notları</h2><p class="muted" style="margin:0 0 8px;font-size:.85rem">Başlıksız Q sütunundan. ${S.fatura["FATURA KESİLECEK"]||0} cihaz için fatura henüz kesilmemiş.</p>
+    <div class="tbl-wrap"><table><tbody>${fat}</tbody></table></div></div>
   </section>`;
 }
 
@@ -1614,7 +1610,6 @@ function viewData(){
   ${impCard("donem")}
   ${impCard("yeni")}
   ${viewEditor()}
-  ${viewPlaceAudit()}
   <div class="card pad stack" style="gap:10px"><h3>Konumlar</h3>
     <div class="metrics"><div><b>${fmt(prec.ok||0)}</b><span>doğrulanmış (Google / elle)</span></div><div><b>${fmt(prec.mah||0)}</b><span>≈ mahalle merkezi</span></div><div><b>${fmt(prec.ilce||0)}</b><span>≈ ilçe merkezi</span></div></div>
     <p class="muted" style="margin:0;font-size:.9rem">Google Geocoding ile adresler koordinata çevrilir. Bulunamayan adresler (“DEPO”, “KAŞ” gibi) sahadan “Konumu kaydet” ile düzeltilir. Google, ayda belirli bir sorguya kadar ücretsiz; ${fmt((prec.mah||0)+(prec.ilce||0))} sorgu bu sınırın çok altında.</p>
@@ -1740,8 +1735,25 @@ function rpData(){
   const locs = LOCS.filter(l => !l.dep && (!f.il || l.il === f.il) && (!f.ilce || l.i === f.ilce) && (!q || l.n.toLocaleUpperCase("tr-TR").includes(q) || l.a.toLocaleUpperCase("tr-TR").includes(q)))
     .sort((a, b) => a.il.localeCompare(b.il, "tr") || a.i.localeCompare(b.i, "tr") || a.n.localeCompare(b.n, "tr"));
   const okDev = d => !f.durum || (f.durum === "out" ? RP_OUT.includes(d[8]) : d[8] === f.durum);
-  if (f.view === "musteri") return locs.filter(l => !f.durum || l.d.some(okDev)).map(rpLocRow);
-  const out = []; locs.forEach(l => l.d.filter(okDev).forEach(d => out.push({ l, d, si: stampInfo({ d, l }), lr: lastResult(l.k) }))); return out;
+  let out;
+  if (f.view === "musteri") out = locs.filter(l => !f.durum || l.d.some(okDev)).map(rpLocRow);
+  else { out = []; locs.forEach(l => l.d.filter(okDev).forEach(d => out.push({ l, d, si: stampInfo({ d, l }), lr: lastResult(l.k) }))); }
+  const s = f.sort && f.sort.v === f.view && RP_SORT[f.view][f.sort.k];
+  if (s){ const dir = f.sort.dir, num = v => typeof v === "number";
+    out = out.map((r, i) => [s(r), i, r]).sort((a, b) => { const x = a[0], y = b[0], ex = x === "" || x == null, ey = y === "" || y == null;
+      if (ex !== ey) return ex ? 1 : -1; const c = num(x) && num(y) ? x - y : String(x).localeCompare(String(y), "tr", { numeric: true }); return (c || a[1] - b[1]) * (c ? dir : 1); }).map(x => x[2]); }
+  return out;
+}
+const rpLast = lr => lr ? lr.at : "";
+const RP_SORT = {
+  musteri: { "Lok. no": r => r.l.no || "", "Müşteri": r => r.l.n, "Grup": r => r.l.g, "İl": r => r.l.il, "İlçe": r => r.l.i, "Adres": r => r.l.a, "Telefon": r => r.l.t,
+    "Cihaz": r => r.n, "Tamam": r => r.c.tamam, "İşlenecek": r => r.c.islenecek, "Açık": r => r.open, "Kapsam dışı": r => r.c.out, "Genel durum": r => r.genel, "Sonraki damga": r => r.next || "", "Son saha sonucu": r => r.last },
+  cihaz: { "Lok. no": x => x.l.no || "", "Cihaz no": x => x.d[26] || "", "Müşteri": x => x.l.n, "Grup": x => x.l.g, "İl": x => x.l.il, "İlçe": x => x.l.i, "Marka": x => x.d[2], "Model": x => x.d[3],
+    "Seri no": x => x.d[4], "Max": x => parseFloat(String(x.d[12]).replace(",", ".")) || x.d[12], "Sınıf": x => x.d[16], "Durum": x => CAT[x.d[8]]?.l || x.d[8], "Son damga": x => +x.si.last || "", "Sonraki": x => +x.si.next || "", "QR": x => x.d[11], "Son saha sonucu": x => rpLast(x.lr) } };
+function rpSortHead(html, view){
+  const f = st.rp, cur = f.sort && f.sort.v === view ? f.sort : null;
+  return html.replace(/<th( class="r")?>([^<]+)<\/th>/g, (m, cls, lab) => { if (!RP_SORT[view][lab]) return m; const on = cur && cur.k === lab;
+    return `<th${cls || ""} aria-sort="${on ? (cur.dir > 0 ? "ascending" : "descending") : "none"}"><button class="sorth${on ? " on" : ""}" data-act="rpsort" data-k="${esc(lab)}">${lab}<span>${on ? (cur.dir > 0 ? "▲" : "▼") : "↕"}</span></button></th>`; });
 }
 const RP_GROUPS = [["","Tüm durumlar"],["tamam","Tamamlandı"],["islenecek","Yapıldı · sisteme işlenecek"],["bekliyor","Bekliyor"],["tekrar","Tekrar ziyaret"],["tutanak","Tutanak"],["out","Kapsam dışı"]];
 function viewReports(){
@@ -1752,7 +1764,7 @@ function viewReports(){
   let tot; if (f.view === "musteri"){ tot = data.reduce((a, r) => { a.n += r.n; a.tamam += r.c.tamam; a.isl += r.c.islenecek; a.open += r.open; a.out += r.c.out; return a; }, { n:0, tamam:0, isl:0, open:0, out:0 }); }
   const st_ = g => `<span class="st ${g==="out"?"kapsamdisi":g}">${esc(RP_GROUPS.find(x=>x[0]===g)?.[1] || CAT[g]?.l || g)}</span>`;
   const genelCls = { "Tamamlandı":"tamam", "Sisteme işlenecek":"islenecek", "Kısmen tamamlandı":"tekrar", "Açık":"bekliyor", "Kapsam dışı":"kapsamdisi" };
-  const table = f.view === "musteri"
+  const table0 = f.view === "musteri"
     ? `<table class="rptbl"><thead><tr><th class="r">Lok. no</th><th>Müşteri</th><th>Grup</th><th>İl</th><th>İlçe</th><th>Adres</th><th>Telefon</th><th class="r">Cihaz</th><th class="r">Tamam</th><th class="r">İşlenecek</th><th class="r">Açık</th><th class="r">Kapsam dışı</th><th>Genel durum</th><th>Sonraki damga</th><th>Son saha sonucu</th></tr></thead><tbody>
       ${page.map(r => `<tr><td class="r mono">${lno(r.l)}</td><td><b>${esc(titleTR(r.l.n))}</b></td><td>${r.l.g ? `<span class="gtag">${esc(r.l.g)}</span>` : ""}</td><td>${esc(titleTR(r.l.il))}</td><td>${esc(titleTR(r.l.i))}</td><td class="muted">${esc(titleTR(r.l.a))}</td><td class="mono">${esc(r.l.t||"")}</td>
         <td class="r">${r.n}</td><td class="r">${r.c.tamam||""}</td><td class="r">${r.c.islenecek||""}</td><td class="r"><b>${r.open||""}</b></td><td class="r">${r.c.out||""}</td>
@@ -1761,6 +1773,7 @@ function viewReports(){
       ${page.map(x => `<tr><td class="r mono">${lno(x.l)}</td><td class="r mono">${cno(x.d)}</td><td><button class="link rowlink" data-act="dev" data-c="${x.d[11]}">${esc(titleTR(x.l.n))}</button></td><td>${x.l.g ? `<span class="gtag">${esc(x.l.g)}</span>` : ""}</td><td>${esc(titleTR(x.l.il))}</td><td>${esc(titleTR(x.l.i))}</td><td>${esc(x.d[2])}</td><td>${esc(x.d[3])}</td><td class="mono">${esc(x.d[4]||"—")}${x.d[25] ? ` <span class="dupflag">MÜKERRER</span>` : ""}</td>
         <td class="mono">${esc(x.d[12]||"")}</td><td>${esc(x.d[16])}</td><td>${st_(RP_OUT.includes(x.d[8])?"out":x.d[8])}</td><td class="mono">${x.si.last||"—"}</td><td class="mono">${x.si.next||"—"}</td><td class="mono">${esc(x.d[11])}</td>
         <td class="muted">${x.lr ? esc((x.lr.st==="tamam"?"Tamamlandı":(RL[x.lr.st]?.[1]||x.lr.st)) + " · " + x.lr.at.slice(0,10).split("-").reverse().join(".")) : ""}</td></tr>`).join("")}</tbody></table>`;
+  const table = rpSortHead(table0, f.view);
   return `<div class="stack">
   <div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Raporlar · ${YEAR} dönemi${(st.gf||[]).length ? " · grup: " + esc(st.gf.join(", ")) : ""}</div><h2>${f.view === "musteri" ? "Müşteri bazlı durum raporu" : "Cihaz bazlı durum raporu"}</h2></div>
     <div class="seg" role="group" aria-label="Rapor türü"><button class="segb" data-act="rpview" data-v="musteri" aria-pressed="${f.view==="musteri"}">Müşteri bazlı</button><button class="segb" data-act="rpview" data-v="cihaz" aria-pressed="${f.view==="cihaz"}">Cihaz bazlı</button></div></div>
@@ -1794,6 +1807,10 @@ function rpCSV(){
   downloadFile(`damga-${YEAR}-${f.view === "musteri" ? "musteri" : "cihaz"}-raporu${tag ? "-" + tag : ""}-${todayISO()}.csv`, "﻿" + rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(";")).join("\r\n"));
   toast(`${fmt(rows.length - 1)} satır CSV olarak indirildi`);
 }
+document.addEventListener("click", e => {
+  const b = e.target.closest('[data-act="rpsort"]'); if (!b) return; const f = st.rp, k = b.dataset.k;
+  f.sort = f.sort && f.sort.v === f.view && f.sort.k === k ? (f.sort.dir > 0 ? { v: f.view, k, dir: -1 } : null) : { v: f.view, k, dir: 1 }; f.page = 0; render();
+});
 /* ---------------- müşteri grupları · dönem seçimi · dönem dışa aktarma ---------------- */
 function cuRows(){
   const c = st.cu, qq = TRU(c.q);
@@ -1996,7 +2013,30 @@ function edRows(){
     : out.sort((a, b) => (a.l.no || 1e12) - (b.l.no || 1e12) || (a.d[26] || 1e12) - (b.d[26] || 1e12));
 }
 const capKey = v => { const s = TRU(v).replace(/\s+/g, " ").replace(/,/g, "."); if (!s) return "(boş)"; return /KG$/.test(s) ? s.replace(/\s*KG$/, " KG") : /\d\s*GR?$/.test(s) ? s.replace(/\s*GR?$/, " G") : s; };
-function edSeriCount(){ const m = new Map(); DEVS.forEach(o => { if (o.l.dep || o.d[23] === false) return; const s = realSeri(o.d[4]); if (s) m.set(s, (m.get(s) || 0) + 1); }); return m; }
+function edSeriCount(){ const hide = new Set(lsGet("damga.serHide", [])); const m = new Map(); DEVS.forEach(o => { if (o.l.dep || o.d[23] === false) return; const s = realSeri(o.d[4]); if (s && !hide.has(s)) m.set(s, (m.get(s) || 0) + 1); }); return m; }
+// mükerrer grubunda tutulacak kayıt: seçilen; yoksa tamamlanmış / en yeni damgalı / en düşük cihaz no
+function edKeepOf(g){ const E = edState(); E.keep = E.keep || {}; const k = E.keep[g.s]; if (k && g.items.some(o => o.d[0] === k)) return k;
+  return g.items.slice().sort((a, b) => (RANK[b.d[8]] ?? 0) - (RANK[a.d[8]] ?? 0) || (+b.d[6] || 0) - (+a.d[6] || 0) || (a.d[26] || 1e12) - (b.d[26] || 1e12))[0].d[0]; }
+function edGroupHead(g, span){ const E = edState(), nSel = g.items.filter(o => E.sel.has(o.d[0])).length, locs = new Set(g.items.map(o => o.l.k)).size;
+  return `<tr class="grph"><td colspan="${span}"><b>Seri ${esc(g.s)}</b> · ${g.items.length} kayıt · ${locs} lokasyon · ${esc([...new Set(g.items.map(o => o.d[2]))].join(" / "))}
+    <span style="display:inline-flex;gap:10px;margin-left:12px;flex-wrap:wrap"><button class="btn sm primary" data-act="edmerge" data-s="${esc(g.s)}">${nSel >= 2 ? `Seçili ${nSel} kaydı birleştir` : "Tümünü birleştir"} → “Tut” işaretli kayıt kalır</button>
+    <button class="link" data-act="ednotdup" data-s="${esc(g.s)}">Mükerrer değil, listeden kaldır</button></span></td></tr>`; }
+async function edMerge(s){
+  const E = edState(), sc = edRows().filter(o => realSeri(o.d[4]) === s); if (sc.length < 2) return;
+  const sel = sc.filter(o => E.sel.has(o.d[0])), grp = sel.length >= 2 ? sel : sc, keepId = edKeepOf({ s, items: sc });
+  const kept = grp.find(o => o.d[0] === keepId) || DEVID[keepId]; const rest = grp.filter(o => o.d[0] !== kept.d[0]);
+  if (!rest.length){ toast("Birleştirilecek başka kayıt yok"); return; }
+  if (!grp.some(o => o.d[0] === kept.d[0])){ toast("“Tut” işaretli kaydı da seçin"); return; }
+  if (!confirm(`Seri ${s}: ${kept.d[11]} (${titleTR(kept.l.n)}) kalacak, ${rest.length} kayıt pasife alınıp ${YEAR} listesinden çıkarılacak. QR ve geçmiş silinmez. Devam?`)) return;
+  const all = [kept, ...rest], maxSon = Math.max(...all.map(o => +o.d[6] || 0)) || null, best = all.map(o => o.d[8]).sort((a, b) => (RANK[b] ?? 0) - (RANK[a] ?? 0))[0];
+  try {
+    if (maxSon && maxSon > (+kept.d[6] || 0)) await q(sb.from("devices").update({ son_damga_yili: maxSon }).eq("id", kept.d[0]));
+    if ((RANK[best] ?? 0) > (RANK[kept.d[8]] ?? 0)){ if (kept.d[24] && !st.noPeriod) await q(sb.from("period_items").update({ durum_grup: best }).eq("id", kept.d[24])); else await q(sb.from("devices").update({ durum_grup: best }).eq("id", kept.d[0])); }
+    for (const o of rest){ await q(sb.from("devices").update({ aktif: false, cikis_nedeni: `Mükerrer kayıt · ${kept.d[11]} ile birleştirildi` }).eq("id", o.d[0]));
+      if (o.d[24] && !st.noPeriod) await q(sb.from("period_items").delete().eq("id", o.d[24])); E.sel.delete(o.d[0]); E.dirty.delete(o.d[0]); }
+    await reloadDevices(); render(); toast(`Seri ${s}: ${rest.length} kayıt birleştirildi, ${kept.d[11]} tutuldu`);
+  } catch(e){ toast("Birleştirilemedi: " + e.message); }
+}
 function edCaps(){ const m = new Map(); DEVS.forEach(o => { if (!o.l.dep){ const k = capKey(o.d[12]); m.set(k, (m.get(k) || 0) + 1); } });
   const num = k => { const x = parseFloat(String(k).replace(",", ".")); return isNaN(x) ? 1e9 : x * (/ G$/.test(k) ? 0.001 : 1); };
   return [...m].sort((a, b) => num(a[0]) - num(b[0]) || a[0].localeCompare(b[0], "tr")); }
@@ -2014,8 +2054,11 @@ function viewEditor(){
   if (!E.open) return `<div class="card pad stack" style="gap:10px"><h3>Kayıt düzenleyici · ${YEAR}</h3>
     <p class="muted" style="margin:0;font-size:.9rem">Dönem listesini tablo halinde düzenleyin: her lokasyonun ve cihazın kalıcı bir sıra numarası var. Görmek istediğiniz alanları seçin, hücreleri değiştirin, toplu değer uygulayın, sonra kaydedin. Sağ üstteki grup filtresine uyar.</p>
     <div><button class="btn primary" data-act="edopen">Düzenleyiciyi aç (${fmt(DEVS.filter(o => !o.l.dep).length)} cihaz)</button></div></div>`;
-  const rows = edRows(), N = 50, pages = Math.max(1, Math.ceil(rows.length / N)); if (E.page >= pages) E.page = 0;
-  const pg = rows.slice(E.page * N, E.page * N + N), nd = E.dirty.size, allSel = pg.length && pg.every(o => E.sel.has(o.d[0]));
+  const rows = edRows(), dupMode = E.dupSeri && !E.ids;
+  const groups = dupMode ? rows.reduce((m, o) => { const s = realSeri(o.d[4]); const g = m.length && m[m.length - 1].s === s ? m[m.length - 1] : (m.push({ s, items: [] }), m[m.length - 1]); g.items.push(o); return m; }, []) : null;
+  const N = dupMode ? 20 : 50, pages = Math.max(1, Math.ceil((dupMode ? groups.length : rows.length) / N)); if (E.page >= pages) E.page = 0;
+  const pgG = dupMode ? groups.slice(E.page * N, E.page * N + N) : null;
+  const pg = dupMode ? pgG.flatMap(g => g.items) : rows.slice(E.page * N, E.page * N + N), nd = E.dirty.size, allSel = pg.length && pg.every(o => E.sel.has(o.d[0]));
   const ilces = [...new Set(DEVS.filter(o => !o.l.dep).map(o => o.l.i).filter(Boolean))].sort((a, b) => a.localeCompare(b, "tr"));
   const noSira = !DEVS.some(o => o.d[26]);
   return `<div class="card pad stack" style="gap:10px" id="editor">
@@ -2027,7 +2070,7 @@ function viewEditor(){
         <button class="btn sm ${E.dupSeri ? "primary" : ""}" data-act="eddupseri" aria-pressed="${!!E.dupSeri}">Seriye göre mükerrerleri bul</button></div>
       <div class="muted" style="font-size:.8rem;margin-top:6px">⌂ lokasyon alanı: değişiklik o adresteki tüm cihazlara uygulanır. <button class="link" data-act="edcolreset">Varsayılana dön</button> · <button class="link" data-act="edcolall">Tümü</button></div></details>
     ${E.ids ? `<div class="row warnbox" style="justify-content:space-between"><span>${esc(E.idsLabel || "Seçili kayıtlar")} · ${fmt(E.ids.size)} cihaz gösteriliyor</span><button class="btn sm" data-act="edidsclear">Tüm listeye dön</button></div>` : ""}
-    ${E.dupSeri && !E.ids ? (() => { const sc = edSeriCount(), n = [...sc.values()].filter(x => x > 1).length; return `<div class="row warnbox" style="justify-content:space-between"><span>Seriye göre mükerrer: seri numarası birebir aynı <b>${fmt(n)}</b> seri, listede ${fmt(rows.length)} cihaz (BILA / boş seri hariç, marka fark etmez). Aynı seriler alt alta sıralı.</span><button class="btn sm" data-act="eddupseri">Kapat</button></div>`; })() : ""}
+    ${E.dupSeri && !E.ids ? (() => { const sc = edSeriCount(), n = [...sc.values()].filter(x => x > 1).length; return `<div class="row warnbox" style="justify-content:space-between"><span>Seriye göre mükerrer: seri numarası birebir aynı <b>${fmt(n)}</b> seri, listede ${fmt(rows.length)} cihaz (BILA / boş seri hariç, marka fark etmez). Aynı seriler alt alta sıralı.${lsGet("damga.serHide", []).length ? ` <button class="link" data-act="edserreset">Gizlenen ${lsGet("damga.serHide", []).length} seriyi geri getir</button>` : ""}</span><button class="btn sm" data-act="eddupseri">Kapat</button></div>`; })() : ""}
     <div class="row" ${E.ids ? "hidden" : ""}>
       <input id="ed-q" type="search" placeholder="Firma, adres, seri no, QR, sıra no ara" value="${esc(E.q)}" style="min-width:260px">
       <select id="ed-ilce"><option value="">Tüm ilçeler</option>${ilces.map(x => `<option ${x === E.ilce ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
@@ -2036,10 +2079,11 @@ function viewEditor(){
       <span class="muted" style="font-size:.86rem">${fmt(rows.length)} cihaz</span>
     </div>
     <datalist id="dl-ilce">${[...new Set([...(YER.iller.ANTALYA || []), ...ilces])].map(x => `<option value="${esc(x)}">`).join("")}</datalist>
-    <div class="tbl-wrap edwrap"><table class="edtbl"><thead><tr><th><input type="checkbox" data-act="edall" ${allSel ? "checked" : ""} title="Bu sayfadakileri seç"></th><th class="num">Lok. no</th><th class="num">Cihaz no</th><th>QR</th>${E.cols.map(k => `<th>${esc(EDF[k][1])}${EDF[k][2] === "biz" ? " ⌂" : ""}</th>`).join("")}</tr></thead><tbody>
-      ${pg.map(o => `<tr class="${E.dirty.has(o.d[0]) ? "chg" : ""}"><td><input type="checkbox" data-act="edsel" data-id="${o.d[0]}" ${E.sel.has(o.d[0]) ? "checked" : ""}></td>
+    <div class="tbl-wrap edwrap"><table class="edtbl"><thead><tr><th><input type="checkbox" data-act="edall" ${allSel ? "checked" : ""} title="Bu sayfadakileri seç"></th>${dupMode ? "<th>Ana kayıt</th>" : ""}<th class="num">Lok. no</th><th class="num">Cihaz no</th><th>QR</th>${E.cols.map(k => `<th>${esc(EDF[k][1])}${EDF[k][2] === "biz" ? " ⌂" : ""}</th>`).join("")}</tr></thead><tbody>
+      ${(dupMode ? pgG.map(g => ({ g, rows: g.items })) : [{ g: null, rows: pg }]).map(({ g, rows: rr }) => (g ? edGroupHead(g, E.cols.length + 5) : "") + rr.map(o => `<tr class="${E.dirty.has(o.d[0]) ? "chg" : ""}"><td><input type="checkbox" data-act="edsel" data-id="${o.d[0]}" ${E.sel.has(o.d[0]) ? "checked" : ""}></td>
+        ${g ? `<td style="white-space:nowrap"><label style="display:inline-flex;gap:4px;align-items:center;font-size:.82rem"><input type="radio" name="edkeep-${esc(g.s)}" data-act="edkeep" data-s="${esc(g.s)}" value="${o.d[0]}" ${edKeepOf(g) === o.d[0] ? "checked" : ""}> Tut</label> · <button class="link" data-act="edrm1" data-id="${o.d[0]}" style="font-size:.82rem;color:var(--bad)">Listeden çıkar</button></td>` : ""}
         <td class="num mono">${lno(o.l)}</td><td class="num mono">${cno(o.d)}${o.d[25] ? ` <span class="dupflag">M</span>` : ""}</td><td class="mono"><button class="link" data-act="dev" data-c="${o.d[11]}">${esc(o.d[11])}</button></td>
-        ${E.cols.map(k => `<td>${edCell(o, k)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${E.cols.length + 4}" class="muted">Kayıt yok.</td></tr>`}
+        ${E.cols.map(k => `<td>${edCell(o, k)}</td>`).join("")}</tr>`).join("")).join("") || `<tr><td colspan="${E.cols.length + 5}" class="muted">Kayıt yok.</td></tr>`}
     </tbody></table></div>
     ${pages > 1 ? `<div class="row"><button class="btn sm" data-act="edpage" data-p="${E.page - 1}" ${E.page ? "" : "disabled"}>‹ Önceki</button><span class="muted mono">${E.page + 1} / ${pages}</span><button class="btn sm" data-act="edpage" data-p="${E.page + 1}" ${E.page + 1 < pages ? "" : "disabled"}>Sonraki ›</button>
       <button class="link" data-act="edselall">Filtredeki ${fmt(rows.length)} cihazın tümünü seç</button></div>` : ""}
@@ -2088,6 +2132,13 @@ document.addEventListener("click", async e => {
     case "edidsclear": E.ids = null; E.idsLabel = ""; E.page = 0; render(); break;
     case "edcap": E.capOn = !E.capOn; if (!E.capOn) E.cap = ""; E.colsOpen = true; E.page = 0; render(); break;
     case "eddupseri": E.dupSeri = !E.dupSeri; E.page = 0; E.colsOpen = true; if (E.dupSeri){ ["marka","seri_no","model","max_cap"].forEach(k => { if (!E.cols.includes(k)) E.cols.push(k); }); } render(); break;
+    case "edserreset": lsSet("damga.serHide", []); render(); break;
+    case "edmerge": edMerge(b.dataset.s); break;
+    case "ednotdup": { const h = lsGet("damga.serHide", []); h.push(b.dataset.s); lsSet("damga.serHide", h); render(); toast(`Seri ${b.dataset.s} mükerrer listesinden kaldırıldı`); break; }
+    case "edrm1": { const o = DEVID[+b.dataset.id]; if (!o) break;
+      if (!o.d[24] || st.noPeriod){ toast("Bu kayıt dönem listesinde değil"); break; }
+      if (!confirm(`${o.d[11]} · ${titleTR(o.l.n)} ${YEAR} listesinden çıkarılsın mı? Cihaz kaydı ve QR silinmez.`)) break;
+      try { await q(sb.from("period_items").delete().eq("id", o.d[24])); E.sel.delete(o.d[0]); E.dirty.delete(o.d[0]); await reloadDevices(); render(); toast("Listeden çıkarıldı"); } catch(err){ toast("Çıkarılamadı: " + err.message); } break; }
     case "edundo": E.dirty.clear(); render(); break;
     case "edbulk": { const k = $("#ed-bk").value, v = $("#ed-bv").value; const f = EDF[k];
       if (f[5] === "durum" && !ED_STATUS.includes(v) && !statusCat(v)){ toast("Durum için: " + ED_STATUS.join(", ")); break; }
@@ -2122,6 +2173,7 @@ document.addEventListener("change", e => {
   if (a === "edsel"){ t.checked ? E.sel.add(+t.dataset.id) : E.sel.delete(+t.dataset.id); render(); return; }
   if (a === "edall"){ const rows = edRows(), pg = rows.slice(E.page * 50, E.page * 50 + 50); pg.forEach(o => t.checked ? E.sel.add(o.d[0]) : E.sel.delete(o.d[0])); render(); return; }
   if (t.id === "ed-ilce"){ E.ilce = t.value; E.page = 0; render(); return; }
+  if (a === "edkeep"){ E.keep = E.keep || {}; E.keep[t.dataset.s] = +t.value; return; }
   if (t.id === "ed-cap"){ E.cap = t.value; E.page = 0; render(); return; }
   if (t.id === "ed-durum"){ E.durum = t.value; E.page = 0; render(); return; }
 });

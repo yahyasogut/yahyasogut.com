@@ -1,4 +1,4 @@
-# Elmaslar Damga Takip — teknik not (v13 · 14 Kasım 2026)
+# Elmaslar Damga Takip — teknik not (v14 · 14 Kasım 2026)
 
 Ayrı proje olarak yahyasogut.com reposunun içinde, kendi klasörlerinde yaşar. Next.js sitesinden bağımsızdır; `public/damga/` statik olarak `/damga/` adresine kopyalanır.
 
@@ -56,6 +56,17 @@ docs/DAMGA-KURULUM.md   adım adım kurulum
 - Ön basılı QR (sahada cihaza bağlama) Faz 3'te. Şimdilik QR numarası içe aktarımda cihaza verilir.
 
 ## Sürüm geçmişi
+
+- **v14 · 14.11.2026:**
+  - Kayıt düzenleyici → **Seriye göre mükerrerleri bul** artık seri gruplarıyla çalışıyor (sayfa başına 20 grup).
+    - Her grubun başlığında seri, kayıt / lokasyon sayısı ve marka var.
+    - **Birleştir:** "Tut" işaretli kayıt kalır. 2 ya da daha fazla satır seçiliyse yalnızca seçilenler birleşir, yoksa grubun tamamı. Kalan kayda en yeni damga yılı ve en iyi durum aktarılır; diğerleri pasife alınır ("Mükerrer kayıt · EL-… ile birleştirildi") ve dönem listesinden çıkar. QR ve geçmiş silinmez.
+    - Satır bazında **Listeden çıkar** (yalnızca dönem listesinden).
+    - **Mükerrer değil, listeden kaldır:** gizlenen seriler tarayıcıda hatırlanır; "geri getir" bağlantısı var.
+  - **Raporlar:** müşteri ve cihaz bazlı tablolarda başlığa tıklayınca artan sıralama, ikinci tıkta azalan, üçüncüde varsayılana dönüş (↕ ▲ ▼). Boş değerler sona gider. CSV de aynı sırayla iner.
+  - **Yönetici özeti:** Veri kalitesi kartı Son damga yılı kartının altına taşındı; Durum eşleme tablosu kaldırıldı.
+  - **Veri & ayarlar:** "İl / ilçe düzeltme" kartı kaldırıldı. İçe aktarmada resmi il/ilçe listesine göre otomatik düzeltme sürüyor; tek tek düzeltme kayıt düzenleyicide (İl / İlçe alanları) yapılıyor.
+  - SQL değişikliği yok. Önbellek sürümü ?v=14.
 
 - **v13 · 14.11.2026:**
   - Yönetici özeti → **Sahadan gelen sonuçlar**: son 10 günün rota özeti gün gün ve toplam satırıyla. Sütunlar: rota sayısı, durak / cihaz, tamamlanan, eksik (sorun bildirilen), kalan (sonuç gelmemiş), yeni eklenen (o gün ilk rotadan 30 dk sonra eklenen rotalar). Bugün vurgulu. Altında sonuç türü rozetleri.
