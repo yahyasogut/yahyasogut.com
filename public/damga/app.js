@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v1 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v9 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -26,30 +26,47 @@ const clock = (start, add) => { const [h,m] = start.split(":").map(Number); let 
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e) { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} };
 const TEAM_C = ["var(--brand)","var(--retry)","var(--tut)","var(--wait)","var(--ok)"];
-const YEAR = new Date().getFullYear();
+const NOW_Y = new Date().getFullYear();
+let YEAR = (() => { const y = +lsGet("damga.donem", 0); return y >= 2020 && y <= 2100 ? y : NOW_Y; })();   // seçili dönem
 
 /* ---------------- Supabase ---------------- */
 const configured = !!(CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && window.supabase);
 const sb = configured ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: "elmaslar-damga" } }) : null;
 async function q(p){ const { data, error } = await p; if (error) throw error; return data; }
-async function fetchAll(table, select = "*", order = "id"){
+async function fetchAll(table, select = "*", order = "id", eq = null){
   let out = [], from = 0; const N = 1000;
-  for (;;){ const rows = await q(sb.from(table).select(select).order(order).range(from, from + N - 1)); out = out.concat(rows); if (rows.length < N) break; from += N; }
+  for (;;){ let b = sb.from(table).select(select); if (eq) b = b.eq(eq[0], eq[1]); const rows = await q(b.order(order).range(from, from + N - 1)); out = out.concat(rows); if (rows.length < N) break; from += N; }
   return out;
 }
 
 /* ---------------- data (filled after login) ---------------- */
 let LOCS = [], BY = {}, DEVS = [], DEVBY = {}, DEVID = {}, S = null;
+// LOCS_P / DEVS_P: seçili dönemin tamamı · LOCS / DEVS: grup filtresi uygulanmış görünüm · BY / DEVID / DEVBY: tüm kayıtlar
+let LOCS_P = [], DEVS_P = [], RAW = { biz: [], devs: [], items: null }, GROUPS = [];
+const NOGRP = "(Grupsuz)";
 // device tuple: [0 id,1 cins,2 marka,3 model,4 seri,5 maxHam,6 sonDamga,7 yer,8 grup,9 durumHam,10 fatura,11 qrNo,12 max,13 kimeAit,14 bilgi,15 seriFlag,16 sinif,17 excelRow,18 e,19 qrKey,20 tip,21 min,22 d,23 aktif]
 function devTuple(r){ return [r.id, r.cins||"", r.marka||"", r.model||"", r.seri_no||"", r.max_cap||"", r.son_damga_yili ? String(r.son_damga_yili) : "", r.kullanim_yeri||"", r.aktif === false ? "kapsamdisi" : (r.durum_grup||"bekliyor"), r.durum_ham||"", r.fatura_notu||"", r.qr_no||("ID"+r.id), r.max_cap||"", r.kime_ait||"", r.bilgi||"", r.seri_flag||"", r.sinif||"III", r.excel_row||"", r.e||"", r.qr_key||"", r.tip||"", r.min_cap||"", r.d||"", r.aktif !== false]; }
 const PREC = { google: "ok", elle: "ok", "yaklasik-mah": "mah" };
-function buildData(biz, devs){
-  BY = {}; LOCS = biz.map(b => { const l = { k: b.id, n: b.unvan || "", a: b.adres || "", i: b.ilce || "", il: b.il || "ANTALYA", t: b.tel || b.gsm || "", lat: b.lat ?? ILCE_C[b.ilce]?.[0] ?? DEPOT.lat, lng: b.lng ?? ILCE_C[b.ilce]?.[1] ?? DEPOT.lng, p: PREC[b.geo_src] || "ilce", src: b.geo_src, dep: !!b.is_depot, d: [] }; BY[l.k] = l; return l; });
-  DEVS = []; DEVBY = {}; DEVID = {};
-  devs.forEach(r => { const l = BY[r.business_id]; if (!l) return; const d = devTuple(r); l.d.push(d); const o = { d, l }; DEVS.push(o); DEVBY[d[11]] = o; DEVID[d[0]] = o; });
-  LOCS = LOCS.filter(l => l.d.length || l.dep);
+function buildData(biz, devs, items){
+  RAW = { biz, devs, items };
+  BY = {}; const all = biz.map(b => { const l = { k: b.id, n: b.unvan || "", a: b.adres || "", i: b.ilce || "", il: b.il || "ANTALYA", t: b.tel || b.gsm || "", lat: b.lat ?? ILCE_C[b.ilce]?.[0] ?? DEPOT.lat, lng: b.lng ?? ILCE_C[b.ilce]?.[1] ?? DEPOT.lng, p: PREC[b.geo_src] || "ilce", src: b.geo_src, dep: !!b.is_depot, g: b.grup || "", d: [], nAll: 0 }; BY[l.k] = l; return l; });
+  const itemBy = items ? new Map(items.map(x => [x.device_id, x])) : null;
+  DEVS_P = []; DEVBY = {}; DEVID = {};
+  devs.forEach(r => { const l = BY[r.business_id]; if (!l) return; const d = devTuple(r); l.nAll++;
+    const it = itemBy ? itemBy.get(r.id) : true;
+    if (it && it !== true){ if (r.aktif !== false) d[8] = it.durum_grup || "bekliyor"; d[9] = it.durum_ham || ""; d[10] = it.fatura_notu || ""; d[14] = it.bilgi || d[14]; d[17] = it.excel_row || ""; d[24] = it.id; d[25] = !!it.mukerrer; }
+    const o = { d, l, inP: !!it }; DEVBY[d[11]] = o; DEVID[d[0]] = o;
+    if (it){ l.d.push(d); DEVS_P.push(o); } });
+  LOCS_P = all.filter(l => l.d.length || l.dep);
+  applyGroupFilter();
+}
+function applyGroupFilter(){
+  const gf = (st.gf || []).filter(g => g === NOGRP || GROUPS.some(x => x.ad === g));
+  if (!gf.length){ LOCS = LOCS_P; DEVS = DEVS_P; }
+  else { const ok = l => l.dep || gf.includes(l.g || NOGRP); LOCS = LOCS_P.filter(ok); DEVS = DEVS_P.filter(o => ok(o.l)); }
   S = computeSummary();
 }
+const inPeriod = id => !!DEVID[id]?.inP;
 function computeSummary(){
   const tru = s => String(s||"").toLocaleUpperCase("tr-TR").trim();
   const all = DEVS, dep = all.filter(o => o.l.dep), fo = all.filter(o => !o.l.dep);
@@ -84,12 +101,14 @@ const st = {
   sel: [], routes: null, editing: null, confirmDel: null, shared: null, showMsg: null,
   cfg: { date: todayISO(), start: "08:30", end: "18:00", svc: 15, costKm: 6, ret: true, teams: 1, perLink: 10 },
   fieldPlan: null, open: null, reasonFor: null, draft: {}, imp: null, geoRun: null,
-  rp: { view: "musteri", il: "", ilce: "", durum: "", q: "", page: 0 }
+  rp: { view: "musteri", il: "", ilce: "", durum: "", q: "", page: 0 },
+  gf: lsGet("damga.grup", []), gfOpen: false, periods: [], noPeriod: false,
+  cu: { q: "", il: "", ilce: "", g: "", page: 0, sel: new Set(), scope: "donem" }, imp2: null
 };
 
 /* ---------------- store ---------------- */
-const planRow = p => { const { id, gid, team, teams, date, staffId, staffName, phone, ...data } = p; return { id, gid, team, teams, date, staff_id: staffId || null, staff_name: staffName || "", phone: phone || "", data }; };
-const planFrom = r => ({ ...(r.data || {}), id: r.id, gid: r.gid, team: r.team, teams: r.teams, date: r.date, staffId: r.staff_id || "", staffName: r.staff_name, phone: r.phone });
+const planRow = p => { const { id, gid, team, teams, date, staffId, staffName, phone, donem, ...data } = p; const r = { id, gid, team, teams, date, staff_id: staffId || null, staff_name: staffName || "", phone: phone || "", data }; if (!st.noPeriod) r.donem = donem || YEAR; return r; };
+const planFrom = r => ({ ...(r.data || {}), id: r.id, gid: r.gid, team: r.team, teams: r.teams, date: r.date, staffId: r.staff_id || "", staffName: r.staff_name, phone: r.phone, donem: r.donem || (+String(r.date || "").slice(0, 4) || null) });
 const resultFrom = r => ({ planId: r.plan_id, k: r.business_id, st: r.st, done: (r.done || []).map(Number), note: r.note || "", by: r.by, at: r.at });
 const eventFrom = r => ({ id: r.id, devId: r.device_id, code: DEVID[r.device_id]?.d[11], type: r.type, year: r.year, e: r.e, reason: r.reason, note: r.note || "", by: r.by, at: r.at });
 const staffFrom = r => ({ id: r.id, name: r.ad || r.email || "İsimsiz", phone: r.tel || "", email: r.email || "", rol: r.rol, bolge: r.bolge_id, aktif: r.aktif });
@@ -101,17 +120,32 @@ async function loadDynamic(){
     q(sb.from("profiles").select("*").order("ad")),
     q(sb.from("regions").select("*").order("ad")),
     st.isAdmin ? q(sb.from("invites").select("*").order("ad")).catch(() => []) : Promise.resolve([])]);
-  st.plans = plans.map(planFrom);
+  st.plans = plans.map(planFrom).filter(p => !p.donem || p.donem === YEAR);
   st.results = Object.fromEntries(results.map(r => [r.id, resultFrom(r)]));
   st.events = Object.fromEntries(events.map(r => [r.id, eventFrom(r)]));
   st.staff = staff.filter(s => s.aktif !== false).map(staffFrom); st.staffAll = staff.map(staffFrom);
   st.regions = regions; st.invites = invites || [];
 }
-async function loadAll(){
-  const [biz, devs] = await Promise.all([fetchAll("businesses"), fetchAll("devices")]);
-  buildData(biz, devs); await loadDynamic();
+async function loadItems(){
+  try { const it = await fetchAll("period_items", "*", "id", ["donem", YEAR]); st.noPeriod = false; return it; }
+  catch(e){ st.noPeriod = true; return null; }   // damga-donem.sql henüz çalıştırılmadı: tüm cihazlar tek liste
 }
-async function reloadDevices(){ const [biz, devs] = await Promise.all([fetchAll("businesses"), fetchAll("devices")]); buildData(biz, devs); }
+async function loadMeta(){
+  const [per, grp] = await Promise.all([q(sb.rpc("list_periods")).catch(() => []), q(sb.from("customer_groups").select("*").order("ad")).catch(() => [])]);
+  st.periods = (per || []).map(p => ({ y: +p.donem, n: +p.cihaz })); GROUPS = grp || [];
+}
+async function loadAll(){
+  const [biz, devs, items] = await Promise.all([fetchAll("businesses"), fetchAll("devices"), loadItems(), loadMeta()]);
+  buildData(biz, devs, items); await loadDynamic();
+}
+async function reloadDevices(){ const [biz, devs, items] = await Promise.all([fetchAll("businesses"), fetchAll("devices"), loadItems(), loadMeta()]); buildData(biz, devs, items); }
+async function switchPeriod(y){
+  y = +y; if (!y || y === YEAR) return; YEAR = y; lsSet("damga.donem", y);
+  st.imp = null; st.imp2 = null; st.sel = []; st.routes = null; st.fieldPlan = null; st.dsel = new Set();
+  $("#main").innerHTML = `<div class="card empty" style="max-width:640px;margin:40px auto">${y} dönemi yükleniyor…</div>`;
+  try { await loadAll(); } catch(e){ toast("Dönem yüklenemedi: " + e.message); }
+  render();
+}
 async function savePlan(p){ await q(sb.from("plans").upsert(planRow(p))); const i = st.plans.findIndex(x => x.id === p.id); i >= 0 ? st.plans[i] = p : st.plans.push(p); }
 async function deletePlan(id){ await q(sb.from("plans").delete().eq("id", id)); st.plans = st.plans.filter(p => p.id !== id); }
 async function saveResult(r){
@@ -210,23 +244,48 @@ function softRender(){ const a = document.activeElement; if (a && (a.tagName ===
 function render(){
   if (!st.ready) return;
   const tabs = st.isAdmin && st.role === "admin"
-    ? [["ozet","Yönetici özeti"],["planla","Rota planla"],["planlar","Planlar & ekip"],["cihazlar","Cihazlar & QR"],["raporlar","Raporlar"],["veri","Veri & ayarlar"]]
+    ? [["ozet","Yönetici özeti"],["planla","Rota planla"],["planlar","Planlar & ekip"],["cihazlar","Cihazlar & QR"],["musteriler","Müşteriler & gruplar"],["raporlar","Raporlar"],["veri","Veri & ayarlar"]]
     : [["saha","Bugünkü rotam"],["cihazlar","Cihaz bul"]];
   if (st.view !== "cihaz" && !tabs.some(t => t[0] === st.view)) st.view = tabs[0][0];
   const cur = st.view === "cihaz" ? "cihazlar" : st.view;
   $("#tabs").innerHTML = tabs.map(t => `<button class="tab" data-act="view" data-v="${t[0]}" aria-current="${cur===t[0]}">${t[1]}</button>`).join("");
   const nm = st.profile?.ad || st.profile?.email || "";
-  $("#who").innerHTML = `${st.isAdmin ? `<button class="btn sm" data-act="role" title="Görünümü değiştir">${st.role==="admin"?"Saha görünümü":"Yönetici görünümü"}</button>` : ""}
+  $("#who").innerHTML = `${periodPicker()}${groupPicker()}${st.isAdmin ? `<button class="btn sm" data-act="role" title="Görünümü değiştir">${st.role==="admin"?"Saha görünümü":"Yönetici görünümü"}</button>` : ""}
     <span class="pill ${st.isAdmin && st.role==="admin"?"admin":""}" title="${esc(st.profile?.email||"")}">${esc(nm.split(" ")[0] || "Hesap")} · ${st.isAdmin ? (st.role==="admin" ? "Yönetici" : "Saha önizleme") : "Saha"}</span>
     <button class="btn sm" data-act="logout">Çıkış</button>`;
-  const v = { ozet: viewSummary, planla: viewPlanner, planlar: viewPlans, saha: viewField, cihazlar: viewDevices, cihaz: viewDevice, veri: viewData, raporlar: viewReports }[st.view];
-  if (!LOCS.length && st.view !== "veri"){
-    $("#main").innerHTML = st.isAdmin ? `<div class="card empty" style="max-width:640px;margin:40px auto">Henüz cihaz verisi yok. <button class="link" data-act="view" data-v="veri">Veri & ayarlar</button> sekmesinden 2026 damga Excel'ini içe aktarın.</div>`
-      : `<div class="card empty" style="max-width:640px;margin:40px auto">Henüz veri yok. Yöneticiniz cihaz listesini yüklediğinde burada görünecek.</div>`;
+  const v = { ozet: viewSummary, planla: viewPlanner, planlar: viewPlans, saha: viewField, cihazlar: viewDevices, cihaz: viewDevice, veri: viewData, raporlar: viewReports, musteriler: viewCustomers }[st.view];
+  if (!DEVS_P.length && !["veri","musteriler"].includes(st.view)){
+    $("#main").innerHTML = st.isAdmin ? viewEmptyPeriod()
+      : `<div class="card empty" style="max-width:640px;margin:40px auto">${YEAR} döneminde henüz veri yok. Yöneticiniz dönem listesini yüklediğinde burada görünecek.</div>`;
     return;
   }
   $("#main").innerHTML = v();
   if (st.view === "planla") hydratePlanner();
+}
+
+/* ---- sağ üst: dönem ve grup seçimi ---- */
+function periodList(){ const s = new Set([NOW_Y, NOW_Y + 1, YEAR]); st.periods.forEach(p => s.add(p.y)); return [...s].sort((a, b) => a - b); }
+function periodPicker(){
+  const n = y => st.periods.find(p => p.y === y)?.n;
+  return `<label class="pickr" title="Çalışılan dönem (damga yılı)"><span>Dönem</span><select data-act="donem" aria-label="Dönem">${periodList().map(y => `<option value="${y}" ${y === YEAR ? "selected" : ""}>${y}${n(y) ? "" : " · boş"}</option>`).join("")}</select></label>`;
+}
+function groupPicker(){
+  if (!GROUPS.length || !(st.isAdmin && st.role === "admin")) return "";
+  const gf = st.gf || [], lab = !gf.length ? "Tüm gruplar" : gf.length === 1 ? gf[0] : gf.length + " grup";
+  const opts = GROUPS.map(g => g.ad).concat([NOGRP]);
+  return `<div class="gpick"><button class="btn sm ${gf.length ? "on" : ""}" data-act="gfopen" aria-expanded="${st.gfOpen}">Grup: ${esc(lab)} ▾</button>
+    ${st.gfOpen ? `<div class="gpop card">${opts.map(g => `<label><input type="checkbox" data-act="gf" value="${esc(g)}" ${gf.includes(g) ? "checked" : ""}> ${esc(g)}</label>`).join("")}
+      <div class="row" style="justify-content:space-between;margin-top:6px"><button class="link" data-act="gfclear">Filtreyi kaldır</button><button class="btn sm" data-act="gfopen">Kapat</button></div></div>` : ""}</div>`;
+}
+function viewEmptyPeriod(){
+  const cand = RAW.devs.filter(r => r.aktif !== false && +r.son_damga_yili === YEAR - 2 && !["cihazyok","kapsamdisi"].includes(r.durum_grup)).length;
+  return `<div class="card pad stack" style="max-width:680px;margin:40px auto;gap:12px">
+    <div class="eyebrow">${YEAR} dönemi</div><h2 style="margin:0">Bu dönemde henüz cihaz yok</h2>
+    ${st.noPeriod ? `<div class="warnbox">Dönem yapısı veritabanında kurulu değil. Supabase SQL Editor'de <b>supabase/damga-donem.sql</b> dosyasını çalıştırın.</div>` : `
+    <p class="muted" style="margin:0">İki yol var: son damgası ${YEAR - 2} olan cihazlardan dönemi otomatik oluşturun ya da ${YEAR} damga listesini Excel'den içe aktarın.</p>
+    <div class="row"><button class="btn primary" data-act="mkperiod" ${cand ? "" : "disabled"}>${YEAR - 2} damgalı ${fmt(cand)} cihazla dönemi oluştur</button>
+    <button class="btn" data-act="view" data-v="veri">Excel'den içe aktar</button></div>`}
+  </div>`;
 }
 function viewSummary(){
   const C = S.cat, tot = S.total, depN = S.dep.n;
@@ -263,7 +322,7 @@ function viewSummary(){
   const isl = C.islenecek || 0;
   return `
   <section class="hero">
-    <div><div class="eyebrow">${YEAR} periyodik damga programı · canlı veri</div>
+    <div><div class="eyebrow">${YEAR} periyodik damga programı · canlı veri${(st.gf||[]).length ? " · grup: " + esc(st.gf.join(", ")) : ""}</div>
       <h1>Sahada tamamlanma %${fmt(pct(fieldDone, fieldTot))}. ${fmt(S.fieldOpenLocPure)} lokasyon rota bekliyor.</h1>
       <p>${fmt(tot)} cihaz, ${fmt(S.locs)} adres, ${fmt(S.cust)} müşteri. Atölyedeki stok cihazları (${fmt(depN)}) saha rotasının dışında tutuldu. ${q.konumYaklasik ? `${fmt(q.konumYaklasik)} lokasyonun konumu henüz yaklaşık.` : "Tüm konumlar doğrulandı."}</p></div>
     <div class="card pad"><div class="eyebrow" style="margin-bottom:8px">Durum dağılımı · ${fmt(tot)} cihaz</div><div class="bar100">${bar}</div><div class="legend">${leg}</div></div>
@@ -770,9 +829,9 @@ function viewDevices(){
     <div class="tbl-wrap"><table class="devtbl"><thead><tr><th></th><th>Firma</th><th>Cihaz</th><th>Seri no</th><th>Max / e / sınıf</th><th class="r">Son</th><th class="r">Sonraki</th><th>Durum</th></tr></thead><tbody>
     ${page.map(o => { const d = o.d, si = stampInfo(o), e = precOf(o);
       return `<tr><td><input type="checkbox" data-act="dpick" data-c="${d[11]}" ${st.dsel.has(d[11])?"checked":""} aria-label="Seç"></td>
-        <td style="min-width:180px"><button class="link rowlink" data-act="dev" data-c="${d[11]}">${esc(titleTR(o.l.n))}</button><div class="muted" style="font-size:.76rem">${esc(titleTR(o.l.i))}</div></td>
+        <td style="min-width:180px"><button class="link rowlink" data-act="dev" data-c="${d[11]}">${esc(titleTR(o.l.n))}</button><div class="muted" style="font-size:.76rem">${esc(titleTR(o.l.i))}${o.l.g?` · <span class="gtag">${esc(o.l.g)}</span>`:""}</div></td>
         <td>${esc(d[2]||"—")} ${esc(d[3])}<div class="muted" style="font-size:.76rem">${esc(titleTR(d[1]))}</div></td>
-        <td class="mono">${esc(d[4]||"—")}${d[15]?` <span class="st tekrar">${d[15]==="seri-yok"?"yok":"tekrar"}</span>`:""}</td>
+        <td class="mono">${esc(d[4]||"—")}${d[15]?` <span class="st tekrar">${d[15]==="seri-yok"?"yok":"tekrar"}</span>`:""}${d[25]?` <span class="dupflag">MÜKERRER</span>`:""}</td>
         <td class="mono">${esc(d[12]||"?")} / ${e?esc(e):"<span class=muted>e ?</span>"} / ${esc(d[16])}</td>
         <td class="r mono">${si.last||"—"}</td><td class="r mono">${si.next||"—"}</td>
         <td><span class="st ${SCLS[si.s]}">${esc(si.s==="buyil"?`${YEAR} bekliyor`:si.s==="gecikmis"?`${YEAR} bekliyor · gecikmiş`:si.label)}</span></td></tr>`; }).join("")}
@@ -801,6 +860,8 @@ function viewDevice(){
       <div class="dc-head"><div class="mk"></div><div style="min-width:0"><div class="eyebrow">Periyodik muayene kartı · ${esc(d[11])}</div><h2>${esc(titleTR(l.n))}</h2><div class="muted" style="font-size:.88rem">${esc(titleTR(l.i))} · ${esc(titleTR(d[7]||""))}</div></div></div>
       <div class="dc-status s-${si.s}"><b>${esc(si.label)}</b><span>${esc(si.sub)}</span></div>
       <dl class="specgrid">${spec.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+      ${st.isAdmin && role === "admin" && !o.inP && !st.noPeriod ? `<div class="warnbox row" style="margin:0 16px 16px;justify-content:space-between">Bu cihaz ${YEAR} dönem listesinde yok.<button class="btn sm" data-act="addperiod" data-id="${d[0]}">${YEAR} dönemine ekle</button></div>` : ""}
+      ${d[25] && role !== "musteri" ? `<div class="warnbox" style="margin:0 16px 16px">Bu kayıt ${YEAR} içe aktarımında <b>mükerrer</b> olarak işaretlendi. Veri & ayarlar → Mükerrer cihazlar bölümünden birleştirin ya da pasife alın.</div>` : ""}
       ${d[15] ? `<div class="warnbox" style="margin:0 16px 16px">${d[15]==="seri-yok"?"Bu cihazın seri numarası kayıtlı değil. Etiket satır numarasıyla üretildi.":"Bu seri numarası listede birden fazla cihazda geçiyor. Kontrol edin."}</div>` : ""}
       <div class="muted" style="font-size:.78rem;padding:0 16px 14px">Kaynak: ${esc(si.src || "—")}</div>
     </article>
@@ -903,7 +964,7 @@ function resetPlanner(){ st.editing = null; st.editIds = null; st.editGid = null
 document.addEventListener("click", async e => {
   if (st.dd && !e.target.closest(".dd")){ st.dd = null; if (st.view === "planla") renderPool(); }
   const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
-  if (["pick","devchk","ddpick","rstaff","mv","dpick","pf","impmap","pasel","duptgt","dupkeep"].includes(a)) return; // change handlers
+  if (["impfile","gf","cusel","cuall","cugrp","donem","pick","devchk","ddpick","rstaff","mv","dpick","pf","impmap","pasel","duptgt","dupkeep"].includes(a)) return; // change handlers
   if (["optimize","saveplan","up","down","rm","add","newplan"].includes(a)) readCfg();
   switch (a){
     case "view": st.view = b.dataset.v; clearHash(); render(); window.scrollTo(0,0); break;
@@ -964,7 +1025,7 @@ document.addEventListener("click", async e => {
     case "rppage": st.rp.page = Math.max(0, +b.dataset.p); render(); window.scrollTo(0, 0); break;
     case "rpcsv": rpCSV(); break;
     case "impreport": { const d = st.imp?.data; if (!d) break; const rows = [["Satır","Firma","Marka","Seri No","Durum"]];
-      d.skipped.forEach(s => rows.push([s.row, s.unvan, s.marka, s.seri, "Atlandı · " + s.reason])); d.other.forEach(s => rows.push([s.row, s.unvan, s.marka, s.seri, (st.imp.includeOther ? "Eklendi · " : "Atlandı · ") + s.reason])); d.errors.forEach(s => rows.push([s.row, s.unvan, "", "", s.reason])); (d.noSerial||[]).forEach(s => rows.push([s.row, s.unvan, s.marka, s.seri, (st.imp.includeNoSerial ? "Eklendi · " : "Atlandı · ") + s.reason]));
+      d.skipped.forEach(s => rows.push([s.row, s.unvan, s.marka, s.seri, "Atlandı · " + s.reason])); d.other.forEach(s => rows.push([s.row, s.unvan, s.marka, s.seri, (st.imp.includeOther ? "Eklendi · " : "Atlandı · ") + s.reason])); d.errors.forEach(s => rows.push([s.row, s.unvan, "", "", s.reason])); (d.noSerial||[]).forEach(s => rows.push([s.row, s.unvan, s.marka, s.seri, (st.imp.includeNoSerial ? "Eklendi · " : "Atlandı · ") + s.reason])); (d.dup||[]).forEach(s => rows.push([s.row, s.unvan, s.marka, s.seri, (st.imp.dupMark ? "Mükerrer olarak eklendi · " : "Mükerrer, kaldırıldı · ") + s.reason]));
       downloadFile(`ice-aktarma-raporu-${todayISO()}.csv`, "\ufeff" + rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(";")).join("\r\n")); break; }
     case "geocode": runGeocode(); break;
     case "assignqr": try { const n = await q(sb.rpc("assign_qr_numbers")); await reloadDevices(); toast(`${n} cihaza QR numarası verildi`); render(); } catch(err){ toast("Hata: " + err.message); } break;
@@ -1053,8 +1114,9 @@ document.addEventListener("change", e => {
   if (a === "dupkeep"){ st.dup.keep[+t.dataset.g] = +t.value; return; }
   if (a === "pasel"){ t.checked ? st.pa.sel.add(t.dataset.k) : st.pa.sel.delete(t.dataset.k); const b = document.querySelector('[data-act="paapply"]'); if (b) b.textContent = `Düzeltmeleri uygula (${fmt(st.pa.fix.length + st.pa.sel.size)} kayıt)`; return; }
   if (t.id === "impother"){ if (st.imp) st.imp.includeOther = t.checked; return; }
-  if (t.id === "impfile" && t.files[0]){ const year = +($("#impyear")?.value) || YEAR; st.imp = { name: t.files[0].name, year };
-    readImportFile(t.files[0], year).then(d => { st.imp.data = d; render(); }).catch(err => { st.imp.err = "Dosya okunamadı: " + err.message; render(); }); return; }
+  if (t.name === "impdup"){ if (st.imp){ st.imp.dupMark = t.value === "isaretle"; render(); } return; }
+  if (a === "impfile" && t.files[0]){ const year = YEAR, kind = t.dataset.kind; st.imp = { name: t.files[0].name, year, kind };
+    readImportFile(t.files[0], year, kind).then(d => { st.imp.data = d; render(); }).catch(err => { st.imp.err = "Dosya okunamadı: " + err.message; render(); }); return; }
   if (t.id === "fplan"){ st.fieldPlan = t.value; st.open = null; render(); return; }
   if (t.id && t.id.startsWith("c-")){ readCfg();
     if ((t.id === "c-ret" || t.id === "c-teams") && st.routes) runOptimize();
@@ -1144,7 +1206,7 @@ function placeFix(ilRaw, ilceRaw, adres){
 }
 function placeAudit(){
   const fix = [], sug = [], bad = [];
-  LOCS.filter(l => !l.dep).forEach(l => { const r = placeFix(l.il, l.i, l.a);
+  LOCS_P.filter(l => !l.dep).forEach(l => { const r = placeFix(l.il, l.i, l.a);
     if (!r.ok) bad.push({ l, r }); else if (r.il !== l.il || r.ilce !== l.i) fix.push({ l, r }); if (r.suggest) sug.push({ l, r }); });
   return { fix, sug, bad };
 }
@@ -1256,18 +1318,25 @@ function parseMigros(wb, listYear){
 }
 /* Sistemde zaten olan cihazlar (marka + seri no) yeni kayıt açılmadan güncellenir */
 const RANK = { tamam: 3, islenecek: 3, baskasi: 2, cihazyok: 1, kapsamdisi: 1, tutanak: 0, tekrar: 0, bekliyor: 0 };
+function allDevKeys(){ // marka + seri → sistemdeki cihaz (dönemdeki ve aktif olan öncelikli)
+  const ex = new Map(); Object.values(DEVID).forEach(o => { if (o.l.dep) return; const k = devKey(o.d[2], o.d[4]); if (!k) return; const c = ex.get(k);
+    if (!c || (o.inP && !c.inP) || (o.inP === c.inP && o.d[23] && !c.d[23])) ex.set(k, o); });
+  return ex;
+}
 function splitMatches(data){
-  const ex = new Map(); DEVS.forEach(o => { const k = devKey(o.d[2], o.d[4]); if (k && !ex.has(k)) ex.set(k, o); });
+  const ex = allDevKeys();
   const ins = [], upd = [];
   data.devs.forEach(d => { const k = devKey(d.marka, d.seri_no); const o = k && ex.get(k);
     if (!o){ ins.push(d); return; }
-    const cur = o.d[8], patch = {};
-    if (RANK[d.durum_grup] >= RANK[cur] || (cur !== "tamam" && cur !== "islenecek")){ patch.durum_grup = d.durum_grup; patch.durum_ham = d.durum_ham; }
+    const cur = o.inP ? o.d[8] : null, patch = {};
+    const item = { durum_grup: cur || "bekliyor", durum_ham: o.inP ? o.d[9] : "", fatura_notu: o.inP ? o.d[10] : "", bilgi: o.inP ? o.d[14] : "", excel_row: d.excel_row || null };
+    if (!cur || RANK[d.durum_grup] >= RANK[cur] || (cur !== "tamam" && cur !== "islenecek")){ item.durum_grup = d.durum_grup; item.durum_ham = d.durum_ham; }
     if (d.son_damga_yili && d.son_damga_yili > (+o.d[6] || 0)) patch.son_damga_yili = d.son_damga_yili;
-    if (d.bilgi) patch.bilgi = d.bilgi; if (d.fatura_notu) patch.fatura_notu = d.fatura_notu; if (d.max_cap && !o.d[12]) patch.max_cap = d.max_cap;
-    upd.push({ id: o.d[0], patch }); });
+    if (d.bilgi) item.bilgi = d.bilgi; if (d.fatura_notu) item.fatura_notu = d.fatura_notu; if (d.max_cap && !o.d[12]) patch.max_cap = d.max_cap;
+    if (st.noPeriod){ if (item.durum_grup !== o.d[8]){ patch.durum_grup = item.durum_grup; patch.durum_ham = item.durum_ham; } if (d.bilgi) patch.bilgi = d.bilgi; if (d.fatura_notu) patch.fatura_notu = d.fatura_notu; }
+    upd.push({ id: o.d[0], patch, item, link: !o.inP }); });
   // Aynı mağaza iki listede farklı adla geçebilir: normalize adres aynıysa mevcut lokasyon kullanılır
-  const byAddr = new Map(); LOCS.forEach(l => { if (!l.dep) byAddr.set(normAddr(l.a, l.i), l.k); });
+  const byAddr = new Map(); Object.values(BY).forEach(l => { if (!l.dep) byAddr.set(normAddr(l.a, l.i), l.k); });
   const remap = new Map(); data.biz.forEach(bz => { const k = byAddr.get(normAddr(bz.adres, bz.ilce)); if (k) remap.set(bz.id, k); });
   ins.forEach(d => { if (remap.has(d.business_id)) d.business_id = remap.get(d.business_id); });
   const bizUsed = new Set(ins.map(d => d.business_id));
@@ -1302,7 +1371,9 @@ const GFIELDS = [
   ["uretim","Üretim yılı",false,["ÜRETİMYILI","ÜRETİM"]],
   ["son","Son damga yılı",false,["SONDAMGAYILI","SDAMGAYILI","DAMGAYILI"]],
   ["yer","Kullanım yeri",false,["KULLANIMYERİ","KULLANILDIĞIYER"]],
-  ["not","Not",false,["NOT","AÇIKLAMA","YORUM"]]];
+  ["not","Not",false,["NOT","AÇIKLAMA","YORUM"]],
+  ["durum","Durum",false,["DURUM","DURUMU"]],
+  ["grup","Müşteri grubu",false,["GRUP","MÜŞTERİGRUBU"]]];
 const CUST_STOP = new Set(["LTD","ŞTİ","STİ","AŞ","AS","SAN","TİC","VE","LİMİTED","ŞİRKETİ","ANONİM","SANAYİ","TİCARET","İNŞ","TUR"]);
 const custNorm = n => TRU(String(n || "").split(" · ")[0]).replace(/[.,;:()\-'"/]/g, " ").split(/\s+/).filter(w => w && !CUST_STOP.has(w)).join(" ");
 function autoMap(head){
@@ -1323,10 +1394,12 @@ function prepGeneric(wb){ const b = pickSheet(wb); if (!b || b.score < 7) throw 
   const head = (b.rows[b.hr] || []).map(cellStr); return { sheet: b.sheet, rows: b.rows, hr: b.hr, head, map: autoMap(head), sheets: wb.SheetNames }; }
 function parseGeneric(G, listYear){
   const v = (r, k) => G.map[k] !== undefined && G.map[k] !== "" && G.map[k] >= 0 ? cellStr(r[G.map[k]]) : "";
-  const exTriple = new Map(), exPair = new Map();
-  DEVS.forEach(o => { const p = devKey(o.d[2], o.d[4]); if (!p) return; exTriple.set(custNorm(o.l.n) + "#" + p, o); if (!exPair.has(p)) exPair.set(p, o); });
-  const locBy = new Map(); LOCS.forEach(l => { if (!l.dep) locBy.set(custNorm(l.n) + "#" + normAddr(l.a, l.i), l.k); });
-  const biz = new Map(), devs = [], contacts = [], skipped = [], other = [], errors = [], noSerial = [], inFile = new Set(); let nRows = 0;
+  // Kural: müşteri + adres + cihaz (marka) + seri no aynıysa mükerrer. Bu dönemde varsa mükerrer listesine, sistemde olup dönemde yoksa döneme bağlanır.
+  const exTriple = new Map(), exPair = allDevKeys();
+  Object.values(DEVID).forEach(o => { if (o.l.dep) return; const p = devKey(o.d[2], o.d[4]); if (!p) return; const k = custNorm(o.l.n) + "#" + p, c = exTriple.get(k); if (!c || (o.inP && !c.inP)) exTriple.set(k, o); });
+  const locBy = new Map(); Object.values(BY).forEach(l => { if (!l.dep) locBy.set(custNorm(l.n) + "#" + normAddr(l.a, l.i), l.k); });
+  const catLab = Object.fromEntries(Object.entries(CAT).map(([k, c]) => [TRU(c.l), k]));
+  const biz = new Map(), devs = [], contacts = [], skipped = [], other = [], errors = [], noSerial = [], dup = [], link = [], inFile = new Map(), tkBid = new Map(); let nRows = 0;
   const req = GFIELDS.filter(f => f[2]).map(f => f[0]);
   G.rows.slice(G.hr + 1).forEach((r, i) => {
     const row = G.hr + i + 2, unvan = v(r, "unvan");
@@ -1338,29 +1411,43 @@ function parseGeneric(G, listYear){
     if (miss.length && !idOnly){ errors.push({ row, unvan, reason: "Eksik: " + miss.join(", ") }); return; }
     const marka = v(r, "marka"), seri = seriOf(v(r, "seri")), cn = custNorm(unvan);
     const pk = idOnly ? "NOSN|" + row : devKey(marka, seri), tk = cn + "#" + pk;
-    if (exTriple.has(tk)){ skipped.push({ row, unvan, marka, seri, reason: "Sistemde kayıtlı (" + (exTriple.get(tk).d[11] || "") + ")" }); return; }
-    if (inFile.has(tk)){ skipped.push({ row, unvan, marka, seri, reason: "Dosyada tekrar eden satır" }); return; }
-    inFile.add(tk);
     const adres = v(r, "adres"), pf = placeFix(v(r, "il"), v(r, "ilce"), adres), ilce = pf.ilce, ilceKey = normIlce(v(r, "ilce")), kod = v(r, "kod"), sube = v(r, "sube");
+    const durumHam = v(r, "durum"), durumCat = durumHam ? (catLab[TRU(durumHam)] || statusCat(durumHam)) : null;
+    const ex = !idOnly && exTriple.get(tk);
+    if (ex){ const sameAddr = normAddr(ex.l.a, ex.l.i) === normAddr(adres, ilce);
+      const why = (sameAddr ? "Müşteri + adres + cihaz + seri aynı" : "Müşteri + cihaz + seri aynı, adres farklı yazılmış") + ` (${ex.d[11]})`;
+      if (ex.inP){ dup.push({ row, unvan, marka, seri, reason: `${YEAR} döneminde kayıtlı · ${why}`, bid: ex.l.k, r, inP: true }); return; }
+      link.push({ row, unvan, marka, seri, id: ex.d[0], reason: `Sistemde var, ${YEAR} dönemine eklenecek · ${why}`,
+        item: { durum_grup: durumCat || "bekliyor", durum_ham: durumHam || `${YEAR} listesi (${G.fileName || "Excel"})`, bilgi: v(r, "not"), fatura_notu: "", excel_row: row } }); return; }
+    if (!idOnly && inFile.has(tk)){ dup.push({ row, unvan, marka, seri, reason: `Dosyada tekrar eden satır (ilk: ${inFile.get(tk)}. satır)`, r, inFile: true }); return; }
+    if (!idOnly) inFile.set(tk, row);
     const name = unvan + (kod ? " · " + kod : "") + (sube && TRU(sube) !== TRU(unvan) ? " · " + sube : "");
     const reuse = locBy.get(cn + "#" + normAddr(adres, ilce));
     const bid = reuse || ("b" + hkey(TRU(name) + "|" + TRU(adres) + "|" + ilceKey));
+    if (!idOnly) tkBid.set(tk, bid);
     const sonY = +v(r, "son"); const son = sonY >= 1990 && sonY <= YEAR + 1 ? sonY : null; const valid = son && son + 2 > YEAR;
     const sin = TRU(v(r, "sinif")).replace(/[^IV3]/g, "").replace(/^3$/, "III");
     const dev = { import_key: hkey("G|" + tk), business_id: bid, tip: v(r, "tip") || "Otomatik olmayan tartı aleti", cins: v(r, "cins") === "NAWI" ? "Otomatik olmayan tartı aleti" : (v(r, "cins") || "Terazi"),
       marka, model: v(r, "model"), seri_no: seri, seri_flag: "", sinif: sin || "III", max_cap: normCap(v(r, "max")), min_cap: v(r, "min"), e: v(r, "e"), d: v(r, "d"),
-      uretim_yili: +v(r, "uretim") || null, son_damga_yili: son, durum_grup: valid ? "tamam" : "bekliyor",
-      durum_ham: `Yeni kayıt (${G.fileName || "Excel"})` + (valid ? " · damga geçerli" : son ? ` · son damga ${son}` : ""), bilgi: v(r, "not"), kullanim_yeri: v(r, "yer"), excel_row: row };
+      uretim_yili: +v(r, "uretim") || null, son_damga_yili: son, durum_grup: durumCat || (valid ? "tamam" : "bekliyor"),
+      durum_ham: durumHam || (`Yeni kayıt (${G.fileName || "Excel"})` + (valid ? " · damga geçerli" : son ? ` · son damga ${son}` : "")), bilgi: v(r, "not"), kullanim_yeri: v(r, "yer"), excel_row: row };
     if (idOnly){ dev.seri_flag = "seri-yok"; dev.import_key = hkey("GN|" + cn + "|" + TRU(adres) + "|" + row + "|" + (G.fileName || "")); noSerial.push({ row, unvan, marka, seri: v(r, "seri"), reason: "Eksik: " + miss.join(", ") + " · mükerrer kontrolü yapılamaz", dev }); }
     else if (exPair.has(pk)){ const o = exPair.get(pk); other.push({ row, unvan, marka, seri, reason: `Aynı marka + seri “${titleTR(o.l.n)}” firmasında kayıtlı (devir olabilir)`, dev, bid, b: { name, adres, ilce, r } }); }
     else devs.push(dev);
     if (!reuse && !biz.has(bid)){ const c = approxCoord(ilce, mahOf(adres), bid);
-      biz.set(bid, { id: bid, unvan: name, sube, adres, mahalle: mahOf(adres), ilce, il: pf.il, tel: fmtTel(v(r, "tel")), vkn: v(r, "vkn"), lat: c.lat, lng: c.lng, geo_src: c.src, is_depot: false });
+      const bz = { id: bid, unvan: name, sube, adres, mahalle: mahOf(adres), ilce, il: pf.il, tel: fmtTel(v(r, "tel")), vkn: v(r, "vkn"), lat: c.lat, lng: c.lng, geo_src: c.src, is_depot: false };
+      const gr = TRU(v(r, "grup")); if (gr) bz.grup = gr; biz.set(bid, bz);
       if (v(r, "yetkili") || v(r, "ycep")) contacts.push({ business_id: bid, ad: v(r, "yetkili"), tel: fmtTel(v(r, "ycep")) }); }
   });
+  // "Ekle ve mükerrer işaretle" seçilirse eklenecek kopyalar
+  dup.forEach(x => { const r = x.r; const bid = x.bid || tkBid.get(custNorm(x.unvan) + "#" + devKey(x.marka, x.seri));
+    x.dev = { import_key: hkey("GD|" + custNorm(x.unvan) + "|" + devKey(x.marka, x.seri) + "|" + x.row + "|" + (G.fileName || "") + "|" + YEAR), business_id: bid,
+      tip: v(r, "tip") || "Otomatik olmayan tartı aleti", cins: v(r, "cins") || "Terazi", marka: x.marka, model: v(r, "model"), seri_no: x.seri, seri_flag: "seri-tekrar",
+      sinif: TRU(v(r, "sinif")).replace(/[^IV3]/g, "").replace(/^3$/, "III") || "III", max_cap: normCap(v(r, "max")), min_cap: v(r, "min"), e: v(r, "e"), d: v(r, "d"),
+      durum_grup: "bekliyor", durum_ham: "Mükerrer kayıt · " + x.reason, bilgi: v(r, "not"), kullanim_yeri: v(r, "yer"), excel_row: x.row }; delete x.r; });
   const cats = devs.reduce((m, d) => (m[d.durum_grup] = (m[d.durum_grup] || 0) + 1, m), {});
   const used = new Set(devs.map(x => x.business_id));
-  return { biz: [...biz.values()].filter(b => used.has(b.id)), bizAll: [...biz.values()], devs, contacts, skipped, other, errors, noSerial, cats, rows: nRows, upd: [],
+  return { biz: [...biz.values()].filter(b => used.has(b.id)), bizAll: [...biz.values()], devs, contacts, skipped, other, errors, noSerial, dup, link, cats, rows: nRows, upd: [],
     format: G.sheet === "Cihazlar" && G.head.some(h => /FİRMA ÜNVANI/.test(TRU(h))) ? "Elmaslar yeni müşteri şablonu" : `Yeni müşteri listesi (“${G.sheet}” sayfası, ${G.hr + 1}. satır başlık)`, template: true, G };
 }
 function isElmaslarList(wb){ const ws = wb.Sheets[wb.SheetNames[0]]; const h = (XLSX.utils.sheet_to_json(ws, { header: 1, range: 0 })[0] || []).map(TRU); return h.some(x => x.startsWith("MÜŞTERİ ADI")) && h.includes("DURUMU"); }
@@ -1369,23 +1456,36 @@ let xlsxP = null;
 function loadXLSX(){ if (window.XLSX) return Promise.resolve(); if (xlsxP) return xlsxP;
   xlsxP = new Promise((res, rej) => { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload = res; s.onerror = () => { xlsxP = null; rej(new Error("Excel okuyucu yüklenemedi")); }; document.head.appendChild(s); });
   return xlsxP; }
-async function readImportFile(file, listYear){
+async function readImportFile(file, listYear, kind){
   await loadXLSX(); const buf = await file.arrayBuffer(); const wb = XLSX.read(buf, { type: "array" });
+  if (kind === "yeni"){ const G = prepGeneric(wb); G.fileName = file.name; return parseGeneric(G, listYear); }
   if (isMigrosFormat(wb)) return splitMatches(parseMigros(wb, listYear));
   if (isElmaslarList(wb)) return splitMatches({ ...parseWorkbook(wb, listYear), format: "Elmaslar damga listesi" });
   const G = prepGeneric(wb); G.fileName = file.name; return parseGeneric(G, listYear);
 }
 async function runImport(){
   const P = st.imp; if (!P || !P.data || P.busy) return; P.busy = true; P.log = []; render();
-  const step = (m) => { P.log.push(m); const el = $("#implog"); if (el) el.textContent = P.log.join("\n"); };
+  const step = (m) => { P.log.push(m); const el = $("#implog-" + P.kind); if (el) el.textContent = P.log.join("\n"); };
   try {
-    const D = P.data.devs.concat(P.data.template && P.includeOther ? (P.data.other || []).map(x => x.dev) : [], P.data.template && P.includeNoSerial ? (P.data.noSerial || []).map(x => x.dev) : []);
+    const DUP = P.data.template && P.dupMark ? (P.data.dup || []).map(x => x.dev) : [], muk = new Set(DUP.map(x => x.import_key));
+    const D = P.data.devs.concat(P.data.template && P.includeOther ? (P.data.other || []).map(x => x.dev) : [], P.data.template && P.includeNoSerial ? (P.data.noSerial || []).map(x => x.dev) : [], DUP);
     const usedB = new Set(D.map(x => x.business_id)); const B = (P.data.bizAll || P.data.biz).filter(b => !P.data.template || usedB.has(b.id));
     if (P.data.contacts) P.data.contacts = P.data.contacts.filter(c => usedB.has(c.business_id));
     for (let i = 0; i < B.length; i += 500){ await q(sb.from("businesses").upsert(B.slice(i, i + 500), { onConflict: "id", ignoreDuplicates: true })); step(`İşletmeler: ${Math.min(i + 500, B.length)} / ${B.length}`); }
     if ((P.data.contacts || []).length){ try { await q(sb.from("contacts").insert(P.data.contacts)); step(`Yetkili kişi: ${P.data.contacts.length}`); } catch(e){ step("Yetkili kişiler eklenemedi: " + e.message); } }
     for (let i = 0; i < D.length; i += 500){ await q(sb.from("devices").upsert(D.slice(i, i + 500), { onConflict: "import_key", ignoreDuplicates: true })); step(`Cihazlar: ${Math.min(i + 500, D.length)} / ${D.length}`); }
     const U = P.data.upd || []; let done = 0;
+    if (!st.noPeriod){
+      const idBy = new Map(), keys = D.map(x => x.import_key);
+      for (let i = 0; i < keys.length; i += 200){ (await q(sb.from("devices").select("id,import_key").in("import_key", keys.slice(i, i + 200)))).forEach(r => idBy.set(r.import_key, r.id)); }
+      const kay = (P.name || "Excel").slice(0, 120), IT = new Map();
+      const put = (id, x, m) => { if (id && !IT.has(id)) IT.set(id, { donem: YEAR, device_id: id, durum_grup: x.durum_grup || "bekliyor", durum_ham: x.durum_ham || "", fatura_notu: x.fatura_notu || "", bilgi: x.bilgi || "", excel_row: x.excel_row || null, mukerrer: !!m, kaynak: kay }); };
+      U.forEach(u => put(u.id, u.item || {}));
+      (P.data.link || []).forEach(l => put(l.id, l.item));
+      D.forEach(x => { const id = idBy.get(x.import_key); if (id && !inPeriod(id)) put(id, x, muk.has(x.import_key)); });
+      const items = [...IT.values()];
+      for (let i = 0; i < items.length; i += 500){ await q(sb.from("period_items").upsert(items.slice(i, i + 500), { onConflict: "donem,device_id" })); step(`${YEAR} dönem listesi: ${Math.min(i + 500, items.length)} / ${items.length}`); }
+    }
     for (let i = 0; i < U.length; i += 8){ await Promise.all(U.slice(i, i + 8).filter(u => Object.keys(u.patch).length).map(u => q(sb.from("devices").update(u.patch).eq("id", u.id)))); done = Math.min(i + 8, U.length); if (done % 80 === 0 || done === U.length) step(`Mevcut cihaz güncellendi: ${done} / ${U.length}`); }
     const n = await q(sb.rpc("assign_qr_numbers")); step(`QR numarası verilen yeni cihaz: ${n}`);
     await reloadDevices(); step("Tamamlandı. Veriler yenilendi."); P.done = true; toast("İçe aktarma tamamlandı");
@@ -1395,7 +1495,7 @@ async function runImport(){
 async function runGeocode(){
   if (st.geoRun?.busy) { st.geoRun.stop = true; return; }
   let maps; try { maps = await loadGoogle(); } catch(e){ toast(e.message); return; }
-  const gc = new maps.Geocoder(); const todo = LOCS.filter(l => !l.dep && l.p !== "ok");
+  const gc = new maps.Geocoder(); const todo = LOCS_P.filter(l => !l.dep && l.p !== "ok");
   st.geoRun = { busy: true, stop: false, done: 0, ok: 0, miss: 0, total: todo.length }; render();
   const upd = () => { const el = $("#geoprog"); if (el) el.textContent = `${st.geoRun.done} / ${st.geoRun.total} · bulunan ${st.geoRun.ok} · bulunamayan ${st.geoRun.miss}`; };
   for (const l of todo){
@@ -1416,35 +1516,57 @@ async function runGeocode(){
   }
   st.geoRun.busy = false; S = computeSummary(); render(); toast(`Konum bulma bitti: ${st.geoRun.ok} lokasyon doğrulandı`);
 }
-function viewData(){
-  const P = st.imp || {}; const d = P.data;
-  const prec = { ok: 0, mah: 0, ilce: 0 }; LOCS.filter(l => !l.dep).forEach(l => prec[l.p] = (prec[l.p] || 0) + 1);
-  const G = st.geoRun;
-  const noQR = DEVS.filter(o => !/^EL-/.test(o.d[11])).length;
-  return `<div class="stack" style="max-width:980px;margin:0 auto">
-  <div><div class="eyebrow">Yönetici</div><h2>Veri ve ayarlar</h2></div>
-  <div class="card pad stack" style="gap:10px"><h3>Excel'den içe aktar</h3>
-    <p class="muted" style="margin:0;font-size:.9rem">Elmaslar damga listesi ya da Migros/YMS “kalanlar” listesi (.xlsx) seçin; biçim otomatik tanınır. Aynı satırlar ikinci kez eklenmez; daha önce bulunan konumlar ve QR numaraları korunur. Mevcut kayıt: ${fmt(DEVS.length)} cihaz, ${fmt(LOCS.length)} lokasyon.</p>
-    <div class="row" style="font-size:.88rem"><a class="btn sm" href="elmaslar-yeni-musteri-sablonu.xlsx" download>Yeni müşteri şablonunu indir (.xlsx)</a><span class="muted">Yeni müşterileri bu şablonla gönderin; sistemde aynı firma + marka + seri no varsa satır eklenmez.</span></div>
-    <div class="row"><input id="impfile" type="file" accept=".xlsx,.xls"><label class="f" style="flex-direction:row;align-items:center;gap:8px">Liste yılı <input id="impyear" type="number" value="${P.year || YEAR}" min="2020" max="2040" style="width:90px"></label></div>
+function impCard(kind){
+  const P = st.imp && st.imp.kind === kind ? st.imp : {}; const d = P.data;
+  return `  <div class="card pad stack" style="gap:10px" id="imp-${kind}">${kind === "donem" ? `<h3>${YEAR} dönem listesini içe aktar</h3>
+    <p class="muted" style="margin:0;font-size:.9rem">Elmaslar damga listesi, Migros/YMS “kalanlar” listesi ya da bu ekrandan indirilen dönem Excel'i (.xlsx). Biçim otomatik tanınır. Sistemde olan cihazlar (marka + seri no) yeni kayıt açılmadan ${YEAR} dönemine eklenir ve durumu güncellenir; konumlar ve QR numaraları korunur. ${YEAR} döneminde şu an ${fmt(DEVS_P.length)} cihaz, ${fmt(LOCS_P.length)} lokasyon var.</p>` : `<h3>Yeni müşteri ekle (toplu) · ${YEAR}</h3>
+    <p class="muted" style="margin:0;font-size:.9rem">Müşteriden gelen toplu listeyi yükleyin; sütunlar sistem alanlarıyla eşlenir ve kayıtlar ${YEAR} dönem listesinin altına eklenir. <b>Müşteri + adres + cihaz (marka) + seri no</b> aynıysa satır mükerrer sayılır.</p>
+    <div class="row" style="font-size:.88rem"><a class="btn sm" href="elmaslar-yeni-musteri-sablonu.xlsx" download>Yeni müşteri şablonunu indir (.xlsx)</a><span class="muted">Farklı biçimdeki Excel'ler de kabul edilir; başlıklar otomatik eşlenir.</span></div>`}
+    <div class="row"><input id="impfile-${kind}" data-act="impfile" data-kind="${kind}" type="file" accept=".xlsx,.xls"><span class="pill admin">Hedef dönem: ${YEAR}</span></div>
     ${d ? `<div class="muted" style="font-size:.86rem">Biçim: <b>${esc(d.format||"")}</b>. ${d.upd?.length ? `${fmt(d.upd.length)} cihaz sistemde zaten var (marka + seri no); yeni kayıt açılmadan durumları güncellenecek.` : ""}</div>
-      <div class="metrics"><div><b>${fmt(d.rows)}</b><span>satır</span></div><div><b>${fmt(d.biz.length)}</b><span>yeni lokasyon</span></div><div><b>${fmt(d.devs.length)}</b><span>yeni cihaz</span></div><div><b>${fmt(d.upd?.length||0)}</b><span>güncellenecek</span></div>
+      <div class="metrics"><div><b>${fmt(d.rows)}</b><span>satır</span></div><div><b>${fmt(d.biz.length)}</b><span>yeni lokasyon</span></div><div><b>${fmt(d.devs.length)}</b><span>yeni cihaz</span></div><div><b>${fmt((d.upd||[]).filter(u => !u.link).length)}</b><span>güncellenecek</span></div><div><b>${fmt((d.upd||[]).filter(u => u.link).length + (d.link||[]).length)}</b><span>${YEAR} dönemine bağlanacak</span></div>${(d.dup||[]).length ? `<div><b>${fmt(d.dup.length)}</b><span>mükerrer</span></div>` : ""}
       ${Object.entries(d.cats).map(([k,n]) => `<div><b>${fmt(n)}</b><span>${CAT[k]?.l || k}</span></div>`).join("")}<div><b>${fmt(d.devs.filter(x=>x.seri_flag).length)}</b><span>seri no sorunlu</span></div></div>
-      <div class="row"><button class="btn primary" data-act="impgo" ${P.busy||P.done?"disabled":""}>${P.busy ? "Aktarılıyor…" : P.done ? "Aktarıldı" : `İçe aktar (${fmt(d.devs.length)} yeni, ${fmt(d.upd?.length||0)} güncelleme)`}</button><span class="muted" style="font-size:.84rem">${esc(P.name||"")}</span></div>` : ""}
+      <div class="row"><button class="btn primary" data-act="impgo" ${P.busy||P.done?"disabled":""}>${P.busy ? "Aktarılıyor…" : P.done ? "Aktarıldı" : `${YEAR} dönemine aktar (${fmt(d.devs.length + (P.dupMark ? (d.dup||[]).length : 0))} yeni, ${fmt((d.upd?.length||0) + (d.link||[]).length)} mevcut)`}</button><span class="muted" style="font-size:.84rem">${esc(P.name||"")}</span></div>` : ""}
     ${d && d.G ? `<details ${d.errors.length > d.rows / 3 ? "open" : ""}><summary>Sütun eşleştirme (${Object.keys(d.G.map).length} alan tanındı) · yanlışsa buradan düzeltin</summary>
       <div class="mapgrid">${GFIELDS.map(([k, lab, rq]) => `<label class="f">${esc(lab)}${rq ? " *" : ""}<select data-act="impmap" data-k="${k}"><option value="">—</option>${d.G.head.map((h, i) => h ? `<option value="${i}" ${d.G.map[k] === i ? "selected" : ""}>${esc(h)}</option>` : "").join("")}</select></label>`).join("")}</div></details>` : ""}
     ${d && d.template ? `<div class="stack" style="gap:8px">
+      ${(d.dup||[]).length ? `<div class="card pad stack" style="gap:8px;border-color:var(--retry)"><b>${fmt(d.dup.length)} mükerrer satır</b> <span class="muted" style="font-size:.86rem">Müşteri + adres + cihaz + seri no ${YEAR} döneminde zaten kayıtlı ya da dosyada birden fazla geçiyor.</span>
+        <div class="row" style="font-size:.9rem"><label class="row" style="gap:6px"><input type="radio" name="impdup" value="kaldir" ${P.dupMark ? "" : "checked"}> <b>Yinelenenleri kaldır</b> (eklenmez)</label>
+          <label class="row" style="gap:6px"><input type="radio" name="impdup" value="isaretle" ${P.dupMark ? "checked" : ""}> <b>Ekle ve mükerrer olarak işaretle</b></label></div>
+        <details><summary>Listeyi göster</summary><div class="tbl-wrap" style="margin-top:6px"><table><tbody>${d.dup.slice(0,300).map(s => `<tr><td class="mono">${s.row}</td><td>${esc(titleTR(s.unvan))}</td><td>${esc(s.marka)}</td><td class="mono">${esc(s.seri)}</td><td class="muted">${esc(s.reason)}</td></tr>`).join("")}</tbody></table></div></details></div>` : ""}
+      ${(d.link||[]).length ? `<details><summary>${fmt(d.link.length)} cihaz sistemde kayıtlı; yeni kayıt açılmadan ${YEAR} dönemine eklenecek</summary><div class="tbl-wrap" style="margin-top:6px"><table><tbody>${d.link.slice(0,200).map(s => `<tr><td class="mono">${s.row}</td><td>${esc(titleTR(s.unvan))}</td><td>${esc(s.marka)}</td><td class="mono">${esc(s.seri)}</td><td class="muted">${esc(s.reason)}</td></tr>`).join("")}</tbody></table></div></details>` : ""}
       ${d.skipped.length ? `<details><summary>${fmt(d.skipped.length)} satır atlanacak (aynı firma + marka + seri no zaten var)</summary><div class="tbl-wrap" style="margin-top:6px"><table><tbody>${d.skipped.slice(0,200).map(s => `<tr><td class="mono">${s.row}</td><td>${esc(titleTR(s.unvan))}</td><td>${esc(s.marka)}</td><td class="mono">${esc(s.seri)}</td><td class="muted">${esc(s.reason)}</td></tr>`).join("")}</tbody></table></div></details>` : ""}
       ${d.other.length ? `<details open><summary>${fmt(d.other.length)} cihazın marka + seri numarası başka firmada kayıtlı</summary><div class="tbl-wrap" style="margin-top:6px"><table><tbody>${d.other.slice(0,200).map(s => `<tr><td class="mono">${s.row}</td><td>${esc(titleTR(s.unvan))}</td><td>${esc(s.marka)}</td><td class="mono">${esc(s.seri)}</td><td class="muted">${esc(s.reason)}</td></tr>`).join("")}</tbody></table></div>
         <label class="row" style="font-size:.86rem;margin-top:6px"><input id="impother" type="checkbox" ${P.includeOther?"checked":""}> Bunları da yeni kayıt olarak ekle (cihaz el değiştirmişse). İşaretsizse atlanır.</label></details>` : ""}
       ${(d.noSerial||[]).length ? `<details open><summary>${fmt(d.noSerial.length)} satırda seri no veya marka yok (“BILA” gibi)</summary><div class="tbl-wrap" style="margin-top:6px"><table><tbody>${d.noSerial.slice(0,200).map(s => `<tr><td class="mono">${s.row}</td><td>${esc(titleTR(s.unvan))}</td><td>${esc(s.marka||"—")}</td><td class="mono">${esc(s.seri||"—")}</td><td class="muted">${esc(s.reason)}</td></tr>`).join("")}</tbody></table></div>
         <label class="row" style="font-size:.86rem;margin-top:6px"><input id="impnosn" type="checkbox" ${P.includeNoSerial?"checked":""}> Bunları da ekle (seri no sahada tamamlanır). İşaretsizse eklenmez.</label></details>` : ""}
       ${d.errors.length ? `<details open><summary class="warnbox" style="display:list-item">${fmt(d.errors.length)} satırda zorunlu alan eksik, eklenmeyecek</summary><div class="tbl-wrap" style="margin-top:6px"><table><tbody>${d.errors.slice(0,200).map(s => `<tr><td class="mono">${s.row}</td><td>${esc(titleTR(s.unvan||"—"))}</td><td class="muted">${esc(s.reason)}</td></tr>`).join("")}</tbody></table></div></details>` : ""}
-      ${(d.skipped.length + d.errors.length + d.other.length + (d.noSerial||[]).length) ? `<div><button class="btn sm" data-act="impreport">Atlanan ve eksik satırları CSV indir</button></div>` : ""}
+      ${(d.skipped.length + d.errors.length + d.other.length + (d.noSerial||[]).length + (d.dup||[]).length) ? `<div><button class="btn sm" data-act="impreport">Atlanan ve eksik satırları CSV indir</button></div>` : ""}
     </div>` : ""}
     ${P.err ? `<div class="warnbox">${esc(P.err)}</div>` : ""}
-    <pre id="implog" class="log" ${P.log?.length ? "" : "hidden"}>${esc((P.log||[]).join("\n"))}</pre>
-  </div>
+    <pre id="implog-${kind}" class="log" ${P.log?.length ? "" : "hidden"}>${esc((P.log||[]).join("\n"))}</pre>
+  </div>`;
+}
+function viewPeriodCard(){
+  const cand = RAW.devs.filter(r => r.aktif !== false && +r.son_damga_yili === YEAR - 2 && !["cihazyok","kapsamdisi"].includes(r.durum_grup) && !inPeriod(r.id)).length;
+  const per = periodList().map(y => `<span class="gtag" style="${y === YEAR ? "background:var(--brand);color:var(--brand-ink)" : ""}">${y} · ${fmt(st.periods.find(p => p.y === y)?.n || 0)} cihaz</span>`).join(" ");
+  return `<div class="card pad stack" style="gap:10px"><h3>Dönem: ${YEAR}</h3>
+    ${st.noPeriod ? `<div class="warnbox">Dönem yapısı kurulu değil; tüm cihazlar tek liste olarak gösteriliyor. Supabase SQL Editor'de <b>supabase/damga-donem.sql</b> dosyasını çalıştırın.</div>` : `
+    <div class="row">${per}</div>
+    <p class="muted" style="margin:0;font-size:.9rem">Her dönemin kendi listesi ve durumu var; cihaz, QR ve müşteri kayıtları dönemler arasında ortaktır. Dönemi sağ üstten değiştirin.${(st.gf||[]).length ? ` Dışa aktarma sağ üstteki grup filtresine göre yapılır (${esc(st.gf.join(", "))}).` : ""}</p>
+    <div class="row"><button class="btn" data-act="pexport" ${DEVS.length ? "" : "disabled"}>${YEAR} listesini Excel'e aktar (${fmt(DEVS.filter(o => !o.l.dep).length)} cihaz)</button>
+      ${cand ? `<button class="btn" data-act="mkperiod">Son damgası ${YEAR - 2} olan ${fmt(cand)} cihazı ${YEAR} dönemine ekle</button>` : ""}</div>`}
+  </div>`;
+}
+function viewData(){
+  const prec = { ok: 0, mah: 0, ilce: 0 }; LOCS_P.filter(l => !l.dep).forEach(l => prec[l.p] = (prec[l.p] || 0) + 1);
+  const G = st.geoRun;
+  const noQR = DEVS_P.filter(o => !/^EL-/.test(o.d[11])).length;
+  return `<div class="stack" style="max-width:980px;margin:0 auto">
+  <div><div class="eyebrow">Yönetici</div><h2>Veri ve ayarlar</h2></div>
+  ${viewPeriodCard()}
+  ${impCard("donem")}
+  ${impCard("yeni")}
   ${viewPlaceAudit()}
   ${viewDupes()}
   <div class="card pad stack" style="gap:10px"><h3>Konumlar</h3>
@@ -1501,7 +1623,7 @@ async function placeApply(){
 /* ---- Mükerrer müşteri ve cihaz düzenleme ---- */
 function dupAudit(){
   // Müşteri: aynı normalize adres ya da aynı firma adı + ilçe
-  const locs = LOCS.filter(l => !l.dep && l.d.length);
+  const locs = LOCS_P.filter(l => !l.dep && l.d.length);
   const parent = new Map(locs.map(l => [l.k, l.k])); const find = k => { while (parent.get(k) !== k) k = parent.get(k); return k; }; const join = (a, b) => parent.set(find(a), find(b));
   const by = (keyf) => { const m = new Map(); locs.forEach(l => { const k = keyf(l); if (!k) return; if (m.has(k)) join(l.k, m.get(k)); else m.set(k, l.k); }); };
   by(l => normAddr(l.a, l.i).length > 30 ? normAddr(l.a, l.i) : null);
@@ -1509,7 +1631,7 @@ function dupAudit(){
   const g = new Map(); locs.forEach(l => { const r = find(l.k); (g.get(r) || g.set(r, []).get(r)).push(l); });
   const cust = [...g.values()].filter(x => x.length > 1).map(x => x.sort((a, b) => b.d.length - a.d.length)).sort((a, b) => b.length - a.length);
   // Cihaz: aynı marka + seri no (aktif kayıtlar)
-  const dm = new Map(); DEVS.forEach(o => { if (o.d[23] === false || o.l.dep) return; const k = devKey(o.d[2], o.d[4]); if (!k) return; (dm.get(k) || dm.set(k, []).get(k)).push(o); });
+  const dm = new Map(); DEVS_P.forEach(o => { if (o.d[23] === false || o.l.dep) return; const k = devKey(o.d[2], o.d[4]); if (!k) return; (dm.get(k) || dm.set(k, []).get(k)).push(o); });
   const dev = [...dm.values()].filter(x => x.length > 1);
   return { cust, dev };
 }
@@ -1585,16 +1707,16 @@ function viewReports(){
   const st_ = g => `<span class="st ${g==="out"?"kapsamdisi":g}">${esc(RP_GROUPS.find(x=>x[0]===g)?.[1] || CAT[g]?.l || g)}</span>`;
   const genelCls = { "Tamamlandı":"tamam", "Sisteme işlenecek":"islenecek", "Kısmen tamamlandı":"tekrar", "Açık":"bekliyor", "Kapsam dışı":"kapsamdisi" };
   const table = f.view === "musteri"
-    ? `<table class="rptbl"><thead><tr><th>Müşteri</th><th>İl</th><th>İlçe</th><th>Adres</th><th>Telefon</th><th class="r">Cihaz</th><th class="r">Tamam</th><th class="r">İşlenecek</th><th class="r">Açık</th><th class="r">Kapsam dışı</th><th>Genel durum</th><th>Sonraki damga</th><th>Son saha sonucu</th></tr></thead><tbody>
-      ${page.map(r => `<tr><td><b>${esc(titleTR(r.l.n))}</b></td><td>${esc(titleTR(r.l.il))}</td><td>${esc(titleTR(r.l.i))}</td><td class="muted">${esc(titleTR(r.l.a))}</td><td class="mono">${esc(r.l.t||"")}</td>
+    ? `<table class="rptbl"><thead><tr><th>Müşteri</th><th>Grup</th><th>İl</th><th>İlçe</th><th>Adres</th><th>Telefon</th><th class="r">Cihaz</th><th class="r">Tamam</th><th class="r">İşlenecek</th><th class="r">Açık</th><th class="r">Kapsam dışı</th><th>Genel durum</th><th>Sonraki damga</th><th>Son saha sonucu</th></tr></thead><tbody>
+      ${page.map(r => `<tr><td><b>${esc(titleTR(r.l.n))}</b></td><td>${r.l.g ? `<span class="gtag">${esc(r.l.g)}</span>` : ""}</td><td>${esc(titleTR(r.l.il))}</td><td>${esc(titleTR(r.l.i))}</td><td class="muted">${esc(titleTR(r.l.a))}</td><td class="mono">${esc(r.l.t||"")}</td>
         <td class="r">${r.n}</td><td class="r">${r.c.tamam||""}</td><td class="r">${r.c.islenecek||""}</td><td class="r"><b>${r.open||""}</b></td><td class="r">${r.c.out||""}</td>
         <td><span class="st ${genelCls[r.genel]}">${r.genel}</span></td><td class="mono">${r.next||"—"}</td><td class="muted">${esc(r.last)}</td></tr>`).join("")}</tbody></table>`
-    : `<table class="rptbl"><thead><tr><th>Müşteri</th><th>İl</th><th>İlçe</th><th>Marka</th><th>Model</th><th>Seri no</th><th>Max</th><th>Sınıf</th><th>Durum</th><th>Son damga</th><th>Sonraki</th><th>QR</th><th>Son saha sonucu</th></tr></thead><tbody>
-      ${page.map(x => `<tr><td><button class="link rowlink" data-act="dev" data-c="${x.d[11]}">${esc(titleTR(x.l.n))}</button></td><td>${esc(titleTR(x.l.il))}</td><td>${esc(titleTR(x.l.i))}</td><td>${esc(x.d[2])}</td><td>${esc(x.d[3])}</td><td class="mono">${esc(x.d[4]||"—")}</td>
+    : `<table class="rptbl"><thead><tr><th>Müşteri</th><th>Grup</th><th>İl</th><th>İlçe</th><th>Marka</th><th>Model</th><th>Seri no</th><th>Max</th><th>Sınıf</th><th>Durum</th><th>Son damga</th><th>Sonraki</th><th>QR</th><th>Son saha sonucu</th></tr></thead><tbody>
+      ${page.map(x => `<tr><td><button class="link rowlink" data-act="dev" data-c="${x.d[11]}">${esc(titleTR(x.l.n))}</button></td><td>${x.l.g ? `<span class="gtag">${esc(x.l.g)}</span>` : ""}</td><td>${esc(titleTR(x.l.il))}</td><td>${esc(titleTR(x.l.i))}</td><td>${esc(x.d[2])}</td><td>${esc(x.d[3])}</td><td class="mono">${esc(x.d[4]||"—")}${x.d[25] ? ` <span class="dupflag">MÜKERRER</span>` : ""}</td>
         <td class="mono">${esc(x.d[12]||"")}</td><td>${esc(x.d[16])}</td><td>${st_(RP_OUT.includes(x.d[8])?"out":x.d[8])}</td><td class="mono">${x.si.last||"—"}</td><td class="mono">${x.si.next||"—"}</td><td class="mono">${esc(x.d[11])}</td>
         <td class="muted">${x.lr ? esc((x.lr.st==="tamam"?"Tamamlandı":(RL[x.lr.st]?.[1]||x.lr.st)) + " · " + x.lr.at.slice(0,10).split("-").reverse().join(".")) : ""}</td></tr>`).join("")}</tbody></table>`;
   return `<div class="stack">
-  <div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Raporlar</div><h2>${f.view === "musteri" ? "Müşteri bazlı durum raporu" : "Cihaz bazlı durum raporu"}</h2></div>
+  <div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Raporlar · ${YEAR} dönemi${(st.gf||[]).length ? " · grup: " + esc(st.gf.join(", ")) : ""}</div><h2>${f.view === "musteri" ? "Müşteri bazlı durum raporu" : "Cihaz bazlı durum raporu"}</h2></div>
     <div class="seg" role="group" aria-label="Rapor türü"><button class="segb" data-act="rpview" data-v="musteri" aria-pressed="${f.view==="musteri"}">Müşteri bazlı</button><button class="segb" data-act="rpview" data-v="cihaz" aria-pressed="${f.view==="cihaz"}">Cihaz bazlı</button></div></div>
   <div class="card pad stack" style="gap:10px">
     <div class="row">
@@ -1615,17 +1737,159 @@ function viewReports(){
 function rpCSV(){
   const f = st.rp, data = rpData(); let rows;
   if (f.view === "musteri"){
-    rows = [["Müşteri","İl","İlçe","Adres","Telefon","Cihaz","Tamamlandı","Sisteme işlenecek","Bekliyor","Tekrar ziyaret","Tutanak","Kapsam dışı","Genel durum","Sonraki damga","Son saha sonucu","Konum"]];
-    data.forEach(r => rows.push([r.l.n, r.l.il, r.l.i, r.l.a, r.l.t, r.n, r.c.tamam, r.c.islenecek, r.c.bekliyor, r.c.tekrar, r.c.tutanak, r.c.out, r.genel, r.next || "", r.last, r.l.p === "ok" ? "Doğrulandı" : "Yaklaşık"]));
+    rows = [["Dönem","Grup","Müşteri","İl","İlçe","Adres","Telefon","Cihaz","Tamamlandı","Sisteme işlenecek","Bekliyor","Tekrar ziyaret","Tutanak","Kapsam dışı","Genel durum","Sonraki damga","Son saha sonucu","Konum"]];
+    data.forEach(r => rows.push([YEAR, r.l.g || "", r.l.n, r.l.il, r.l.i, r.l.a, r.l.t, r.n, r.c.tamam, r.c.islenecek, r.c.bekliyor, r.c.tekrar, r.c.tutanak, r.c.out, r.genel, r.next || "", r.last, r.l.p === "ok" ? "Doğrulandı" : "Yaklaşık"]));
   } else {
-    rows = [["Müşteri","İl","İlçe","Adres","Telefon","Cinsi","Marka","Model","Seri no","Max","e","Sınıf","Durum","Ham durum","Son damga","Sonraki damga","QR no","Son saha sonucu","Excel satır"]];
-    data.forEach(x => rows.push([x.l.n, x.l.il, x.l.i, x.l.a, x.l.t, x.d[1], x.d[2], x.d[3], x.d[4], x.d[12], x.d[18], x.d[16], CAT[x.d[8]]?.l || x.d[8], x.d[9], x.si.last || "", x.si.next || "", x.d[11],
-      x.lr ? (x.lr.st === "tamam" ? "Tamamlandı" : (RL[x.lr.st]?.[1] || x.lr.st)) + " " + x.lr.at.slice(0,10) : "", x.d[17]]));
+    rows = [["Dönem","Grup","Müşteri","İl","İlçe","Adres","Telefon","Cinsi","Marka","Model","Seri no","Max","e","Sınıf","Durum","Ham durum","Son damga","Sonraki damga","QR no","Son saha sonucu","Excel satır","Mükerrer"]];
+    data.forEach(x => rows.push([YEAR, x.l.g || "", x.l.n, x.l.il, x.l.i, x.l.a, x.l.t, x.d[1], x.d[2], x.d[3], x.d[4], x.d[12], x.d[18], x.d[16], CAT[x.d[8]]?.l || x.d[8], x.d[9], x.si.last || "", x.si.next || "", x.d[11],
+      x.lr ? (x.lr.st === "tamam" ? "Tamamlandı" : (RL[x.lr.st]?.[1] || x.lr.st)) + " " + x.lr.at.slice(0,10) : "", x.d[17], x.d[25] ? "EVET" : ""]));
   }
   const tag = [f.il, f.ilce, f.durum].filter(Boolean).map(s => s.toLocaleLowerCase("tr-TR")).join("-");
-  downloadFile(`damga-${f.view === "musteri" ? "musteri" : "cihaz"}-raporu${tag ? "-" + tag : ""}-${todayISO()}.csv`, "﻿" + rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(";")).join("\r\n"));
+  downloadFile(`damga-${YEAR}-${f.view === "musteri" ? "musteri" : "cihaz"}-raporu${tag ? "-" + tag : ""}-${todayISO()}.csv`, "﻿" + rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(";")).join("\r\n"));
   toast(`${fmt(rows.length - 1)} satır CSV olarak indirildi`);
 }
+/* ---------------- müşteri grupları · dönem seçimi · dönem dışa aktarma ---------------- */
+function cuRows(){
+  const c = st.cu, qq = TRU(c.q);
+  const base = c.scope === "tum" ? Object.values(BY).filter(l => !l.dep && l.nAll) : LOCS_P.filter(l => !l.dep);
+  return base.filter(l => (!c.il || l.il === c.il) && (!c.ilce || l.i === c.ilce)
+    && (!c.g || (c.g === NOGRP ? !l.g : l.g === c.g))
+    && (!qq || TRU(l.n + " " + l.a + " " + l.i).includes(qq)))
+    .sort((a, b) => a.n.localeCompare(b.n, "tr"));
+}
+function grpCounts(){
+  const m = {}; Object.values(BY).forEach(l => { if (l.dep || !l.nAll) return; const k = l.g || NOGRP; const x = m[k] = m[k] || { c: 0, d: 0 }; x.c++; x.d += l.d.length; });
+  return m;
+}
+function viewCustomers(){
+  const c = st.cu, rows = cuRows(), N = 100, pages = Math.max(1, Math.ceil(rows.length / N)); if (c.page >= pages) c.page = 0;
+  const pg = rows.slice(c.page * N, c.page * N + N), gc = grpCounts();
+  const src = c.scope === "tum" ? Object.values(BY).filter(l => !l.dep && l.nAll) : LOCS_P.filter(l => !l.dep);
+  const ils = [...new Set(src.map(l => l.il))].sort((a, b) => a.localeCompare(b, "tr"));
+  const ilces = [...new Set(src.filter(l => !c.il || l.il === c.il).map(l => l.i).filter(Boolean))].sort((a, b) => a.localeCompare(b, "tr"));
+  const gOpts = (cur, blank) => `${blank ? `<option value="">${blank}</option>` : ""}${GROUPS.map(g => `<option value="${esc(g.ad)}" ${cur === g.ad ? "selected" : ""}>${esc(g.ad)}</option>`).join("")}`;
+  const allSel = rows.length && rows.every(l => c.sel.has(l.k));
+  return `<div class="stack" style="max-width:1180px;margin:0 auto">
+  <div><div class="eyebrow">Yönetici · ${YEAR} dönemi</div><h2>Müşteriler ve gruplar</h2>
+    <p class="muted" style="margin:4px 0 0;font-size:.9rem">Müşterileri gruplara ayırın (örn. Migros, zincir market, kamu, bayi). Gruplar sağ üstteki <b>Grup</b> filtresiyle özet, rota, cihaz ve rapor ekranlarının hepsini süzer.</p></div>
+  ${st.noPeriod ? `<div class="warnbox">Gruplar ve dönemler için Supabase'de <b>supabase/damga-donem.sql</b> çalıştırılmalı.</div>` : ""}
+  <div class="card pad stack" style="gap:10px"><h3>Gruplar</h3>
+    <div class="tbl-wrap"><table><thead><tr><th>Grup</th><th class="num">Müşteri</th><th class="num">${YEAR} cihaz</th><th></th></tr></thead><tbody>
+      ${GROUPS.map(g => `<tr><td><span class="gtag">${esc(g.ad)}</span></td><td class="num">${fmt(gc[g.ad]?.c || 0)}</td><td class="num">${fmt(gc[g.ad]?.d || 0)}</td>
+        <td style="text-align:right"><button class="link" data-act="cufilter" data-g="${esc(g.ad)}">Müşterileri göster</button> · <button class="link" data-act="grename" data-g="${esc(g.ad)}">Yeniden adlandır</button> · <button class="link" data-act="gdel" data-g="${esc(g.ad)}" style="color:var(--bad)">Sil</button></td></tr>`).join("")}
+      <tr><td class="muted">${NOGRP}</td><td class="num">${fmt(gc[NOGRP]?.c || 0)}</td><td class="num">${fmt(gc[NOGRP]?.d || 0)}</td><td style="text-align:right"><button class="link" data-act="cufilter" data-g="${NOGRP}">Müşterileri göster</button></td></tr>
+    </tbody></table></div>
+    <form id="groupForm" class="row"><input id="gf-ad" required maxlength="60" placeholder="Yeni grup adı (örn. MİGROS)" style="min-width:240px"><button class="btn primary">Grup ekle</button></form>
+  </div>
+  <div class="card pad stack" style="gap:10px">
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Müşteri listesi</h3>
+      <div class="seg"><button class="segb" data-act="cuscope" data-v="donem" aria-pressed="${c.scope !== "tum"}">${YEAR} dönemindekiler</button><button class="segb" data-act="cuscope" data-v="tum" aria-pressed="${c.scope === "tum"}">Tüm müşteriler</button></div></div>
+    <div class="row">
+      <input id="cu-q" type="search" placeholder="Firma, adres ara" value="${esc(c.q)}" style="min-width:220px">
+      <select id="cu-il"><option value="">Tüm iller</option>${ils.map(x => `<option ${x === c.il ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
+      <select id="cu-ilce"><option value="">Tüm ilçeler</option>${ilces.map(x => `<option ${x === c.ilce ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
+      <select id="cu-g"><option value="">Tüm gruplar</option><option value="${NOGRP}" ${c.g === NOGRP ? "selected" : ""}>${NOGRP}</option>${gOpts(c.g)}</select>
+      <span class="muted" style="font-size:.86rem">${fmt(rows.length)} müşteri</span>
+    </div>
+    <div class="tbl-wrap"><table class="cutbl"><thead><tr><th><input type="checkbox" data-act="cuall" ${allSel ? "checked" : ""} title="Filtredeki tümünü seç"></th><th>Firma</th><th>İl / ilçe</th><th>Adres</th><th class="num">${YEAR} cihaz</th><th class="num">Toplam</th><th>Grup</th></tr></thead><tbody>
+      ${pg.map(l => `<tr><td><input type="checkbox" data-act="cusel" data-k="${esc(l.k)}" ${c.sel.has(l.k) ? "checked" : ""}></td>
+        <td class="wrap"><b>${esc(titleTR(l.n))}</b></td><td>${esc(titleTR(l.il))} / ${esc(titleTR(l.i))}</td><td class="wrap muted" style="font-size:.84rem">${esc(l.a)}</td>
+        <td class="num">${fmt(l.d.length)}</td><td class="num">${fmt(l.nAll)}</td>
+        <td><select data-act="cugrp" data-k="${esc(l.k)}" aria-label="Grup"><option value="">—</option>${gOpts(l.g)}</select></td></tr>`).join("") || `<tr><td colspan="7" class="muted">Filtreye uyan müşteri yok.</td></tr>`}
+    </tbody></table></div>
+    ${pages > 1 ? `<div class="row"><button class="btn sm" data-act="cupage" data-p="${c.page - 1}" ${c.page ? "" : "disabled"}>‹ Önceki</button><span class="muted">${c.page + 1} / ${pages}</span><button class="btn sm" data-act="cupage" data-p="${c.page + 1}" ${c.page + 1 < pages ? "" : "disabled"}>Sonraki ›</button></div>` : ""}
+    ${c.sel.size ? `<div class="bulkbar"><b>${fmt(c.sel.size)} müşteri seçili</b>
+      <select id="cu-bulkg">${GROUPS.length ? gOpts("", "Grup seçin") : `<option value="">Önce grup ekleyin</option>`}</select>
+      <button class="btn primary sm" data-act="cuassign" ${GROUPS.length ? "" : "disabled"}>Gruba ata</button>
+      <button class="btn sm" data-act="cuunassign">Gruptan çıkar</button>
+      <button class="link" data-act="cuclear">Seçimi temizle</button></div>` : ""}
+  </div></div>`;
+}
+async function setGroup(keys, grup){
+  keys = [...keys]; if (!keys.length) return;
+  for (let i = 0; i < keys.length; i += 200) await q(sb.from("businesses").update({ grup: grup || null }).in("id", keys.slice(i, i + 200)));
+  keys.forEach(k => { const l = BY[k]; if (l) l.g = grup || ""; const b = RAW.biz.find(x => x.id === k); if (b) b.grup = grup || null; });
+  applyGroupFilter();
+}
+async function renameGroup(from, to){
+  to = to.trim().toLocaleUpperCase("tr-TR"); if (!to || to === from) return;
+  if (GROUPS.some(g => g.ad === to)) throw new Error("bu adla bir grup zaten var");
+  await q(sb.from("customer_groups").insert({ ad: to }));
+  await q(sb.from("businesses").update({ grup: to }).eq("grup", from));
+  await q(sb.from("customer_groups").delete().eq("ad", from));
+  Object.values(BY).forEach(l => { if (l.g === from) l.g = to; });
+  RAW.biz.forEach(b => { if (b.grup === from) b.grup = to; });
+  st.gf = (st.gf || []).map(g => g === from ? to : g); lsSet("damga.grup", st.gf);
+  if (st.cu.g === from) st.cu.g = to;
+  await loadMeta(); applyGroupFilter();
+}
+
+/* ---- dönem listesini Excel'e aktar (yeni müşteri / dönem içe aktarımıyla aynı başlıklar) ---- */
+async function exportPeriod(){
+  try { await loadXLSX(); } catch(e){ toast(e.message); return; }
+  const head = ["DÖNEM","GRUP","FİRMA ÜNVANI","ADRES","İLÇE","İL","TELEFON","CİHAZ TİPİ","CİNSİ","MARKA","MODEL","SERİ NO","SINIF","MAX (KAPASİTE)","MİN","e (doğrulama bölüntüsü)","d (okuma bölüntüsü)","SON DAMGA YILI","DURUM","DURUM AÇIKLAMA","FATURA NOTU","KULLANIM YERİ","NOT","QR NO","MÜKERRER"];
+  const rows = DEVS.filter(o => !o.l.dep).sort((a, b) => a.l.n.localeCompare(b.l.n, "tr")).map(({ d, l }) => [YEAR, l.g || "", l.n, l.a, l.i, l.il, l.t, d[20], d[1], d[2], d[3], d[4], d[16], d[12], d[21], d[18], d[22], d[6] ? +d[6] : "", CAT[d[8]]?.l || d[8], d[9], d[10], d[7], d[14], d[11], d[25] ? "EVET" : ""]);
+  const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
+  ws["!cols"] = head.map((h, i) => ({ wch: [6,14,34,44,14,10,14,22,16,14,14,16,6,12,8,10,10,10,18,28,18,16,28,12,9][i] }));
+  ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: head.length - 1 } }) };
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Cihazlar");
+  const gf = (st.gf || []).length ? "-" + st.gf.join("-").replace(/[^0-9A-Za-zÇĞİÖŞÜçğıöşü]+/g, "_").slice(0, 40) : "";
+  XLSX.writeFile(wb, `elmaslar-damga-${YEAR}${gf}.xlsx`);
+  toast(`${fmt(rows.length)} cihaz Excel'e aktarıldı`);
+}
+
+document.addEventListener("click", async e => {
+  if (st.gfOpen && !e.target.closest(".gpick")){ st.gfOpen = false; render(); }
+  const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act, c = st.cu;
+  switch (a){
+    case "gfopen": st.gfOpen = !st.gfOpen; render(); break;
+    case "gfclear": st.gf = []; lsSet("damga.grup", []); st.gfOpen = false; applyGroupFilter(); render(); break;
+    case "cuscope": c.scope = b.dataset.v; c.page = 0; c.il = c.ilce = ""; render(); break;
+    case "cupage": c.page = +b.dataset.p; render(); window.scrollTo(0, 0); break;
+    case "cufilter": c.g = b.dataset.g; c.page = 0; render(); break;
+    case "cuclear": c.sel.clear(); render(); break;
+    case "cuassign": case "cuunassign": {
+      const g = a === "cuassign" ? $("#cu-bulkg")?.value : ""; if (a === "cuassign" && !g){ toast("Grup seçin"); break; }
+      const n = c.sel.size; b.disabled = true;
+      try { await setGroup(c.sel, g); c.sel.clear(); render(); toast(g ? `${fmt(n)} müşteri “${g}” grubuna atandı` : `${fmt(n)} müşteri gruptan çıkarıldı`); }
+      catch(err){ b.disabled = false; toast("Kaydedilemedi: " + err.message); } break; }
+    case "gdel": { const g = b.dataset.g; if (!confirm(`“${g}” grubu silinsin mi? Müşteriler grupsuz kalır, kayıtlar silinmez.`)) break;
+      try { await q(sb.from("businesses").update({ grup: null }).eq("grup", g)); await q(sb.from("customer_groups").delete().eq("ad", g));
+        Object.values(BY).forEach(l => { if (l.g === g) l.g = ""; }); st.gf = (st.gf || []).filter(x => x !== g); lsSet("damga.grup", st.gf);
+        await loadMeta(); applyGroupFilter(); render(); toast("Grup silindi"); } catch(err){ toast("Silinemedi: " + err.message); } break; }
+    case "grename": { const g = b.dataset.g, to = prompt("Yeni grup adı", g); if (!to) break;
+      try { await renameGroup(g, to); render(); toast("Grup adı değişti"); } catch(err){ toast("Değiştirilemedi: " + err.message); } break; }
+    case "mkperiod": b.disabled = true;
+      try { const n = await q(sb.rpc("create_period", { p_donem: YEAR })); await reloadDevices(); render(); toast(`${YEAR} dönemi ${fmt(n)} cihazla oluşturuldu`); }
+      catch(err){ b.disabled = false; toast("Dönem oluşturulamadı: " + err.message); } break;
+    case "pexport": exportPeriod(); break;
+    case "addperiod": b.disabled = true;
+      try { await q(sb.from("period_items").upsert({ donem: YEAR, device_id: +b.dataset.id, durum_grup: "bekliyor", durum_ham: "Elle eklendi", kaynak: "cihaz kartı" }, { onConflict: "donem,device_id" }));
+        await reloadDevices(); render(); toast(`Cihaz ${YEAR} dönemine eklendi`); } catch(err){ b.disabled = false; toast("Eklenemedi: " + err.message); } break;
+  }
+});
+document.addEventListener("change", async e => {
+  const t = e.target, a = t.dataset.act, c = st.cu;
+  if (a === "donem"){ switchPeriod(t.value); return; }
+  if (a === "gf"){ const v = t.value; st.gf = t.checked ? [...new Set([...(st.gf || []), v])] : (st.gf || []).filter(x => x !== v); lsSet("damga.grup", st.gf); applyGroupFilter(); render(); return; }
+  if (a === "cusel"){ t.checked ? c.sel.add(t.dataset.k) : c.sel.delete(t.dataset.k); render(); return; }
+  if (a === "cuall"){ const rows = cuRows(); rows.forEach(l => t.checked ? c.sel.add(l.k) : c.sel.delete(l.k)); render(); return; }
+  if (a === "cugrp"){ try { await setGroup([t.dataset.k], t.value); toast(t.value ? `Grup: ${t.value}` : "Gruptan çıkarıldı"); } catch(err){ toast("Kaydedilemedi: " + err.message); } return; }
+  if (t.id === "cu-il"){ c.il = t.value; c.ilce = ""; c.page = 0; render(); return; }
+  if (t.id === "cu-ilce"){ c.ilce = t.value; c.page = 0; render(); return; }
+  if (t.id === "cu-g"){ c.g = t.value; c.page = 0; render(); return; }
+});
+document.addEventListener("input", e => {
+  if (e.target.id !== "cu-q") return;
+  st.cu.q = e.target.value; st.cu.page = 0; clearTimeout(cfgT);
+  cfgT = setTimeout(() => { const pos = e.target.selectionStart; render(); const n = document.getElementById("cu-q"); if (n){ n.focus(); try { n.setSelectionRange(pos, pos); } catch(_){} } }, 250);
+});
+document.addEventListener("submit", async e => {
+  if (e.target.id !== "groupForm") return; e.preventDefault();
+  const ad = $("#gf-ad").value.trim().toLocaleUpperCase("tr-TR"); if (!ad) return;
+  if (GROUPS.some(g => g.ad === ad)){ toast("Bu grup zaten var"); return; }
+  try { await q(sb.from("customer_groups").insert({ ad })); await loadMeta(); render(); toast(`“${ad}” grubu eklendi`); } catch(err){ toast("Eklenemedi: " + err.message); }
+});
 /* ---------------- boot & giriş ---------------- */
 function showScreen(id){ ["setup","login","loading","app"].forEach(s => { const el = document.getElementById("scr-" + s); if (el) el.hidden = s !== id; }); }
 function loginMsg(m, ok){ const el = $("#lmsg"); if (el){ el.textContent = m || ""; el.className = "lmsg" + (ok ? " ok" : ""); } }

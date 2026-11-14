@@ -244,3 +244,19 @@ details summary{cursor:pointer;font-weight:600}
 .mapgrid select{font-size:.84rem}
 .rptbl td,.rptbl th{font-size:.82rem;white-space:nowrap}
 .rptbl td.muted{white-space:normal;min-width:180px}
+/* v9 · dönem ve grup seçimi */
+.who{flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
+.pickr{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--brand);border-radius:8px;padding:2px 4px 2px 10px;background:var(--brand-soft);color:var(--brand);font-weight:700}
+.pickr span{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+.pickr select{border:0;background:transparent;color:var(--brand);font:inherit;font-weight:700;font-family:var(--f-mono,inherit);padding:4px 2px;cursor:pointer}
+.gpick{position:relative}
+.gpick .btn.on{border-color:var(--brand);color:var(--brand)}
+.gpop{position:absolute;right:0;top:calc(100% + 6px);z-index:20;min-width:220px;max-height:60vh;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:6px;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.gpop label{display:flex;gap:8px;align-items:center;font-size:.88rem;cursor:pointer}
+.gtag{display:inline-block;border-radius:6px;padding:1px 7px;font-size:.76rem;font-weight:600;background:var(--sunk);color:var(--ink);white-space:nowrap}
+.dupflag{display:inline-block;border-radius:6px;padding:1px 6px;font-size:.72rem;font-weight:700;background:var(--retry-soft,#fde8e4);color:var(--retry)}
+.bulkbar{position:sticky;bottom:10px;z-index:5;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:var(--surface);border:1px solid var(--brand);border-radius:var(--r);box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.cutbl td,.cutbl th{white-space:nowrap}
+.cutbl td.wrap{white-space:normal;min-width:220px}
+@media (max-width:640px){.who{width:100%;justify-content:flex-start}.gpop{left:0;right:auto}}
+@media (max-width:640px){.tab{white-space:nowrap}}

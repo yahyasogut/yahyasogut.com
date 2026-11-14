@@ -1,4 +1,4 @@
-# Elmaslar Damga Takip — teknik not (v8 · 14 Kasım 2026)
+# Elmaslar Damga Takip — teknik not (v9 · 14 Kasım 2026)
 
 Ayrı proje olarak yahyasogut.com reposunun içinde, kendi klasörlerinde yaşar. Next.js sitesinden bağımsızdır; `public/damga/` statik olarak `/damga/` adresine kopyalanır.
 
@@ -12,6 +12,7 @@ public/damga/
   c/index.html      herkese açık QR muayene kartı
   manifest.webmanifest, mark.png, wordmark.png
 supabase/damga.sql  tablolar, RLS, fonksiyonlar (tekrar çalıştırılabilir)
+supabase/damga-donem.sql  v9 eki: dönemler (period_items) + müşteri grupları
 docs/DAMGA-KURULUM.md   adım adım kurulum
 ```
 
@@ -53,6 +54,17 @@ docs/DAMGA-KURULUM.md   adım adım kurulum
 - Ön basılı QR (sahada cihaza bağlama) Faz 3'te. Şimdilik QR numarası içe aktarımda cihaza verilir.
 
 ## Sürüm geçmişi
+
+- **v9 · 14.11.2026:**
+  - **Dönem (yıl) yapısı.** Sağ üstte "Dönem" seçici (2026, 2027…; seçim tarayıcıda hatırlanır). Cihaz, QR ve müşteri kayıtları ortaktır; her dönemin listesi ve durumu `period_items` tablosunda tutulur. Mevcut kayıtlar 2026 dönemine taşındı. Planlar dönemle kaydedilir (`plans.donem`); saha "tamamlandı" ve cihaz kartındaki damga kaydı, planın/dönemin listesini günceller.
+  - Boş dönemde "son damgası (dönem − 2) olan cihazlarla dönemi oluştur" (`create_period`) ya da Excel'den içe aktarma.
+  - **Dönem listesi içe aktarma** (Elmaslar / Migros / genel biçim): sistemde olan cihaz (marka + seri) yeni kayıt açılmadan seçili döneme bağlanır ve durumu güncellenir.
+  - **Yeni müşteri ekle (toplu)** ayrı kart: her zaman sütun eşlemeli genel içe aktarma, kayıtlar seçili dönemin altına eklenir. Müşteri + adres + cihaz (marka) + seri no aynıysa **mükerrer**: "Yinelenenleri kaldır" (varsayılan) ya da "Ekle ve mükerrer olarak işaretle". Sistemde olup dönemde olmayan cihazlar döneme bağlanır. Excel'de DURUM ve GRUP sütunları da okunur.
+  - **Dönem listesini Excel'e aktar**: içe aktarmayla aynı başlıklar (grup filtresine uyar).
+  - **Müşteriler & gruplar** sekmesi: grup ekle / yeniden adlandır / sil; müşterileri filtreleyip toplu seçerek gruba atama veya gruptan çıkarma; satırdan tek tek atama.
+  - Sağ üstte **Grup filtresi** (çoklu seçim + Grupsuz): özet, rota planlama, cihazlar ve raporların hepsini süzer. Raporlarda ve CSV'de Dönem ve Grup sütunları; mükerrer cihazlar listede ve kartta işaretli.
+  - Cihaz kartında "Bu cihaz seçili dönem listesinde yok → döneme ekle".
+  - Yeni SQL eki: `supabase/damga-donem.sql` (damga.sql içinde de var). Önbellek sürümü ?v=9.
 
 - **v8 · 14.11.2026:**
   - **Türkiye il/ilçe listesi** (81 il, 973 ilçe) ve Antalya + Burdur mahalle → ilçe eşlemesi: `public/damga/tr-yer.js` (kaynak turkey-neighbourhoods 4.0.3, MIT).
