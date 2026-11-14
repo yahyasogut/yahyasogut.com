@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v20 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v21 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -276,7 +276,7 @@ function render(){
       : `<div class="card empty" style="max-width:640px;margin:40px auto">${YEAR} döneminde henüz veri yok. Yöneticiniz dönem listesini yüklediğinde burada görünecek.</div>`;
     return;
   }
-  $("#main").innerHTML = (st.view === "ozet" ? reqBanner() : "") + v() + viewHtf() + viewP80();
+  $("#main").innerHTML = (st.view === "ozet" ? reqBanner() : "") + v() + viewHtf() + viewP80() + viewPurge();
   if (st.view === "planla") hydratePlanner();
 }
 /* ---- sayfa adresleri: /damga/ozet/, /damga/rota-planla/ … (her sekmenin kendi adresi; geri/ileri tuşları çalışır) ---- */
@@ -1012,15 +1012,15 @@ function stopCard(p, s, i){
         <div style="min-width:0"><div style="font-weight:600;font-size:.9rem">${esc(d[2]||"Marka yok")} ${esc(d[3])} <span class="st ${d[8]}">${CAT[d[8]].l}</span> <button class="link" data-act="dev" data-c="${d[11]}" style="font-size:.8rem">Cihaz kartı</button></div>
         <div class="spec mono">S/N ${esc(d[4]||"—")} · Max ${esc(d[12]||"?")} · e ${esc(precOf({d})||"?")} · Sınıf ${esc(d[16])} · son damga ${esc(d[6]||"—")}${d[7]?` · ${esc(titleTR(d[7]))}`:""}</div></div></label>`).join("")}</div>
       ${st.reasonFor === s.k ? `<div class="stack" style="gap:8px"><div class="eyebrow">${allChecked?"Neden yapılamadı?":`${devs.length-dr.done.length} cihaz için neden?`}</div>
-        <div class="reasons">${REASONS.map(([k,lab])=>`<button class="chip" data-act="reason" data-k="${s.k}" data-v="${k}" aria-pressed="${dr.reason===k}">${lab}</button>`).join("")}</div>
+        <div class="reasons">${REASONS.filter(r => r[0] !== "adresteyok").map(([k,lab])=>`<button class="chip" data-act="reason" data-k="${s.k}" data-v="${k}" aria-pressed="${dr.reason===k}">${lab}</button>`).join("")}</div>
         <textarea id="note-${s.k}" placeholder="Açıklama (örn. Pazartesi 10:00'da tekrar gel, yetkili Ahmet Bey)">${esc(dr.note)}</textarea>
         <div class="row"><button class="btn primary" data-act="savemiss" data-k="${s.k}" ${dr.reason?"":"disabled"}>Kaydet</button><button class="btn" data-act="cancelmiss" data-k="${s.k}">Vazgeç</button></div></div>`
       : st.reqFor === s.k ? reqForm(s.k)
-      : `<div class="big-acts four"><button class="btn ok" data-act="complete" data-k="${s.k}" ${dr.done.length?"":"disabled"}>${allChecked?"✓ Tamamlandı":`✓ ${dr.done.length}/${devs.length} tamamlandı`}</button>
+      : `<div class="big-acts four">${htfPrinted(p.id, s.k) ? `<button class="btn ok" data-act="complete" data-k="${s.k}" ${dr.done.length?"":"disabled"}>${allChecked?"✓ Tamamlandı":`✓ ${dr.done.length}/${devs.length} tamamlandı`}</button>` : `<button class="btn ok" disabled title="Önce Hizmet Talep Formu yazdırılmalı">✓ Tamamlandı <small>(önce form)</small></button>`}
         <button class="btn warn" data-act="quickmiss" data-v="ertelendi" data-k="${s.k}">Ertelendi</button>
         <button class="btn warn" data-act="tutanak" data-k="${s.k}">Adreste yok · tutanak</button>
         <button class="btn" data-act="addreq" data-k="${s.k}">+ Cihaz ekle</button></div>
-        <div class="row" style="justify-content:space-between"><button class="btn sm" data-act="htf" data-k="${s.k}">🖨 Hizmet talep formu oluştur / yazdır</button><button class="link" data-act="miss" data-k="${s.k}" style="font-size:.84rem">Diğer neden / kısmi eksik</button></div>`}
+        <div class="row" style="justify-content:space-between"><button class="btn sm ${htfPrinted(p.id, s.k) ? "" : "primary"}" data-act="htf" data-k="${s.k}">🖨 Hizmet talep formu ${htfPrinted(p.id, s.k) ? "· yazdırıldı ✓" : "oluştur / yazdır"}</button><button class="link" data-act="miss" data-k="${s.k}" style="font-size:.84rem">Diğer neden / kısmi eksik</button></div>`}
       ${reqListFor(s.k)}
       ${r?`<div class="row" style="justify-content:space-between;font-size:.82rem"><span class="muted">Kaydedildi ${new Date(r.at).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}${r.note?` · ${esc(r.note)}`:""}</span>${r.st === "adresteyok" ? `<button class="link" data-act="tutanak" data-k="${s.k}">Tutanağı tekrar yazdır</button> · ` : ""}<button class="link" data-act="undo" data-k="${s.k}">Geri al</button></div>`:""}
       <div class="row" style="gap:8px"><button class="btn sm" data-act="gpsgeo" data-k="${s.k}">📍 Konumu güncelle</button><span class="muted" style="font-size:.78rem">${l.p === "ok" ? "Konum doğrulanmış" : "Konum yaklaşık"} · müşterinin yanındayken telefon konumunu kaydeder</span></div>
@@ -1159,6 +1159,7 @@ document.addEventListener("click", async e => {
       const k = b.dataset.k, p = st.plans.find(x => x.id === st.fieldPlan), s = p.stops.find(x => x.k === k), d = st.draft[k];
       const n = document.getElementById("note-"+k); if (n) d.note = n.value.trim();
       const all = d.done.length === s.dev.length;
+      if (a === "complete" && !htfPrinted(p.id, k)){ toast("Önce Hizmet Talep Formu yazdırılmalı"); break; }
       if (a === "complete" && !all && !d.reason){ st.reasonFor = k; render(); toast("Tamamlanmayan cihazlar için neden seçin"); break; }
       const r = { planId: p.id, k, st: a === "complete" && all ? "tamam" : d.reason, done: d.done.slice(), note: d.note || "", by: st.me, at: new Date().toISOString() };
       try { await saveResult(r); st.reasonFor = null; const nx = p.stops.find(x => !st.results[p.id+"__"+x.k] && x.k !== k); st.open = r.st === "tamam" && nx ? nx.k : k; render(); toast(r.st === "tamam" ? "Durak tamamlandı" : "Eksiklik kaydedildi"); }
@@ -1198,7 +1199,7 @@ document.addEventListener("change", e => {
   if (t.id === "impother"){ if (st.imp) st.imp.includeOther = t.checked; return; }
   if (t.name === "impdup"){ if (st.imp){ st.imp.dupMark = t.value === "isaretle"; render(); } return; }
   if (a === "impfile" && t.files[0]){ const year = YEAR, kind = t.dataset.kind; st.imp = { name: t.files[0].name, year, kind };
-    readImportFile(t.files[0], year, kind).then(d => { st.imp.data = d; render(); }).catch(err => { st.imp.err = "Dosya okunamadı: " + err.message; render(); }); return; }
+    readImportFile(t.files[0], year, kind).then(d => { st.imp.data = d; render(); setTimeout(() => $("#imp-" + kind)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); }).catch(err => { st.imp.err = "Dosya okunamadı: " + err.message; render(); }); return; }
   if (t.id === "fplan"){ st.fieldPlan = t.value; st.open = null; render(); return; }
   if (t.id && t.id.startsWith("c-")){ readCfg();
     if ((t.id === "c-ret" || t.id === "c-teams") && st.routes) runOptimize();
@@ -1712,6 +1713,8 @@ function viewPeriodCard(){
     <div class="row">${per}</div>
     <p class="muted" style="margin:0;font-size:.9rem">Her dönemin kendi listesi ve durumu var; cihaz, QR ve müşteri kayıtları dönemler arasında ortaktır. Dönemi sağ üstten değiştirin.${(st.gf||[]).length ? ` Dışa aktarma sağ üstteki grup filtresine göre yapılır (${esc(st.gf.join(", "))}).` : ""}</p>
     <div class="row"><button class="btn" data-act="pexport" ${DEVS.length ? "" : "disabled"}>${YEAR} listesini Excel'e aktar (${fmt(DEVS.filter(o => !o.l.dep).length)} cihaz)</button><button class="btn" data-act="ptemplate">Boş dönem şablonu (.xlsx)</button>
+      <label class="btn primary" style="cursor:pointer">Doldurulan şablonu yükle<input type="file" accept=".xlsx,.xls" data-act="impfile" data-kind="donem" hidden></label>
+      <button class="btn warn" data-act="pgopen">İçerdeki veriyi temizle</button>
       ${cand ? `<button class="btn" data-act="mkperiod">Son damgası ${YEAR - 2} olan ${fmt(cand)} cihazı ${YEAR} dönemine ekle</button>` : ""}</div>`}
   </div>`;
 }
@@ -2718,9 +2721,9 @@ function htfOpen(k, ids){
   const l = BY[k]; if (!l) return; const raw = RAW.biz.find(b => b.id === k) || {}, ap = htfAddrParts(l.a);
   const all = Object.values(DEVID).filter(o => o.l === l && o.d[23] !== false).sort((a, b) => (b.inP - a.inP) || (a.d[26] || 0) - (b.d[26] || 0));
   const pick = ids && ids.length ? all.filter(o => ids.includes(o.d[0])) : all.filter(o => o.inP);
-  st.htf = { k, firma: lsGet("damga.htfFirma", HTF_FIRMA_DEF), f: {
+  st.htf = { k, ctx: st.view === "saha" && st.fieldPlan ? st.fieldPlan + "|" + k : "", firma: lsGet("damga.htfFirma", HTF_FIRMA_DEF), f: {
       tarih: new Date().toLocaleDateString("tr-TR"), no: "", ad: titleTR(String(l.n).split(" · ")[0]), tel: [raw.gsm, l.t].filter(Boolean).join(" / "), sube: raw.sube || (String(l.n).split(" · ").slice(1).join(" · ")),
-      vergi: [raw.vergi_dairesi, raw.vkn].filter(Boolean).join(" / "), yer: `${titleTR(l.a)} ${titleTR(l.i)}/${titleTR(l.il)}`.trim(), yetkili: "", tc: "",
+      vergi: [raw.vergi_dairesi, raw.vkn].filter(Boolean).join(" / "), yer: `${titleTR(l.a)} ${titleTR(l.i)}/${titleTR(l.il)}`.trim(), yetkili: "", dogum: "", tc: "",
       mahalle: titleTR(raw.mahalle || mahOf(l.a) || ""), sokak: ap.sokak, cadde: ap.cadde, ic: ap.ic, dis: ap.dis, eposta: raw.eposta || "", yil: String(YEAR) },
     checks: Object.fromEntries(HTF_CHECKS.map(c => [c[0], c[2]])), all: all.map(o => o.d[0]), rows: pick.map(htfDevRow) };
   if (!st.htf.rows.length) st.htf.rows = [{ id: 0, marka: "", tip: "", sinif: "III", kap: "", seri: "", uretim: "", d: "", e: "" }];
@@ -2733,7 +2736,7 @@ function viewHtf(){
     <div class="mfhead"><div><div class="eyebrow">Sistem verileriyle dolduruldu · yazdırmadan önce düzenleyin</div><h3 style="margin:2px 0 0">Hizmet Talep Formu</h3></div><button class="btn sm" data-act="htfclose" aria-label="Kapat">✕</button></div>
     <div class="mfbody">
       <div class="mfgrid">${inp("tarih","Tarih")}${inp("no","Form / başvuru no")}${inp("ad","Başvuran firma adı",1)}${inp("tel","Gsm / sabit tel")}${inp("sube","Şube adı")}${inp("vergi","Vergi dairesi / no")}
-        ${inp("yer","Cihaz(lar)ın bulunduğu yer",1)}${inp("yetkili","Yetkili kişi")}${inp("tc","T.C. no")}${inp("mahalle","Mahalle")}${inp("sokak","Sokak")}${inp("cadde","Cadde")}${inp("ic","İç kapı no")}${inp("dis","Dış kapı no")}${inp("eposta","E-mail")}${inp("yil","Muayene yılı")}</div>
+        ${inp("yer","Cihaz(lar)ın bulunduğu yer",1)}${inp("yetkili","Yetkili kişi *")}${inp("dogum","Yetkili doğum tarihi * (gg/aa/yyyy)")}${inp("tc","T.C. no")}${inp("mahalle","Mahalle")}${inp("sokak","Sokak")}${inp("cadde","Cadde")}${inp("ic","İç kapı no")}${inp("dis","Dış kapı no")}${inp("eposta","E-mail")}${inp("yil","Muayene yılı")}</div>
       <div class="row" style="gap:14px;flex-wrap:wrap">${HTF_CHECKS.map(([k, lab]) => `<label class="row" style="gap:6px;font-size:.88rem"><input type="checkbox" data-htfc="${k}" ${H.checks[k] ? "checked" : ""}> ${lab}</label>`).join("")}</div>
       <h4 class="mfsec">Cihazlar (${H.rows.length})</h4>
       <div class="row" style="gap:6px;flex-wrap:wrap;font-size:.84rem">${H.all.map(id => { const o = DEVID[id]; return o ? `<label class="chip" style="cursor:pointer"><input type="checkbox" data-htfd="${id}" ${inRows.has(id) ? "checked" : ""}> ${esc(o.d[2] || "?")} ${esc(o.d[4] || "")}</label>` : ""; }).join("")}<button class="btn sm" data-act="htfadd">+ Boş satır</button></div>
@@ -2761,7 +2764,7 @@ function htfDoc(){
   .defs{font-size:10px;margin-top:6px}.ft{text-align:center;margin-top:8px;border-top:1px solid #000;padding-top:6px;font-size:12px}
   </style></head><body><div class="frm">
   <div class="hd"><div class="logo">${esc(F.ad)}</div><div><h1>HİZMET TALEP FORMU</h1><div style="text-align:center;margin-top:4px">Tarih: ${esc(f.tarih)}</div></div><div class="no">${esc(f.no)}<small>Başvuru</small></div></div>
-  <div class="top"><table>${line("Başvuran Firma Adı", f.ad)}${line("Gsm / Sabit Tel", f.tel)}${line("Şube Adı", f.sube)}${line("Vergi Dairesi / No", f.vergi)}${line("Cihaz(lar)ın Bulunduğu Yer", f.yer)}${line("Yetkili Kişi", f.yetkili)}${line("T.C.No", f.tc)}</table>
+  <div class="top"><table>${line("Başvuran Firma Adı", f.ad)}${line("Gsm / Sabit Tel", f.tel)}${line("Şube Adı", f.sube)}${line("Vergi Dairesi / No", f.vergi)}${line("Cihaz(lar)ın Bulunduğu Yer", f.yer)}${line("Yetkili Kişi", f.yetkili)}${line("Doğum Tarihi", f.dogum)}${line("T.C.No", f.tc)}</table>
     <table>${line("Mahalle", f.mahalle)}${line("Sokak", f.sokak)}${line("Cadde", f.cadde)}${line("İç Kapı No", f.ic)}${line("Dış Kapı No", f.dis)}${line("E-mail Adresi", f.eposta)}</table>
     <div class="cbs">${HTF_CHECKS.slice(0, 3).map(([k, lab]) => `<div><span>${lab}</span>${cb(k)}</div>`).join("")}<div class="grp"></div>${HTF_CHECKS.slice(3).map(([k, lab]) => `<div><span>${lab}</span>${cb(k)}</div>`).join("")}</div></div>
   <table class="dv"><thead><tr><th style="width:40px">S.No</th><th>Marka</th><th>Tip</th><th>Sınıf</th><th>Kapasite</th><th>Seri No</th><th>Üretim Yılı</th><th>d Taksimat</th><th>e Mua Sab.</th></tr></thead><tbody>
@@ -2779,7 +2782,7 @@ document.addEventListener("click", e => {
   if (a === "htfclose" || (a === "htfback" && e.target === b)){ st.htf = null; render(); }
   if (a === "htfadd"){ st.htf.rows.push({ id: 0, marka: "", tip: "", sinif: "III", kap: "", seri: "", uretim: "", d: "", e: "" }); render(); }
   if (a === "htfrm"){ st.htf.rows.splice(+b.dataset.i, 1); render(); }
-  if (a === "htfprint"){ lsSet("damga.htfFirma", st.htf.firma); const w = window.open("", "_blank"); if (!w){ toast("Açılır pencere engellendi; tarayıcıda izin verin"); return; } w.document.open(); w.document.write(htfDoc()); w.document.close(); }
+  if (a === "htfprint"){ if (!htfValid()) return; htfMark(); lsSet("damga.htfFirma", st.htf.firma); const w = window.open("", "_blank"); if (!w){ toast("Açılır pencere engellendi; tarayıcıda izin verin"); return; } w.document.open(); w.document.write(htfDoc()); w.document.close(); }
 });
 document.addEventListener("input", e => { const t = e.target, H = st.htf; if (!H) return;
   if (t.dataset.htf) H.f[t.dataset.htf] = t.value; else if (t.dataset.htfr) H.rows[+t.dataset.htfr][t.dataset.c] = t.value; else if (t.dataset.htff) H.firma[t.dataset.htff] = t.value; });
@@ -2801,8 +2804,17 @@ document.addEventListener("click", e => {
   }, err => { b.disabled = false; b.textContent = "📍 Konumu güncelle"; toast(err.code === 1 ? "Konum izni verilmedi. Tarayıcı ayarlarından bu siteye konum izni verin." : "Konum alınamadı: " + err.message); },
   { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
 });
+
+/* yetkili ve doğum tarihi zorunlu; form yazdırılınca duraktaki “Tamamlandı” açılır */
+function htfValid(){ const f = st.htf.f; const m = String(f.dogum || "").trim().match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (!String(f.yetkili || "").trim()){ toast("Yetkili kişinin adını yazın"); document.querySelector('[data-htf="yetkili"]')?.focus(); return false; }
+  if (!m || +m[1] < 1 || +m[1] > 31 || +m[2] < 1 || +m[2] > 12 || +m[3] < 1900 || +m[3] > new Date().getFullYear()){ toast("Doğum tarihini gün/ay/yıl olarak yazın (örn. 05/03/1980)"); document.querySelector('[data-htf="dogum"]')?.focus(); return false; }
+  f.dogum = `${m[1].padStart(2, "0")}/${m[2].padStart(2, "0")}/${m[3]}`; return true; }
+function htfMark(){ const H = st.htf; if (!H || !H.ctx) return; const m = lsGet("damga.htfDone", {}); m[H.ctx] = H.rows.map(r => r.id).filter(Boolean); lsSet("damga.htfDone", m);
+  const [, k] = H.ctx.split("|"), d = st.draft[k]; if (d) d.done = m[H.ctx].filter(id => (BY[k]?.d || []).some(x => x[0] === id)); }
+const htfPrinted = (planId, k) => !!lsGet("damga.htfDone", {})[planId + "|" + k];
 /* ---------------- 80 mm termal yazıcı (SP-L39 BT): ESC/POS, Bluetooth (BLE) / RawBT / tarayıcı ---------------- */
-const P80_DEF = { cols: 48, cp: "pc857", method: "" };
+const P80_DEF = { cols: 48, cp: "pc857", method: "", mode: "img" };
 const p80cfg = () => Object.assign({}, P80_DEF, lsGet("damga.p80", {}));
 // PC857 (Türkçe) kod sayfası
 const CP857 = { "Ç":0x80,"ü":0x81,"é":0x82,"â":0x83,"ä":0x84,"à":0x85,"å":0x86,"ç":0x87,"ê":0x88,"ë":0x89,"è":0x8A,"ï":0x8B,"î":0x8C,"ı":0x8D,"Ä":0x8E,"Å":0x8F,"É":0x90,"æ":0x91,"Æ":0x92,
@@ -2823,7 +2835,21 @@ function p80lines(doc, cols){ const L = [];
     if (x.kv){ const k = x.kv[0] + ": ", v = String(x.kv[1] ?? ""); const ws = p80wrap(k + v, w); ws.forEach((s, i) => L.push({ s: i ? "  " + s : s, b: x.b })); return; }
     p80wrap(x.t ?? "", w).forEach(s => L.push({ s, a: x.a, b: x.b, big: x.big })); });
   return L; }
-function p80bytes(doc){ const C = p80cfg(), L = p80lines(doc, C.cols), B = [0x1B,0x40];
+// Görüntü (raster) modu: metin tuvale çizilip GS v 0 ile basılır; yazıcının kod sayfasından bağımsız, tüm Türkçe harfler doğru çıkar
+function p80raster(doc){
+  const C = p80cfg(), L = p80lines(doc, C.cols), W = C.cols <= 32 ? 384 : 576, fs = Math.floor(W / C.cols / 0.6), lh = Math.round(fs * 1.28);
+  const H = L.reduce((h, l) => h + (l.big ? lh * 2 : lh), 0) + 8;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.fillStyle = "#000"; g.textBaseline = "top";
+  let y = 4; L.forEach(l => { const size = l.big ? fs * 2 : fs; g.font = `${l.b || l.big ? "bold " : ""}${size}px "DejaVu Sans Mono","Droid Sans Mono","Roboto Mono","Courier New",monospace`;
+    const w = g.measureText(l.s).width, x = l.a === "c" ? Math.max(0, (W - w) / 2) : l.a === "r" ? Math.max(0, W - w) : 0;
+    g.fillText(l.s, x, y + (l.big ? 2 : 1)); y += l.big ? lh * 2 : lh; });
+  const px = g.getImageData(0, 0, W, H).data, bw = W / 8, B = [0x1B,0x40];
+  for (let y0 = 0; y0 < H; y0 += 128){ const rows = Math.min(128, H - y0); B.push(0x1D,0x76,0x30,0x00, bw & 255, bw >> 8, rows & 255, rows >> 8);
+    for (let yy = y0; yy < y0 + rows; yy++) for (let xb = 0; xb < bw; xb++){ let v = 0; for (let bit = 0; bit < 8; bit++){ const i = (yy * W + xb * 8 + bit) * 4; if (px[i] + px[i + 1] + px[i + 2] < 384) v |= 0x80 >> bit; } B.push(v); } }
+  B.push(0x1B,0x64,4, 0x1D,0x56,0x42,0x00); return new Uint8Array(B);
+}
+function p80bytes(doc){ if (p80cfg().mode !== "text") return p80raster(doc); const C = p80cfg(), L = p80lines(doc, C.cols), B = [0x1B,0x40];
   if (C.cp === "pc857") B.push(0x1B,0x74,13);
   L.forEach(l => { B.push(0x1B,0x61, l.a === "c" ? 1 : l.a === "r" ? 2 : 0, 0x1B,0x45, l.b ? 1 : 0, 0x1D,0x21, l.big ? 0x11 : 0x00); B.push(...p80enc(l.s, C.cp), 0x0A); });
   B.push(0x1B,0x45,0, 0x1D,0x21,0, 0x1B,0x61,0, 0x1B,0x64,4, 0x1D,0x56,0x42,0x00);
@@ -2865,8 +2891,9 @@ function viewP80(){
     <div class="mfbody p80body"><div class="p80edit">${P.editor ? P.editor() : ""}
       <details><summary style="font-size:.84rem">Yazıcı ayarları</summary><div class="mfgrid" style="margin-top:8px">
         <label class="f">Satır genişliği<select data-p80c="cols">${[48,42,32].map(n => `<option value="${n}" ${C.cols === n ? "selected" : ""}>${n} karakter${n === 48 ? " (80 mm)" : n === 32 ? " (58 mm)" : ""}</option>`).join("")}</select></label>
-        <label class="f">Türkçe karakter<select data-p80c="cp"><option value="pc857" ${C.cp === "pc857" ? "selected" : ""}>PC857 kod sayfası</option><option value="ascii" ${C.cp === "ascii" ? "selected" : ""}>Türkçe harfleri sadeleştir (ç→c)</option></select></label>
-      </div><p class="muted" style="font-size:.78rem;margin:6px 0 0">Türkçe harfler bozuk çıkarsa “sadeleştir”i seçin. “Bluetooth” düğmesi ilk kullanımda yazıcıyı seçtirir (L39 BT Printer).</p></details></div>
+        <label class="f">Baskı modu<select data-p80c="mode"><option value="img" ${C.mode !== "text" ? "selected" : ""}>Görüntü · Türkçe tam uyumlu (önerilen)</option><option value="text" ${C.mode === "text" ? "selected" : ""}>Metin · hızlı</option></select></label>
+        <label class="f">Türkçe karakter (metin modu)<select data-p80c="cp"><option value="pc857" ${C.cp === "pc857" ? "selected" : ""}>PC857 kod sayfası</option><option value="ascii" ${C.cp === "ascii" ? "selected" : ""}>Türkçe harfleri sadeleştir (ç→c)</option></select></label>
+      </div><p class="muted" style="font-size:.78rem;margin:6px 0 0">Görüntü modu her yazıcıda Türkçe harfleri doğru basar (biraz daha yavaş gönderilir). “Bluetooth” düğmesi ilk kullanımda yazıcıyı seçtirir (L39 BT Printer).</p></details></div>
       <div class="p80prev">${p80preview(doc)}</div></div>
     ${P.err ? `<div class="warnbox" style="margin:0 16px">${esc(P.err)}</div>` : ""}
     <div class="mffoot" style="flex-wrap:wrap"><button class="btn" data-act="p80close">İptal</button><span style="flex:1"></span>
@@ -2928,14 +2955,57 @@ function htf80Doc(){ const H = st.htf, f = H.f, F = H.firma;
     { kv: ["Firma", f.ad], b: 1 }, ...(f.sube ? [{ kv: ["Şube", f.sube] }] : []), ...(f.tel ? [{ kv: ["Tel", f.tel] }] : []), ...(f.vergi ? [{ kv: ["Vergi D./No", f.vergi] }] : []),
     { kv: ["Cihaz yeri", f.yer] }, ...(f.mahalle ? [{ kv: ["Mahalle", f.mahalle] }] : []), ...(f.cadde ? [{ kv: ["Cadde", f.cadde] }] : []), ...(f.sokak ? [{ kv: ["Sokak", f.sokak] }] : []),
     ...((f.dis || f.ic) ? [{ kv: ["Kapı no", [f.dis, f.ic && "İç " + f.ic].filter(Boolean).join(" / ")] }] : []), ...(f.eposta ? [{ kv: ["E-mail", f.eposta] }] : []),
-    { kv: ["Yetkili", f.yetkili || "______________"] }, { kv: ["T.C. No", f.tc || "______________"] }, { hr: "-" },
+    { kv: ["Yetkili", f.yetkili || "______________"] }, { kv: ["Doğum tarihi", f.dogum || "__/__/____"] }, { kv: ["T.C. No", f.tc || "______________"] }, { hr: "-" },
     ...HTF_CHECKS.map(([k, lab]) => ({ t: `[${H.checks[k] ? "X" : " "}] ${lab}` })), { hr: "-" },
     { t: `CİHAZLAR (${H.rows.length})`, b: 1 },
     ...H.rows.flatMap((r, i) => [{ t: `${i + 1}) ${r.marka} ${r.tip}  Sınıf ${r.sinif}`, b: 1 }, { t: `   Kap. ${r.kap || "-"}  S/N ${r.seri || "-"}` }, { t: `   Üretim ${r.uretim || "-"}  d ${r.d || "-"}  e ${r.e || "-"}` }]),
     { hr: "-" }, { t: `Listede nitelikleri yazılı firmamızda kullanılmakta olan (AWI/NAWI) tartı aletlerinin ${f.yil} yılı (Periyodik / Tamir Sonrası) muayenelerinin yapılması, mühürleme işlemlerinin gerçekleşmesi ve muayene raporlarının düzenlenerek tarafımıza iletilmesi hususunda gereğini rica ederiz.` },
     { gap: 1 }, { t: "Kaşe / İmza:" }, { gap: 4 }, { hr: "-" }, { t: F.alt, a: "c" }, { t: F.eposta, a: "c" } ]; }
-document.addEventListener("click", e => { const b = e.target.closest('[data-act="htf80"]'); if (!b || !st.htf) return; lsSet("damga.htfFirma", st.htf.firma);
-  const keep = st.htf; p80open({ title: "Hizmet Talep Formu", editor: () => `<p class="muted" style="margin:0;font-size:.86rem">Önizleme sağda. Bir alanı değiştirmek için İptal'e basın; form açık kalır, düzenleyip tekrar yazdırın.</p>`, build: () => { st.htf = st.htf || keep; return htf80Doc(); }, after: async () => { st.htf = null; } }); st.htf = keep; render(); });
+document.addEventListener("click", e => { const b = e.target.closest('[data-act="htf80"]'); if (!b || !st.htf) return; if (!htfValid()) return; lsSet("damga.htfFirma", st.htf.firma);
+  const keep = st.htf; p80open({ title: "Hizmet Talep Formu", editor: () => `<p class="muted" style="margin:0;font-size:.86rem">Önizleme sağda. Bir alanı değiştirmek için İptal'e basın; form açık kalır, düzenleyip tekrar yazdırın.</p>`, build: () => { st.htf = st.htf || keep; return htf80Doc(); }, after: async () => { st.htf = st.htf || keep; htfMark(); st.htf = null; } }); st.htf = keep; render(); });
+/* ---------------- içerdeki veriyi temizle: e-posta koduyla doğrulama + sunucuda yetki kontrolü (purge_data) ---------------- */
+function viewPurge(){
+  const P = st.purge; if (!P) return "";
+  const email = st.profile?.email || "";
+  return `<div class="mfback" data-act="pgback"><div class="mfdlg card" role="dialog" aria-modal="true" aria-label="Veriyi temizle" style="width:min(560px,100%)">
+    <div class="mfhead"><div><div class="eyebrow" style="color:var(--bad)">Geri alınamaz işlem</div><h3 style="margin:2px 0 0">İçerdeki Veriyi Temizle</h3></div><button class="btn sm" data-act="pgclose" aria-label="Kapat">✕</button></div>
+    <div class="mfbody">
+      <label class="row" style="gap:8px;align-items:flex-start;flex-wrap:nowrap"><input type="radio" name="pgscope" value="donem" ${P.scope === "donem" ? "checked" : ""}><span><b>${YEAR} dönem listesi ve planları</b><br><span class="muted" style="font-size:.84rem">${fmt(DEVS_P.length)} dönem kaydı, ${fmt(st.plans.length)} plan ve saha sonuçları silinir. Müşteri, cihaz ve QR kayıtları kalır.</span></span></label>
+      <label class="row" style="gap:8px;align-items:flex-start;flex-wrap:nowrap"><input type="radio" name="pgscope" value="tum" ${P.scope === "tum" ? "checked" : ""}><span><b style="color:var(--bad)">Tüm veriler</b><br><span class="muted" style="font-size:.84rem">Tüm müşteriler, cihazlar, QR kayıtları, tüm dönemler, planlar ve sonuçlar silinir. Kullanıcılar, gruplar ve ayarlar kalır.</span></span></label>
+      ${!email ? `<div class="warnbox">Bu hesapta e-posta yok; temizleme için e-posta ile giriş yapan bir yönetici hesabı gerekir.</div>` : P.sent ? `
+        <div class="share" style="gap:6px"><span style="font-size:.9rem"><b>${esc(email)}</b> adresine 6 haneli doğrulama kodu gönderildi.</span>
+          <label class="f">E-postadaki kod<input id="pg-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" value="${esc(P.code || "")}"></label>
+          <label class="f"><span>Onay için büyük harfle <b>SİL</b> yazın</span><input id="pg-confirm" value="${esc(P.confirm || "")}" autocomplete="off"></label>
+          <button class="link" data-act="pgsend" style="align-self:flex-start;font-size:.84rem">Kodu tekrar gönder</button></div>`
+      : `<p class="muted" style="margin:0;font-size:.88rem">Devam etmek için <b>${esc(email)}</b> adresine doğrulama kodu gönderilecek. Kod 10 dakika geçerlidir.</p>`}
+      ${P.err ? `<div class="warnbox">${esc(P.err)}</div>` : ""}
+    </div>
+    <div class="mffoot"><button class="btn" data-act="pgclose">İptal</button><span style="flex:1"></span>
+      ${!email ? "" : P.sent ? `<button class="btn warn" data-act="pgdo" ${P.busy ? "disabled" : ""}>${P.busy ? "Siliniyor…" : "Kodu doğrula ve temizle"}</button>` : `<button class="btn primary" data-act="pgsend" ${P.busy ? "disabled" : ""}>${P.busy ? "Gönderiliyor…" : "Doğrulama kodu gönder"}</button>`}</div>
+  </div></div>`;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
+  if (a === "pgopen"){ st.purge = { scope: "donem", sent: false }; render(); return; }
+  const P = st.purge; if (!P) return;
+  if (a === "pgclose" || (a === "pgback" && e.target === b)){ st.purge = null; render(); return; }
+  if (a === "pgsend"){ P.busy = true; P.err = ""; render();
+    const { error } = await sb.auth.signInWithOtp({ email: st.profile.email, options: { shouldCreateUser: false } });
+    P.busy = false; if (error) P.err = "Kod gönderilemedi: " + error.message; else { P.sent = true; toast("Doğrulama kodu e-postanıza gönderildi"); } render(); return; }
+  if (a === "pgdo"){ P.code = ($("#pg-code")?.value || "").trim(); P.confirm = ($("#pg-confirm")?.value || "").trim();
+    if (P.confirm !== "SİL"){ P.err = "Onay kutusuna büyük harfle SİL yazın."; render(); return; }
+    if (!/^\d{6,10}$/.test(P.code)){ P.err = "E-postadaki kodu yazın."; render(); return; }
+    P.busy = true; P.err = ""; render();
+    try {
+      const v = await sb.auth.verifyOtp({ email: st.profile.email, token: P.code, type: "email" }); if (v.error) throw new Error("Kod geçersiz ya da süresi dolmuş: " + v.error.message);
+      const r = await q(sb.rpc("purge_data", { p_scope: P.scope, p_donem: P.scope === "donem" ? YEAR : null }));
+      st.purge = null; st.imp = null; await reloadDevices(); await loadDynamic(); render();
+      toast(`Temizlendi: ${fmt(r?.items || 0)} dönem kaydı, ${fmt(r?.plans || 0)} plan${P.scope === "tum" ? `, ${fmt(r?.devices || 0)} cihaz, ${fmt(r?.businesses || 0)} müşteri` : ""}`);
+    } catch(err){ P.busy = false; P.err = /purge_data/.test(err.message) && /function|not find|exist/i.test(err.message) ? "Temizleme fonksiyonu kurulu değil: supabase/damga-temizle.sql çalıştırılmalı." : err.message; render(); }
+  }
+});
+document.addEventListener("change", e => { if (e.target.name === "pgscope" && st.purge){ st.purge.scope = e.target.value; render(); } });
+document.addEventListener("input", e => { if (!st.purge) return; if (e.target.id === "pg-code") st.purge.code = e.target.value; if (e.target.id === "pg-confirm") st.purge.confirm = e.target.value; });
 /* ---------------- boot & giriş ---------------- */
 function showScreen(id){ ["setup","login","loading","app"].forEach(s => { const el = document.getElementById("scr-" + s); if (el) el.hidden = s !== id; }); }
 function loginMsg(m, ok){ const el = $("#lmsg"); if (el){ el.textContent = m || ""; el.className = "lmsg" + (ok ? " ok" : ""); } }
