@@ -46,7 +46,7 @@ h3{font-size:1rem;font-weight:700}
 .mk{width:26px;aspect-ratio:197/189;background:var(--brand);-webkit-mask:var(--mk) center/contain no-repeat;mask:var(--mk) center/contain no-repeat;flex:none}
 .appname{font-family:var(--f-display);font-stretch:118%;font-weight:600;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border-left:1px solid var(--line);padding-left:12px}
 .tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
-.tab{border:0;background:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;color:var(--muted)}
+.tab{border:0;background:none;text-decoration:none;display:inline-block;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;color:var(--muted)}
 .tab:hover{background:var(--sunk);color:var(--ink)}
 .tab[aria-current="true"]{background:var(--brand-soft);color:var(--brand)}
 .who{display:flex;align-items:center;gap:8px;font-size:.85rem}

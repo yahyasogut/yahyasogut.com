@@ -1,4 +1,4 @@
-# Elmaslar Damga Takip — teknik not (v14 · 14 Kasım 2026)
+# Elmaslar Damga Takip — teknik not (v15 · 14 Kasım 2026)
 
 Ayrı proje olarak yahyasogut.com reposunun içinde, kendi klasörlerinde yaşar. Next.js sitesinden bağımsızdır; `public/damga/` statik olarak `/damga/` adresine kopyalanır.
 
@@ -15,6 +15,11 @@ supabase/damga.sql  tablolar, RLS, fonksiyonlar (tekrar çalıştırılabilir)
 supabase/damga-donem.sql  v9 eki: dönemler (period_items) + müşteri grupları
 supabase/damga-sira.sql   v10 eki: lokasyon ve cihaz sıra numaraları
 supabase/damga-rota-gunluk.sql  v13 eki: plans.created_at
+supabase/damga-sms.sql    v15 eki: SMS günlüğü alanları
+supabase/functions/sms-otp     Auth "Send SMS" kancası → Sanal Santral (giriş kodu)
+supabase/functions/sms-gonder  yönetici SMS gönderimi → Sanal Santral
+docs/DAMGA-SMS-KURULUM.md  SMS kurulum adımları
+build.sh            src → app.js birleştirme + sayfa klasörleri
 docs/DAMGA-KURULUM.md   adım adım kurulum
 ```
 
@@ -56,6 +61,20 @@ docs/DAMGA-KURULUM.md   adım adım kurulum
 - Ön basılı QR (sahada cihaza bağlama) Faz 3'te. Şimdilik QR numarası içe aktarımda cihaza verilir.
 
 ## Sürüm geçmişi
+
+- **v15 · 14.11.2026:**
+  - **Sayfa adresleri:** her sekmenin kendi adresi var.
+    - /damga/ozet/, /damga/rota-planla/, /damga/planlar-ekip/, /damga/cihazlar/, /damga/musteriler/, /damga/raporlar/, /damga/veri-ayarlar/, /damga/saha/, /damga/fatura/?not=…
+    - Tarayıcının geri/ileri tuşları çalışıyor; sekme yeni pencerede açılabiliyor; adres doğrudan açıldığında girişten sonra o sayfaya gidiliyor.
+    - Her adres için `public/damga/<sayfa>/index.html` kopyası var (`<base href="/damga/">`).
+  - **SMS (Sanal Santral):**
+    - `sms-otp`: Supabase Auth Send SMS kancası, saha girişi doğrulama kodu.
+    - `sms-gonder`: yalnızca yönetici çağırabilir; müşteri bilgilendirme ve test.
+    - Kimlik: kullanıcı adı + API anahtarı. Varsayılan Basic, gerekirse Bearer ya da X-API-Key.
+    - Tüm gönderimler `sms_log`'a yazılıyor; giriş kodunun kendisi saklanmıyor.
+  - **Veri & ayarlar → SMS kartı:** test SMS ve son gönderimler.
+  - **Müşteriler & gruplar → seçili müşterilere SMS:** şablon değişkenleri, önizleme, karakter / SMS adedi, cep numarası olmayanların listesi.
+  - Kurulum: `docs/DAMGA-SMS-KURULUM.md`. Yeni SQL eki: `supabase/damga-sms.sql`. Önbellek sürümü ?v=15.
 
 - **v14 · 14.11.2026:**
   - Kayıt düzenleyici → **Seriye göre mükerrerleri bul** artık seri gruplarıyla çalışıyor (sayfa başına 20 grup).

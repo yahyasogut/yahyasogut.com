@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v14 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v15 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -249,8 +249,9 @@ function render(){
     ? [["ozet","Yönetici özeti"],["planla","Rota planla"],["planlar","Planlar & ekip"],["cihazlar","Cihazlar & QR"],["musteriler","Müşteriler & gruplar"],["raporlar","Raporlar"],["veri","Veri & ayarlar"]]
     : [["saha","Bugünkü rotam"],["cihazlar","Cihaz bul"]];
   if (st.view !== "cihaz" && !(st.view === "fatura" && st.isAdmin) && !tabs.some(t => t[0] === st.view)) st.view = tabs[0][0];
+  syncPath();
   const cur = st.view === "cihaz" ? "cihazlar" : st.view === "fatura" ? "ozet" : st.view;
-  $("#tabs").innerHTML = tabs.map(t => `<button class="tab" data-act="view" data-v="${t[0]}" aria-current="${cur===t[0]}">${t[1]}</button>`).join("");
+  $("#tabs").innerHTML = tabs.map(t => `<a class="tab" href="${BASE_PATH}${SLUG[t[0]]}/" data-act="view" data-v="${t[0]}" aria-current="${cur===t[0]}">${t[1]}</a>`).join("");
   const nm = st.profile?.ad || st.profile?.email || "";
   $("#who").innerHTML = `${periodPicker()}${groupPicker()}${st.isAdmin ? `<button class="btn sm" data-act="role" title="Görünümü değiştir">${st.role==="admin"?"Saha görünümü":"Yönetici görünümü"}</button>` : ""}
     <span class="pill ${st.isAdmin && st.role==="admin"?"admin":""}" title="${esc(st.profile?.email||"")}">${esc(nm.split(" ")[0] || "Hesap")} · ${st.isAdmin ? (st.role==="admin" ? "Yönetici" : "Saha önizleme") : "Saha"}</span>
@@ -264,6 +265,24 @@ function render(){
   $("#main").innerHTML = v();
   if (st.view === "planla") hydratePlanner();
 }
+/* ---- sayfa adresleri: /damga/ozet/, /damga/rota-planla/ … (her sekmenin kendi adresi; geri/ileri tuşları çalışır) ---- */
+const BASE_PATH = (() => { try { return new URL(APP_URL).pathname.replace(/\/?$/, "/"); } catch(_){ return "/damga/"; } })();
+const SLUG = { ozet: "ozet", planla: "rota-planla", planlar: "planlar-ekip", cihazlar: "cihazlar", cihaz: "cihazlar", musteriler: "musteriler", raporlar: "raporlar", veri: "veri-ayarlar", saha: "saha", fatura: "fatura" };
+function viewFromPath(){ const s = decodeURIComponent(location.pathname.slice(BASE_PATH.length).split("/")[0] || ""); return Object.keys(SLUG).find(v => v !== "cihaz" && SLUG[v] === s) || null; }
+function syncPath(){
+  if (!st.ready || !SLUG[st.view] || !history.pushState) return;
+  const qs = st.view === "fatura" && st.fk ? "?not=" + encodeURIComponent(st.fk) : "";
+  const want = BASE_PATH + SLUG[st.view] + "/" + qs, keepHash = ["cihaz","saha"].includes(st.view) ? location.hash : "";
+  if (location.pathname + location.search === want) return;
+  try { history[st._routed && !st._pop ? "pushState" : "replaceState"](null, "", want + keepHash); } catch(_){}
+  st._routed = true;
+}
+function routeFromPath(){
+  const v = viewFromPath(); if (!v) return;
+  if (st.isAdmin || ["saha","cihazlar"].includes(v)){ st.view = v; if (st.isAdmin && v === "saha") st.role = "saha"; }
+  if (v === "fatura"){ st.fk = new URLSearchParams(location.search).get("not") || ""; }
+}
+window.addEventListener("popstate", () => { if (!st.ready) return; st._pop = true; routeFromPath(); if (!viewFromPath()) st.view = st.isAdmin && st.role === "admin" ? "ozet" : "saha"; render(); st._pop = false; });
 
 /* ---- sağ üst: dönem ve grup seçimi ---- */
 function periodList(){ const s = new Set([NOW_Y, NOW_Y + 1, YEAR]); st.periods.forEach(p => s.add(p.y)); return [...s].sort((a, b) => a - b); }
@@ -985,7 +1004,7 @@ document.addEventListener("click", async e => {
   if (["impfile","gf","cusel","cuall","cugrp","donem","pick","devchk","ddpick","rstaff","mv","dpick","pf","impmap","pasel","duptgt","dupkeep"].includes(a)) return; // change handlers
   if (["optimize","saveplan","up","down","rm","add","newplan"].includes(a)) readCfg();
   switch (a){
-    case "view": st.view = b.dataset.v; clearHash(); render(); window.scrollTo(0,0); break;
+    case "view": if (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return; e.preventDefault(); st.view = b.dataset.v; clearHash(); render(); window.scrollTo(0,0); break;
     case "dfs": { const v = b.dataset.v; st.df.s = st.df.s.includes(v) ? st.df.s.filter(x => x !== v) : [...st.df.s, v]; st.df.page = 0; render(); break; }
     case "dflag": st.df.flag = !st.df.flag; st.df.page = 0; render(); break;
     case "ddep": st.df.dep = !st.df.dep; st.df.page = 0; render(); break;
@@ -1610,6 +1629,7 @@ function viewData(){
   ${impCard("donem")}
   ${impCard("yeni")}
   ${viewEditor()}
+  ${viewSmsCard()}
   <div class="card pad stack" style="gap:10px"><h3>Konumlar</h3>
     <div class="metrics"><div><b>${fmt(prec.ok||0)}</b><span>doğrulanmış (Google / elle)</span></div><div><b>${fmt(prec.mah||0)}</b><span>≈ mahalle merkezi</span></div><div><b>${fmt(prec.ilce||0)}</b><span>≈ ilçe merkezi</span></div></div>
     <p class="muted" style="margin:0;font-size:.9rem">Google Geocoding ile adresler koordinata çevrilir. Bulunamayan adresler (“DEPO”, “KAŞ” gibi) sahadan “Konumu kaydet” ile düzeltilir. Google, ayda belirli bir sorguya kadar ücretsiz; ${fmt((prec.mah||0)+(prec.ilce||0))} sorgu bu sınırın çok altında.</p>
@@ -1844,6 +1864,7 @@ function viewCustomers(){
     </tbody></table></div>
     <form id="groupForm" class="row"><input id="gf-ad" required maxlength="60" placeholder="Yeni grup adı (örn. MİGROS)" style="min-width:240px"><button class="btn primary">Grup ekle</button></form>
   </div>
+  ${viewSmsComposer()}
   <div class="card pad stack" style="gap:10px">
     <div class="row" style="justify-content:space-between"><h3 style="margin:0">Müşteri listesi</h3>
       <div class="seg"><button class="segb" data-act="cuscope" data-v="donem" aria-pressed="${c.scope !== "tum"}">${YEAR} dönemindekiler</button><button class="segb" data-act="cuscope" data-v="tum" aria-pressed="${c.scope === "tum"}">Tüm müşteriler</button></div></div>
@@ -1865,6 +1886,7 @@ function viewCustomers(){
       <select id="cu-bulkg">${GROUPS.length ? gOpts("", "Grup seçin") : `<option value="">Önce grup ekleyin</option>`}</select>
       <button class="btn primary sm" data-act="cuassign" ${GROUPS.length ? "" : "disabled"}>Gruba ata</button>
       <button class="btn sm" data-act="cuunassign">Gruptan çıkar</button>
+      <button class="btn sm" data-act="smsopen">SMS gönder</button>
       <button class="link" data-act="cuclear">Seçimi temizle</button></div>` : ""}
   </div></div>`;
 }
@@ -2246,6 +2268,72 @@ document.addEventListener("input", e => {
   st.fq = e.target.value; clearTimeout(cfgT);
   cfgT = setTimeout(() => { const pos = e.target.selectionStart; render(); const n = document.getElementById("fat-q"); if (n){ n.focus(); try { n.setSelectionRange(pos, pos); } catch(_){} } }, 250);
 });
+/* ---------------- SMS (Sanal Santral, Supabase Edge Function "sms-gonder") ---------------- */
+const SMS_TPL = "Sayın {firma}, {donem} yılı periyodik damga (muayene) çalışması kapsamında ekibimiz {ilce} bölgesinde olacaktır. {cihaz} cihazınız için bilgilendirme. Elmaslar Elektronik Tartı";
+const mob90 = p => { let d = String(p || "").replace(/\D/g, ""); if (d.startsWith("0")) d = "90" + d.slice(1); if (d.length === 10 && d[0] === "5") d = "90" + d; return /^905\d{9}$/.test(d) ? d : null; };
+const GSM7 = /^[A-Za-z0-9 @£$¥èéùìòÇØøÅå_ÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà\n\r^{}\\[~\]|€]*$/;
+function smsParts(t){ const n = [...t].length, g = GSM7.test(t); const one = g ? 160 : 70, multi = g ? 153 : 67; return { n, g, parts: n <= one ? (n ? 1 : 0) : Math.ceil(n / multi) }; }
+function smsFill(tpl, l){ return tpl.replace(/\{firma\}/g, titleTR(String(l.n).split(" · ")[0])).replace(/\{ilce\}/g, titleTR(l.i)).replace(/\{il\}/g, titleTR(l.il))
+  .replace(/\{donem\}/g, String(YEAR)).replace(/\{cihaz\}/g, String(l.d.length || l.nAll || "")); }
+async function smsContacts(){ if (st.smsCt) return st.smsCt; const m = {}; try { (await q(sb.from("contacts").select("business_id,tel").limit(10000))).forEach(c => { if (mob90(c.tel) && !m[c.business_id]) m[c.business_id] = c.tel; }); } catch(_){}
+  st.smsCt = m; return m; }
+function smsRecipients(){
+  const ct = st.smsCt || {}, ok = [], bad = [];
+  [...st.cu.sel].map(k => BY[k]).filter(Boolean).forEach(l => { const p = mob90(l.t) || mob90(ct[l.k]); p ? ok.push({ l, p }) : bad.push(l); });
+  return { ok, bad };
+}
+function viewSmsComposer(){
+  const C = st.smsc; if (!C || !C.open) return "";
+  const R = smsRecipients(), ex = R.ok[0] ? smsFill(C.text, R.ok[0].l) : smsFill(C.text, { n: "Örnek Firma", i: "KEPEZ", il: "ANTALYA", d: [1, 2] }), sp = smsParts(ex);
+  return `<div class="card pad stack" style="gap:10px;border-color:var(--brand)" id="smscomp">
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Müşterilere SMS · ${fmt(st.cu.sel.size)} müşteri seçili</h3><button class="btn sm" data-act="smsclose">Kapat</button></div>
+    <div class="row" style="gap:16px;font-size:.9rem"><span><b>${fmt(R.ok.length)}</b> geçerli cep numarası</span>${R.bad.length ? `<span class="muted">${fmt(R.bad.length)} müşteride cep numarası yok (sabit hat ya da boş), gönderilmeyecek</span>` : ""}</div>
+    <label class="f">Mesaj <textarea id="sms-text" rows="4" maxlength="900" style="font:inherit">${esc(C.text)}</textarea></label>
+    <div class="muted" style="font-size:.8rem">Değişkenler: <code>{firma}</code> <code>{ilce}</code> <code>{il}</code> <code>{donem}</code> <code>{cihaz}</code> (bu dönemdeki cihaz sayısı). Bilgilendirme amaçlı mesaj; reklam/kampanya içeriği İYS onayı gerektirir.</div>
+    <div class="share" style="gap:4px"><div class="muted" style="font-size:.78rem">Önizleme${R.ok[0] ? ` · ${esc(titleTR(R.ok[0].l.n))} · ${esc(R.ok[0].p)}` : ""}</div><div style="white-space:pre-wrap">${esc(ex)}</div>
+      <div class="muted" style="font-size:.78rem">${sp.n} karakter · ${sp.parts} SMS${sp.g ? "" : " (Türkçe karakter var; SMS başına 70 karakter)"} · toplam yaklaşık ${fmt(sp.parts * R.ok.length)} SMS</div></div>
+    ${R.bad.length ? `<details><summary>Cep numarası olmayan ${fmt(R.bad.length)} müşteri</summary><div class="muted" style="font-size:.84rem;margin-top:6px">${R.bad.slice(0, 60).map(l => `${esc(titleTR(l.n))} (${esc(l.t || "tel yok")})`).join(" · ")}${R.bad.length > 60 ? " …" : ""}</div></details>` : ""}
+    <div class="row"><button class="btn primary" data-act="smssend" ${C.busy || !R.ok.length ? "disabled" : ""}>${C.busy ? "Gönderiliyor…" : `${fmt(R.ok.length)} numaraya gönder`}</button>
+      ${C.res ? `<span style="font-size:.9rem"><b style="color:var(--ok)">${fmt(C.res.sent)} gönderildi</b>${C.res.failed ? ` · <b style="color:var(--bad)">${fmt(C.res.failed)} gönderilemedi</b>` : ""}</span>` : ""}</div>
+    ${C.res && C.res.failed ? `<details><summary>Gönderilemeyenler</summary><div class="muted" style="font-size:.84rem;margin-top:6px">${C.res.results.filter(r => !r.ok).slice(0, 100).map(r => `${esc(r.phone)}: ${esc(r.error || "")}`).join("<br>")}</div></details>` : ""}
+  </div>`;
+}
+function viewSmsCard(){
+  const L = st.smsLog;
+  return `<div class="card pad stack" style="gap:10px"><h3>SMS · Sanal Santral</h3>
+    <p class="muted" style="margin:0;font-size:.9rem">Saha ekibinin telefonla girişindeki doğrulama kodu ve müşteri bilgilendirme SMS'leri Sanal Santral üzerinden gider. Kullanıcı adı, şifre ve gönderici başlığı Supabase'de gizli tutulur, bu sayfada görünmez. Müşterilere toplu SMS: Müşteriler & gruplar → müşterileri seçin → SMS gönder.</p>
+    <form id="smsTest" class="row"><input id="sms-test-no" inputmode="tel" placeholder="05xx xxx xx xx" style="width:170px" required><button class="btn">Test SMS gönder</button><button class="link" type="button" data-act="smslog">${L ? "Günlüğü yenile" : "Son gönderimleri göster"}</button></form>
+    ${L ? (L.err ? `<div class="warnbox">${esc(L.err)}</div>` : `<div class="tbl-wrap"><table class="rptbl" style="font-size:.84rem"><thead><tr><th>Zaman</th><th>Tür</th><th>Telefon</th><th>Durum</th><th>Mesaj / hata</th></tr></thead><tbody>
+      ${L.rows.map(r => `<tr><td class="mono">${esc(String(r.gonderim || "").slice(0, 16).replace("T", " "))}</td><td>${esc(r.tur || "")}</td><td class="mono">${esc(r.telefon || "")}</td><td>${r.durum === "gonderildi" ? `<span class="st tamam">Gönderildi</span>` : `<span class="st tekrar">${esc(r.durum || "")}</span>`}</td><td class="muted" style="white-space:normal">${esc(r.hata || r.mesaj || "")}</td></tr>`).join("") || `<tr><td colspan="5" class="muted">Henüz gönderim yok.</td></tr>`}
+    </tbody></table></div>`) : ""}
+  </div>`;
+}
+async function smsInvoke(items, tur){
+  const { data, error } = await sb.functions.invoke("sms-gonder", { body: { items, tur, donem: YEAR } });
+  if (error){ let m = error.message; try { const j = await error.context?.json?.(); if (j?.error) m = j.error; } catch(_){} throw new Error(/Failed to send|fetch/i.test(m) ? "SMS servisine ulaşılamadı (sms-gonder fonksiyonu kurulu mu?)" : m); }
+  return data;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
+  if (a === "smsopen"){ st.smsc = { open: true, text: (st.smsc && st.smsc.text) || SMS_TPL }; await smsContacts(); render(); setTimeout(() => $("#smscomp")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }
+  if (a === "smsclose"){ st.smsc = null; render(); }
+  if (a === "smssend"){ const C = st.smsc, R = smsRecipients(); if (!R.ok.length) return;
+    if (!confirm(`${R.ok.length} numaraya SMS gönderilsin mi?`)) return;
+    C.busy = true; C.res = null; render(); const all = { sent: 0, failed: 0, results: [] };
+    try { const items = R.ok.map(({ l, p }) => ({ phone: p, text: smsFill(C.text, l), business_id: l.k }));
+      for (let i = 0; i < items.length; i += 200){ const r = await smsInvoke(items.slice(i, i + 200), "bilgilendirme"); all.sent += r.sent || 0; all.failed += r.failed || 0; all.results.push(...(r.results || [])); }
+      toast(`${fmt(all.sent)} SMS gönderildi${all.failed ? `, ${all.failed} gönderilemedi` : ""}`);
+    } catch(err){ toast("SMS gönderilemedi: " + err.message); }
+    C.busy = false; C.res = all; render(); }
+  if (a === "smslog"){ try { st.smsLog = { rows: await q(sb.from("sms_log").select("*").order("gonderim", { ascending: false }).limit(30)) }; } catch(err){ st.smsLog = { err: "Günlük okunamadı: " + err.message + " (damga-sms.sql çalıştırıldı mı?)" }; } render(); }
+});
+document.addEventListener("input", e => { if (e.target.id === "sms-text" && st.smsc){ st.smsc.text = e.target.value; clearTimeout(cfgT); cfgT = setTimeout(() => { const pos = e.target.selectionStart; render(); const n = $("#sms-text"); if (n){ n.focus(); try { n.setSelectionRange(pos, pos); } catch(_){} } }, 400); } });
+document.addEventListener("submit", async e => {
+  if (e.target.id !== "smsTest") return; e.preventDefault();
+  const p = mob90($("#sms-test-no").value); if (!p){ toast("Cep numarasını 05xx xxx xx xx biçiminde yazın"); return; }
+  try { const r = await smsInvoke([{ phone: p, text: `Elmaslar Damga Takip test mesajı (${new Date().toLocaleString("tr-TR")}).` }], "test");
+    toast(r.sent ? "Test SMS gönderildi" : "Gönderilemedi: " + (r.results?.[0]?.error || "bilinmeyen hata")); } catch(err){ toast(err.message); }
+});
 /* ---------------- boot & giriş ---------------- */
 function showScreen(id){ ["setup","login","loading","app"].forEach(s => { const el = document.getElementById("scr-" + s); if (el) el.hidden = s !== id; }); }
 function loginMsg(m, ok){ const el = $("#lmsg"); if (el){ el.textContent = m || ""; el.className = "lmsg" + (ok ? " ok" : ""); } }
@@ -2262,7 +2350,7 @@ async function start(session){
     if (prof.rol === "bolge" && prof.bolge_id) st.f.region = String(prof.bolge_id);
     await loadAll();
     if (st.f.region){ const r = st.regions.find(x => String(x.id) === st.f.region); if (r) st.f.ilce = (r.ilceler || []).slice(); }
-    st.ready = true; applyHash(); showScreen("app"); render();
+    st.ready = true; routeFromPath(); applyHash(); showScreen("app"); render();
     sb.channel("damga-canli")
       .on("postgres_changes", { event: "*", schema: "public", table: "plans" }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "results" }, scheduleRefresh)
