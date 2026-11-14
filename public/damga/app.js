@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v11 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v12 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -67,6 +67,7 @@ function applyGroupFilter(){
   S = computeSummary();
 }
 const inPeriod = id => !!DEVID[id]?.inP;
+const fatKey = s => String(s || "").toLocaleUpperCase("tr-TR").trim().replace(/\s+/g, " ").replace(/FATURASI KESİLDİ|FATURA KESİDİ|^KESİLDİ$/, "FATURA KESİLDİ").replace(/^CEZA$/, "CEZALI");
 function computeSummary(){
   const tru = s => String(s||"").toLocaleUpperCase("tr-TR").trim();
   const all = DEVS, dep = all.filter(o => o.l.dep), fo = all.filter(o => !o.l.dep);
@@ -79,12 +80,13 @@ function computeSummary(){
   const topOpen = Object.values(tc).map(t => ({ n: t.n, d: t.d, l: t.locs.size, b: t.b, t: t.t, u: t.u })).sort((a,b) => b.d - a.d).slice(0, 12);
   const raw = Object.entries(cnt(all.filter(o => o.d[8] !== "tamam"), o => o.d[8] + "|" + (tru(o.d[9]) || "(boş)"))).map(([k, n]) => { const [c, v] = k.split("|"); return { c, v, n }; });
   const yrs = all.map(o => +o.d[6] || null); const yil = {}; yrs.forEach(y => { if (y >= YEAR - 11 && y <= YEAR) yil[y] = (yil[y]||0) + 1; });
-  const fatura = Object.fromEntries(Object.entries(cnt(all, o => tru(o.d[10]).replace(/FATURASI KESİLDİ|FATURA KESİDİ|^KESİLDİ$/, "FATURA KESİLDİ").replace(/^CEZA$/, "CEZALI"))).sort((a,b) => b[1]-a[1]).slice(0, 8));
+  const faturaAll = Object.entries(cnt(all, o => fatKey(o.d[10]))).sort((a,b) => b[1]-a[1]);
+  const fatura = Object.fromEntries(faturaAll.slice(0, 8));
   const locOpen = new Set(fo.filter(o => ["bekliyor","tekrar"].includes(o.d[8])).map(o => o.l.k));
   return { total: all.length, locs: LOCS.filter(l => !l.dep).length, cust: new Set(LOCS.map(l => tru(l.n))).size,
     cat: Object.assign({ tamam:0,islenecek:0,bekliyor:0,tekrar:0,tutanak:0,cihazyok:0,kapsamdisi:0,baskasi:0 }, cnt(all, o => o.d[8])),
     dep: { n: dep.length, cats: cnt(dep, o => o.d[8]) }, fieldOpenDev: fo.filter(o => open.includes(o.d[8])).length, fieldOpenLocPure: locOpen.size,
-    ilce, topOpen, raw, fatura, yil, yilOld: yrs.filter(y => y && y < YEAR - 11).length, yilNA: yrs.filter(y => !y).length,
+    ilce, topOpen, raw, fatura, faturaAll, yil, yilOld: yrs.filter(y => y && y < YEAR - 11).length, yilNA: yrs.filter(y => !y).length,
     dq: { durumBos: all.filter(o => !o.d[9]).length, durumYazim: new Set(all.map(o => tru(o.d[9])).filter(Boolean)).size,
       ilTel: 0, markaVar: new Set(all.map(o => o.d[2]).filter(Boolean)).size, adresKisa: LOCS.filter(l => l.a.length < 20).length,
       seriYok: all.filter(o => o.d[15] === "seri-yok").length, seriTekrar: all.filter(o => o.d[15] === "seri-tekrar").length,
@@ -246,14 +248,14 @@ function render(){
   const tabs = st.isAdmin && st.role === "admin"
     ? [["ozet","Yönetici özeti"],["planla","Rota planla"],["planlar","Planlar & ekip"],["cihazlar","Cihazlar & QR"],["musteriler","Müşteriler & gruplar"],["raporlar","Raporlar"],["veri","Veri & ayarlar"]]
     : [["saha","Bugünkü rotam"],["cihazlar","Cihaz bul"]];
-  if (st.view !== "cihaz" && !tabs.some(t => t[0] === st.view)) st.view = tabs[0][0];
-  const cur = st.view === "cihaz" ? "cihazlar" : st.view;
+  if (st.view !== "cihaz" && !(st.view === "fatura" && st.isAdmin) && !tabs.some(t => t[0] === st.view)) st.view = tabs[0][0];
+  const cur = st.view === "cihaz" ? "cihazlar" : st.view === "fatura" ? "ozet" : st.view;
   $("#tabs").innerHTML = tabs.map(t => `<button class="tab" data-act="view" data-v="${t[0]}" aria-current="${cur===t[0]}">${t[1]}</button>`).join("");
   const nm = st.profile?.ad || st.profile?.email || "";
   $("#who").innerHTML = `${periodPicker()}${groupPicker()}${st.isAdmin ? `<button class="btn sm" data-act="role" title="Görünümü değiştir">${st.role==="admin"?"Saha görünümü":"Yönetici görünümü"}</button>` : ""}
     <span class="pill ${st.isAdmin && st.role==="admin"?"admin":""}" title="${esc(st.profile?.email||"")}">${esc(nm.split(" ")[0] || "Hesap")} · ${st.isAdmin ? (st.role==="admin" ? "Yönetici" : "Saha önizleme") : "Saha"}</span>
     <button class="btn sm" data-act="logout">Çıkış</button>`;
-  const v = { ozet: viewSummary, planla: viewPlanner, planlar: viewPlans, saha: viewField, cihazlar: viewDevices, cihaz: viewDevice, veri: viewData, raporlar: viewReports, musteriler: viewCustomers }[st.view];
+  const v = { ozet: viewSummary, planla: viewPlanner, planlar: viewPlans, saha: viewField, cihazlar: viewDevices, cihaz: viewDevice, veri: viewData, raporlar: viewReports, musteriler: viewCustomers, fatura: viewFatura }[st.view];
   if (!DEVS_P.length && !["veri","musteriler"].includes(st.view)){
     $("#main").innerHTML = st.isAdmin ? viewEmptyPeriod()
       : `<div class="card empty" style="max-width:640px;margin:40px auto">${YEAR} döneminde henüz veri yok. Yöneticiniz dönem listesini yüklediğinde burada görünecek.</div>`;
@@ -304,7 +306,8 @@ function viewSummary(){
     <td>${t.b?`<span class="st bekliyor">${t.b}</span> `:""}${t.t?`<span class="st tekrar">${t.t}</span> `:""}${t.u?`<span class="st tutanak">${t.u}</span>`:""}</td></tr>`).join("");
   const yrs = Object.entries(S.yil); const ymax = Math.max(S.yilOld, ...yrs.map(y => y[1]));
   const vb = [[`<${YEAR-11}`, S.yilOld], ...yrs].map(([y,n]) => `<div><small>${n}</small><i style="height:${n/ymax*100}%"></i><em>${y}</em></div>`).join("");
-  const fat = Object.entries(S.fatura).map(([k,n]) => `<tr><td>${esc(titleTR(k))}</td><td class="r">${n}</td></tr>`).join("");
+  const fat = S.faturaAll.slice(0, 10).map(([k,n]) => `<tr><td><button class="link rowlink" data-act="fatpage" data-k="${esc(k)}">${esc(titleTR(k))}</button></td><td class="r"><button class="link" data-act="fatpage" data-k="${esc(k)}">${fmt(n)}</button></td></tr>`).join("")
+    + (S.faturaAll.length > 10 ? `<tr><td colspan="2"><button class="link" data-act="fatpage" data-k="">Tüm notlar (${S.faturaAll.length}) →</button></td></tr>` : "");
   const rawRows = S.raw.slice().sort((a,b)=>a.c.localeCompare(b.c)||b.n-a.n).map(r => `<tr><td><span class="st ${r.c}">${CAT[r.c].l}</span></td><td class="mono">${esc(r.v)}</td><td class="r">${r.n}</td></tr>`).join("");
   // live field results
   const rs = Object.values(st.results); const rc = {};
@@ -1593,7 +1596,6 @@ function viewData(){
   ${impCard("yeni")}
   ${viewEditor()}
   ${viewPlaceAudit()}
-  ${viewDupes()}
   <div class="card pad stack" style="gap:10px"><h3>Konumlar</h3>
     <div class="metrics"><div><b>${fmt(prec.ok||0)}</b><span>doğrulanmış (Google / elle)</span></div><div><b>${fmt(prec.mah||0)}</b><span>≈ mahalle merkezi</span></div><div><b>${fmt(prec.ilce||0)}</b><span>≈ ilçe merkezi</span></div></div>
     <p class="muted" style="margin:0;font-size:.9rem">Google Geocoding ile adresler koordinata çevrilir. Bulunamayan adresler (“DEPO”, “KAŞ” gibi) sahadan “Konumu kaydet” ile düzeltilir. Google, ayda belirli bir sorguya kadar ücretsiz; ${fmt((prec.mah||0)+(prec.ilce||0))} sorgu bu sınırın çok altında.</p>
@@ -1960,16 +1962,25 @@ const EDF = Object.fromEntries(ED_FIELDS.map(f => [f[0], f]));
 const ED_DEFAULT = ["unvan","ilce","adres","marka","model","seri_no","max_cap","durum_grup"];
 const ED_STATUS = ["bekliyor","tamam","islenecek","tekrar","tutanak","cihazyok","kapsamdisi","baskasi"];
 function edState(){
-  if (!st.ed) st.ed = { open: false, cols: lsGet("damga.edcols", ED_DEFAULT).filter(k => EDF[k]), q: "", ilce: "", durum: "", page: 0, sel: new Set(), dirty: new Map(), busy: false };
+  if (!st.ed) st.ed = { open: false, colsOpen: true, cols: lsGet("damga.edcols", ED_DEFAULT).filter(k => EDF[k]), q: "", ilce: "", durum: "", page: 0, sel: new Set(), dirty: new Map(), busy: false };
   return st.ed;
 }
 function edRows(){
   const E = edState(), qq = TRU(E.q);
   if (E.ids) return [...E.ids].map(id => DEVID[id]).filter(Boolean);
-  return DEVS.filter(o => !o.l.dep && (!E.ilce || o.l.i === E.ilce) && (!E.durum || o.d[8] === E.durum)
-    && (!qq || TRU([o.l.n, o.l.a, o.d[2], o.d[3], o.d[4], o.d[11], lno(o.l), cno(o.d)].join(" ")).includes(qq)))
-    .sort((a, b) => (a.l.no || 1e12) - (b.l.no || 1e12) || (a.d[26] || 1e12) - (b.d[26] || 1e12));
+  const sc = E.dupSeri ? edSeriCount() : null;
+  const out = DEVS.filter(o => !o.l.dep && (!E.ilce || o.l.i === E.ilce) && (!E.durum || o.d[8] === E.durum)
+    && (!E.cap || capKey(o.d[12]) === E.cap)
+    && (!sc || (o.d[23] !== false && (sc.get(realSeri(o.d[4])) || 0) > 1))
+    && (!qq || TRU([o.l.n, o.l.a, o.d[2], o.d[3], o.d[4], o.d[11], lno(o.l), cno(o.d)].join(" ")).includes(qq)));
+  return sc ? out.sort((a, b) => realSeri(a.d[4]).localeCompare(realSeri(b.d[4])) || (a.l.no || 1e12) - (b.l.no || 1e12))
+    : out.sort((a, b) => (a.l.no || 1e12) - (b.l.no || 1e12) || (a.d[26] || 1e12) - (b.d[26] || 1e12));
 }
+const capKey = v => { const s = TRU(v).replace(/\s+/g, " ").replace(/,/g, "."); if (!s) return "(boş)"; return /KG$/.test(s) ? s.replace(/\s*KG$/, " KG") : /\d\s*GR?$/.test(s) ? s.replace(/\s*GR?$/, " G") : s; };
+function edSeriCount(){ const m = new Map(); DEVS.forEach(o => { if (o.l.dep || o.d[23] === false) return; const s = realSeri(o.d[4]); if (s) m.set(s, (m.get(s) || 0) + 1); }); return m; }
+function edCaps(){ const m = new Map(); DEVS.forEach(o => { if (!o.l.dep){ const k = capKey(o.d[12]); m.set(k, (m.get(k) || 0) + 1); } });
+  const num = k => { const x = parseFloat(String(k).replace(",", ".")); return isNaN(x) ? 1e9 : x * (/ G$/.test(k) ? 0.001 : 1); };
+  return [...m].sort((a, b) => num(a[0]) - num(b[0]) || a[0].localeCompare(b[0], "tr")); }
 const edVal = (o, k) => { const ch = edState().dirty.get(o.d[0])?.[k]; return ch !== undefined ? ch : (EDF[k][4](o) ?? ""); };
 function edCell(o, k){
   const f = EDF[k], v = edVal(o, k), dirty = edState().dirty.get(o.d[0])?.[k] !== undefined, cls = dirty ? "edin dirty" : "edin";
@@ -1992,13 +2003,17 @@ function viewEditor(){
     <div class="row" style="justify-content:space-between"><h3 style="margin:0">Kayıt düzenleyici · ${YEAR}</h3><button class="btn sm" data-act="edclose">Kapat</button></div>
     ${noSira ? `<div class="warnbox">Sıra numaraları için Supabase'de <b>supabase/damga-sira.sql</b> çalıştırılmalı.</div>` : ""}
     <details id="ed-cols" ${E.colsOpen || !E.cols.length ? "open" : ""}><summary>Gösterilecek alanlar (${E.cols.length}) · seçin</summary>
-      <div class="chips" style="margin-top:8px">${ED_FIELDS.map(([k, lab, lev]) => `<button class="chip" data-act="edcol" data-k="${k}" aria-pressed="${E.cols.includes(k)}">${esc(lab)}${lev === "biz" ? " ⌂" : ""}</button>`).join("")}</div>
+      <div class="chips" style="margin-top:8px">${ED_FIELDS.map(([k, lab, lev]) => `<button class="chip" data-act="edcol" data-k="${k}" aria-pressed="${E.cols.includes(k)}">${esc(lab)}${lev === "biz" ? " ⌂" : ""}</button>`).join("")}
+        <button class="btn sm ${E.capOn ? "primary" : ""}" data-act="edcap" aria-pressed="${!!E.capOn}">Kapasite</button>
+        <button class="btn sm ${E.dupSeri ? "primary" : ""}" data-act="eddupseri" aria-pressed="${!!E.dupSeri}">Seriye göre mükerrerleri bul</button></div>
       <div class="muted" style="font-size:.8rem;margin-top:6px">⌂ lokasyon alanı: değişiklik o adresteki tüm cihazlara uygulanır. <button class="link" data-act="edcolreset">Varsayılana dön</button> · <button class="link" data-act="edcolall">Tümü</button></div></details>
     ${E.ids ? `<div class="row warnbox" style="justify-content:space-between"><span>${esc(E.idsLabel || "Seçili kayıtlar")} · ${fmt(E.ids.size)} cihaz gösteriliyor</span><button class="btn sm" data-act="edidsclear">Tüm listeye dön</button></div>` : ""}
+    ${E.dupSeri && !E.ids ? (() => { const sc = edSeriCount(), n = [...sc.values()].filter(x => x > 1).length; return `<div class="row warnbox" style="justify-content:space-between"><span>Seriye göre mükerrer: seri numarası birebir aynı <b>${fmt(n)}</b> seri, listede ${fmt(rows.length)} cihaz (BILA / boş seri hariç, marka fark etmez). Aynı seriler alt alta sıralı.</span><button class="btn sm" data-act="eddupseri">Kapat</button></div>`; })() : ""}
     <div class="row" ${E.ids ? "hidden" : ""}>
       <input id="ed-q" type="search" placeholder="Firma, adres, seri no, QR, sıra no ara" value="${esc(E.q)}" style="min-width:260px">
       <select id="ed-ilce"><option value="">Tüm ilçeler</option>${ilces.map(x => `<option ${x === E.ilce ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
       <select id="ed-durum"><option value="">Tüm durumlar</option>${ED_STATUS.map(s => `<option value="${s}" ${E.durum === s ? "selected" : ""}>${esc(CAT[s]?.l || s)}</option>`).join("")}</select>
+      ${E.capOn ? `<select id="ed-cap" aria-label="Kapasite"><option value="">Tüm kapasiteler</option>${edCaps().map(([k, n]) => `<option value="${esc(k)}" ${E.cap === k ? "selected" : ""}>${esc(k)} · ${fmt(n)}</option>`).join("")}</select>` : ""}
       <span class="muted" style="font-size:.86rem">${fmt(rows.length)} cihaz</span>
     </div>
     <datalist id="dl-ilce">${[...new Set([...(YER.iller.ANTALYA || []), ...ilces])].map(x => `<option value="${esc(x)}">`).join("")}</datalist>
@@ -2052,6 +2067,8 @@ document.addEventListener("click", async e => {
     case "edselall": edRows().forEach(o => E.sel.add(o.d[0])); render(); break;
     case "edselclear": E.sel.clear(); render(); break;
     case "edidsclear": E.ids = null; E.idsLabel = ""; E.page = 0; render(); break;
+    case "edcap": E.capOn = !E.capOn; if (!E.capOn) E.cap = ""; E.colsOpen = true; E.page = 0; render(); break;
+    case "eddupseri": E.dupSeri = !E.dupSeri; E.page = 0; E.colsOpen = true; if (E.dupSeri){ ["marka","seri_no","model","max_cap"].forEach(k => { if (!E.cols.includes(k)) E.cols.push(k); }); } render(); break;
     case "edundo": E.dirty.clear(); render(); break;
     case "edbulk": { const k = $("#ed-bk").value, v = $("#ed-bv").value; const f = EDF[k];
       if (f[5] === "durum" && !ED_STATUS.includes(v) && !statusCat(v)){ toast("Durum için: " + ED_STATUS.join(", ")); break; }
@@ -2086,6 +2103,7 @@ document.addEventListener("change", e => {
   if (a === "edsel"){ t.checked ? E.sel.add(+t.dataset.id) : E.sel.delete(+t.dataset.id); render(); return; }
   if (a === "edall"){ const rows = edRows(), pg = rows.slice(E.page * 50, E.page * 50 + 50); pg.forEach(o => t.checked ? E.sel.add(o.d[0]) : E.sel.delete(o.d[0])); render(); return; }
   if (t.id === "ed-ilce"){ E.ilce = t.value; E.page = 0; render(); return; }
+  if (t.id === "ed-cap"){ E.cap = t.value; E.page = 0; render(); return; }
   if (t.id === "ed-durum"){ E.durum = t.value; E.page = 0; render(); return; }
 });
 document.addEventListener("input", e => {
@@ -2100,6 +2118,62 @@ document.addEventListener("click", e => {
   E.open = true; E.page = 0; E.ids = new Set(grp.map(o => o.d[0])); E.idsLabel = `Mükerrer grup: ${grp[0].d[2]} · seri ${grp[0].d[4]}`;
   ["marka","seri_no","model","max_cap","durum_grup"].forEach(k => { if (!E.cols.includes(k)) E.cols.push(k); });
   render(); setTimeout(() => $("#editor")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+});
+/* ---------------- fatura / ödeme notu sayfaları ---------------- */
+function fatRows(k){
+  const devs = DEVS.filter(o => !o.l.dep && fatKey(o.d[10]) && (!k || fatKey(o.d[10]) === k));
+  const by = new Map(); devs.forEach(o => { (by.get(o.l.k) || by.set(o.l.k, []).get(o.l.k)).push(o); });
+  return [...by.values()].map(arr => ({ l: arr[0].l, devs: arr.sort((a, b) => (a.d[26] || 0) - (b.d[26] || 0)) }))
+    .sort((a, b) => b.devs.length - a.devs.length || a.l.n.localeCompare(b.l.n, "tr"));
+}
+function viewFatura(){
+  const k = st.fk || "", all = S.faturaAll, rows = fatRows(k), nDev = rows.reduce((s, r) => s + r.devs.length, 0);
+  const qq = TRU(st.fq || ""), shown = qq ? rows.filter(r => TRU(r.l.n + " " + r.l.a + " " + r.l.i + " " + r.devs.map(o => o.d[4] + " " + o.d[11]).join(" ")).includes(qq)) : rows;
+  const tamam = rows.reduce((s, r) => s + r.devs.filter(o => o.d[8] === "tamam").length, 0);
+  return `<div class="stack">
+  <div class="row" style="justify-content:space-between;align-items:flex-end">
+    <div><button class="btn sm" data-act="view" data-v="ozet">‹ Yönetici özeti</button>
+      <div class="eyebrow" style="margin-top:10px">Fatura / ödeme notları · ${YEAR} dönemi${(st.gf||[]).length ? " · grup: " + esc(st.gf.join(", ")) : ""}</div>
+      <h2>${k ? esc(titleTR(k)) : "Tüm fatura / ödeme notları"}</h2></div>
+    <button class="btn primary" data-act="fatcsv" ${nDev ? "" : "disabled"}>CSV indir (${fmt(nDev)} cihaz)</button></div>
+  <div class="chips" role="group" aria-label="Not">
+    <button class="chip" data-act="fatpage" data-k="" aria-pressed="${!k}">Tümü · ${fmt(all.reduce((s, x) => s + x[1], 0))}</button>
+    ${all.map(([key, n]) => `<button class="chip" data-act="fatpage" data-k="${esc(key)}" aria-pressed="${k === key}">${esc(titleTR(key))} · ${fmt(n)}</button>`).join("")}</div>
+  <div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <div class="card kpi" style="--c:var(--brand)"><span>Cihaz</span><b>${fmt(nDev)}</b><small>bu notla kayıtlı</small></div>
+    <div class="card kpi" style="--c:var(--tut)"><span>Müşteri / lokasyon</span><b>${fmt(rows.length)}</b><small>${fmt(new Set(rows.map(r => TRU(r.l.n))).size)} farklı ünvan</small></div>
+    <div class="card kpi" style="--c:var(--ok)"><span>Damgası tamamlanan</span><b>${fmt(tamam)}</b><small>${nDev ? "%" + (tamam / nDev * 100).toFixed(1).replace(".", ",") : "—"} · ${YEAR}</small></div></div>
+  <div class="card pad stack" style="gap:10px">
+    <div class="row"><input id="fat-q" type="search" placeholder="Müşteri, adres, seri no, QR ara" value="${esc(st.fq || "")}" style="flex:1 1 260px"><span class="muted" style="font-size:.86rem">${fmt(shown.length)} müşteri</span></div>
+    ${shown.slice(0, 300).map(r => { const l = r.l; return `<div class="share" style="gap:8px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div style="min-width:0"><div class="muted mono" style="font-size:.76rem">Lok. ${lno(l)}${l.g ? ` · <span class="gtag">${esc(l.g)}</span>` : ""}</div>
+          <b>${esc(titleTR(l.n))}</b><div class="muted" style="font-size:.86rem">${esc(titleTR(l.a))} · ${esc(titleTR(l.i))} / ${esc(titleTR(l.il))}</div>
+          <div style="font-size:.86rem">${l.t ? `Tel: <a href="tel:${esc(String(l.t).replace(/\s/g, ""))}">${esc(l.t)}</a>` : `<span class="muted">Telefon yok</span>`} · ${fmt(l.d.length)} cihaz (bu dönem) · konum ${l.p === "ok" ? "doğrulandı" : "yaklaşık"}</div></div>
+        <span class="pill admin">${fmt(r.devs.length)} cihaz</span></div>
+      <div class="tbl-wrap"><table class="rptbl"><thead><tr><th class="r">Cihaz no</th><th>QR</th><th>Marka / model</th><th>Seri no</th><th>Max</th><th>Durum</th><th>Son damga</th>${k ? "" : "<th>Not</th>"}<th>Durum açıklaması</th></tr></thead><tbody>
+        ${r.devs.map(o => { const d = o.d, si = stampInfo(o); return `<tr><td class="r mono">${cno(d)}</td><td class="mono"><button class="link" data-act="dev" data-c="${d[11]}">${esc(d[11])}</button></td><td>${esc(d[2])} ${esc(d[3])}</td><td class="mono">${esc(d[4] || "—")}</td><td class="mono">${esc(d[12] || "")}</td>
+          <td><span class="st ${RP_OUT.includes(d[8]) ? "kapsamdisi" : d[8]}">${esc(CAT[d[8]]?.l || d[8])}</span></td><td class="mono">${si.last || "—"}</td>${k ? "" : `<td>${esc(titleTR(fatKey(d[10])))}</td>`}<td class="muted">${esc(d[9])}</td></tr>`; }).join("")}
+      </tbody></table></div></div>`; }).join("") || `<div class="empty">Kayıt yok.</div>`}
+    ${shown.length > 300 ? `<div class="muted">İlk 300 müşteri gösteriliyor; tamamı için CSV indirin.</div>` : ""}
+  </div></div>`;
+}
+function fatCSV(){
+  const k = st.fk || "", rows = [["Fatura notu","Lok. no","Cihaz no","Grup","Müşteri","İl","İlçe","Adres","Telefon","QR no","Cinsi","Marka","Model","Seri no","Max","Sınıf","Durum","Durum açıklaması","Son damga","Konum"]];
+  fatRows(k).forEach(r => r.devs.forEach(o => { const d = o.d, l = r.l; rows.push([titleTR(fatKey(d[10])), l.no || "", d[26] || "", l.g || "", l.n, l.il, l.i, l.a, l.t, d[11], d[1], d[2], d[3], d[4], d[12], d[16], CAT[d[8]]?.l || d[8], d[9], stampInfo(o).last || "", l.p === "ok" ? "Doğrulandı" : "Yaklaşık"]); }));
+  const tag = k ? "-" + k.toLocaleLowerCase("tr-TR").replace(/[^0-9a-zçğıöşü]+/g, "-") : "";
+  downloadFile(`damga-${YEAR}-fatura${tag}-${todayISO()}.csv`, "﻿" + rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n"));
+  toast(`${fmt(rows.length - 1)} satır CSV olarak indirildi`);
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  if (b.dataset.act === "fatpage"){ st.fk = b.dataset.k || ""; st.fq = ""; st.view = "fatura"; render(); window.scrollTo(0, 0); }
+  if (b.dataset.act === "fatcsv") fatCSV();
+});
+document.addEventListener("input", e => {
+  if (e.target.id !== "fat-q") return;
+  st.fq = e.target.value; clearTimeout(cfgT);
+  cfgT = setTimeout(() => { const pos = e.target.selectionStart; render(); const n = document.getElementById("fat-q"); if (n){ n.focus(); try { n.setSelectionRange(pos, pos); } catch(_){} } }, 250);
 });
 /* ---------------- boot & giriş ---------------- */
 function showScreen(id){ ["setup","login","loading","app"].forEach(s => { const el = document.getElementById("scr-" + s); if (el) el.hidden = s !== id; }); }

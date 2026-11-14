@@ -1,4 +1,4 @@
-# Elmaslar Damga Takip — teknik not (v11 · 14 Kasım 2026)
+# Elmaslar Damga Takip — teknik not (v12 · 14 Kasım 2026)
 
 Ayrı proje olarak yahyasogut.com reposunun içinde, kendi klasörlerinde yaşar. Next.js sitesinden bağımsızdır; `public/damga/` statik olarak `/damga/` adresine kopyalanır.
 
@@ -55,6 +55,20 @@ docs/DAMGA-KURULUM.md   adım adım kurulum
 - Ön basılı QR (sahada cihaza bağlama) Faz 3'te. Şimdilik QR numarası içe aktarımda cihaza verilir.
 
 ## Sürüm geçmişi
+
+- **v12 · 14.11.2026:**
+  - Yönetici özeti → **Fatura / ödeme notları**: not adları ve adetleri tıklanabilir. Her not ayrı bir sayfa açıyor ve sayfalar arası geçiş için notlar sekme olarak gösteriliyor ("Tümü" de var).
+    - Sayfada müşteri bazında kartlar var: Lok. no, grup, adres, il/ilçe, telefon, konum. Altında o nottaki cihazlar: Cihaz no, QR, marka/model, seri, max, durum, son damga, açıklama.
+    - Arama ve CSV indirme var.
+  - Kayıt düzenleyici:
+    - **Kapasite** düğmesi kapasite filtresini açıyor (değer · adet listesi).
+    - **Seriye göre mükerrerleri bul** düğmesi seri numarası birebir aynı olan cihazları marka fark etmeksizin alt alta listeliyor; BILA ve boş seriler dahil değil.
+  - Veri & ayarlar'daki "Mükerrer müşteri ve cihazlar" kartı kaldırıldı; seri bazlı kontrol düzenleyicide.
+  - Son damga yılı kaynağı: `devices.son_damga_yili`.
+    - Excel'deki "SON DAMGA YILI" sütunu temel alınır.
+    - Durumu YAPILDI olan cihazda liste yılı yazılır; "2025 damgalı / Kaptan yapmış" gibi notlardaki yıl kullanılır.
+    - Sonradan saha "tamamlandı", cihaz kartında "damga yapıldı", kayıt düzenleyici ya da CİHAZ NO ile Excel güncellemesi bu değeri günceller.
+  - SQL değişikliği yok. Önbellek sürümü ?v=12.
 
 - **v11 · 14.11.2026:**
   - Mükerrer cihaz taraması artık yalnızca marka ve seri numarası **birebir aynı** olan aktif kayıtları gösteriyor.
