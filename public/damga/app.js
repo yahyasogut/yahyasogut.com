@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v21 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v22 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -2517,8 +2517,9 @@ async function smsDiag(){
     else if (r.status === 403) add(false, "Yalnızca yönetici SMS gönderebilir (403)", "Bu hesabın rolü admin olmalı.");
     else if (!r.ok) add(false, `Fonksiyon hata verdi (${r.status})`, (j && (j.error || j.message || j.msg)) || "Supabase → Edge Functions → sms-gonder → Logs bölümüne bakın.");
     else if (j && j.ok){ add(true, "sms-gonder fonksiyonu çalışıyor", "Adres: " + (j.api || ""));
-      add(!!j.secrets.SS_API_KEY, "SS_API_KEY tanımlı", j.secrets.SS_API_KEY ? "" : "Edge Functions → Secrets → SS_API_KEY adıyla ss_live_… anahtarını ekleyin.");
-      add(!!j.secrets.SS_SENDER, "SS_SENDER (gönderici başlığı)", j.secrets.SS_SENDER ? "" : "Tanımlı değil; Sanal Santral varsayılan başlığı kullanır. Onaylı başlığınız varsa ekleyin.");
+      add(!!j.secrets.SS_API_KEY, "SS_API_KEY (API şifresi) tanımlı", j.secrets.SS_API_KEY ? "" : "Edge Functions → Secrets → SS_API_KEY adıyla ss_live_… anahtarını ekleyin.");
+      add(!!j.secrets.SS_USERNAME, "SS_USERNAME (API kullanıcı adı)", j.secrets.SS_USERNAME ? "" : "Zorunlu: Sanal Santral SMS API kullanıcı adı. Şifre SS_API_KEY'e yazılır (API Basic Authentication ile çalışıyor).");
+      add(!!j.secrets.SS_SENDER, "SS_SENDER (gönderici başlığı)", j.secrets.SS_SENDER ? "" : "Zorunlu: Sanal Santral'da onaylı gönderici başlığı (Senders listesindeki ad, birebir).");
       add(!!j.secrets.SEND_SMS_HOOK_SECRET, "SEND_SMS_HOOK_SECRET (giriş kodu kancası)", j.secrets.SEND_SMS_HOOK_SECRET ? "" : "Telefonla giriş için: sms-otp fonksiyonu + Authentication → Auth Hooks → Send SMS hook → üretilen secret bu adla eklenmeli."); }
     else add(false, "Fonksiyon eski sürüm", "damga-sms-fonksiyonlar.zip içindeki güncel sms-gonder/index.ts ile yeniden Deploy edin.");
   } catch(e){ add(false, "Fonksiyona ulaşılamadı", "sms-gonder Supabase'de yüklü değil ya da açılışta hata veriyor. Edge Functions listesinde sms-gonder görünüyor mu? Görünüyorsa Logs'taki kırmızı satırı kontrol edin."); }
@@ -2710,7 +2711,7 @@ document.addEventListener("submit", async e => {
 /* ---------------- Hizmet Talep Formu: sistemdeki cihaz verileriyle dolar, düzenlenir, yazdırılır ---------------- */
 const HTF_CHECKS = [["nawi","Otomatik olmayan tartı aleti",true],["uretici","Üretici yerinde muayene",false],["periyodik","Periyodik muayene",true],
   ["awi","Otomatik tartı aleti",false],["yerinde","Cihazın kurulu olduğu yerde muayene",false],["tamir","Tamir sonrası/İlk muayene",false]];
-const HTF_FIRMA_DEF = { ad: "ANTKA", alt: "Muratpaşa Mah. 567 Sk. Barış Apt. 58/A Muratpaşa / ANTALYA • Tel: 0 242 244 0 967 • Gsm: 0 553 844 0 967", eposta: "info@anka.com.tr" };
+const HTF_FIRMA_DEF = { ad: "ANTKA", alt: "Muratpaşa Mah. 567 Sk. Barış Apt. 58/A Muratpaşa / ANTALYA • Tel: 0 242 244 0 967 • Gsm: 0 553 844 0 967", eposta: "info@antka.com.tr" };
 function htfAddrParts(a){ const A = TRU(a).replace(/^.*?(?:MAHALLESİ|MAHALLE|MAH\.?|MH\.?)\s+/, "");
   const pick = re => { const m = A.match(re); return m ? titleTR(m[1].trim()) : ""; };
   return { sokak: pick(/([0-9A-ZÇĞİÖŞÜ.]+(?:\s[0-9A-ZÇĞİÖŞÜ.]+)?\s+(?:SOKAĞI|SOKAK|SOK\.?|SK\.?))(?![A-ZÇĞİÖŞÜ])/), cadde: pick(/([0-9A-ZÇĞİÖŞÜ.]+(?:\s[0-9A-ZÇĞİÖŞÜ.]+)?\s+(?:CADDESİ|CADDE|CAD\.?|CD\.?))(?![A-ZÇĞİÖŞÜ])/),
@@ -2721,7 +2722,7 @@ function htfOpen(k, ids){
   const l = BY[k]; if (!l) return; const raw = RAW.biz.find(b => b.id === k) || {}, ap = htfAddrParts(l.a);
   const all = Object.values(DEVID).filter(o => o.l === l && o.d[23] !== false).sort((a, b) => (b.inP - a.inP) || (a.d[26] || 0) - (b.d[26] || 0));
   const pick = ids && ids.length ? all.filter(o => ids.includes(o.d[0])) : all.filter(o => o.inP);
-  st.htf = { k, ctx: st.view === "saha" && st.fieldPlan ? st.fieldPlan + "|" + k : "", firma: lsGet("damga.htfFirma", HTF_FIRMA_DEF), f: {
+  st.htf = { k, ctx: st.view === "saha" && st.fieldPlan ? st.fieldPlan + "|" + k : "", firma: htfFirma(), f: {
       tarih: new Date().toLocaleDateString("tr-TR"), no: "", ad: titleTR(String(l.n).split(" · ")[0]), tel: [raw.gsm, l.t].filter(Boolean).join(" / "), sube: raw.sube || (String(l.n).split(" · ").slice(1).join(" · ")),
       vergi: [raw.vergi_dairesi, raw.vkn].filter(Boolean).join(" / "), yer: `${titleTR(l.a)} ${titleTR(l.i)}/${titleTR(l.il)}`.trim(), yetkili: "", dogum: "", tc: "",
       mahalle: titleTR(raw.mahalle || mahOf(l.a) || ""), sokak: ap.sokak, cadde: ap.cadde, ic: ap.ic, dis: ap.dis, eposta: raw.eposta || "", yil: String(YEAR) },
@@ -2735,8 +2736,8 @@ function viewHtf(){
   return `<div class="mfback" data-act="htfback"><div class="mfdlg card" role="dialog" aria-modal="true" aria-label="Hizmet talep formu">
     <div class="mfhead"><div><div class="eyebrow">Sistem verileriyle dolduruldu · yazdırmadan önce düzenleyin</div><h3 style="margin:2px 0 0">Hizmet Talep Formu</h3></div><button class="btn sm" data-act="htfclose" aria-label="Kapat">✕</button></div>
     <div class="mfbody">
-      <div class="mfgrid">${inp("tarih","Tarih")}${inp("no","Form / başvuru no")}${inp("ad","Başvuran firma adı",1)}${inp("tel","Gsm / sabit tel")}${inp("sube","Şube adı")}${inp("vergi","Vergi dairesi / no")}
-        ${inp("yer","Cihaz(lar)ın bulunduğu yer",1)}${inp("yetkili","Yetkili kişi *")}${inp("dogum","Yetkili doğum tarihi * (gg/aa/yyyy)")}${inp("tc","T.C. no")}${inp("mahalle","Mahalle")}${inp("sokak","Sokak")}${inp("cadde","Cadde")}${inp("ic","İç kapı no")}${inp("dis","Dış kapı no")}${inp("eposta","E-mail")}${inp("yil","Muayene yılı")}</div>
+      <div class="mfgrid">${inp("tarih","Tarih")}<label class="f">Form / başvuru no<input data-htf="no" value="${esc(f.no)}" readonly placeholder="Yazdırınca otomatik verilir" style="background:var(--sunk)"></label>${inp("ad","Başvuran firma adı",1)}${inp("tel","Gsm / sabit tel")}${inp("sube","Şube adı")}${inp("vergi","Vergi dairesi / no")}
+        ${inp("yer","Cihaz(lar)ın bulunduğu yer",1)}${inp("yetkili","Yetkili kişi *")}<label class="f">Yetkili doğum tarihi * (gg/aa/yyyy)<input data-htf="dogum" value="${esc(f.dogum)}" inputmode="numeric" maxlength="10" placeholder="gg/aa/yyyy" autocomplete="off"></label><label class="f">T.C. kimlik no *<input data-htf="tc" value="${esc(f.tc)}" inputmode="numeric" maxlength="11" autocomplete="off"></label>${inp("mahalle","Mahalle")}${inp("sokak","Sokak")}${inp("cadde","Cadde")}${inp("ic","İç kapı no")}${inp("dis","Dış kapı no")}${inp("eposta","E-mail")}${inp("yil","Muayene yılı")}</div>
       <div class="row" style="gap:14px;flex-wrap:wrap">${HTF_CHECKS.map(([k, lab]) => `<label class="row" style="gap:6px;font-size:.88rem"><input type="checkbox" data-htfc="${k}" ${H.checks[k] ? "checked" : ""}> ${lab}</label>`).join("")}</div>
       <h4 class="mfsec">Cihazlar (${H.rows.length})</h4>
       <div class="row" style="gap:6px;flex-wrap:wrap;font-size:.84rem">${H.all.map(id => { const o = DEVID[id]; return o ? `<label class="chip" style="cursor:pointer"><input type="checkbox" data-htfd="${id}" ${inRows.has(id) ? "checked" : ""}> ${esc(o.d[2] || "?")} ${esc(o.d[4] || "")}</label>` : ""; }).join("")}<button class="btn sm" data-act="htfadd">+ Boş satır</button></div>
@@ -2762,7 +2763,8 @@ function htfDoc(){
   .grp{margin-top:6px}table.dv{width:100%;border-collapse:collapse;margin-top:10px}table.dv th,table.dv td{border:1px solid #000;padding:5px 4px;height:24px;text-align:center}table.dv th{background:#e9e9e9}
   .txt{margin-top:8px;line-height:1.5}.sign{display:flex;justify-content:space-between;margin-top:6px}.box{width:260px;height:70px;border-top:1px dotted #000;text-align:center;padding-top:4px}
   .defs{font-size:10px;margin-top:6px}.ft{text-align:center;margin-top:8px;border-top:1px solid #000;padding-top:6px;font-size:12px}
-  </style></head><body><div class="frm">
+  .nu{position:absolute;right:16px;top:6px;font-size:11px;font-weight:700;border:1px solid #000;padding:2px 6px}.frm{position:relative;page-break-after:always}.frm:last-of-type{page-break-after:auto}
+  </style></head><body>${[1, 2].map(nu => `<div class="frm"><div class="nu">${nu}. NÜSHA · ${nu === 1 ? "MÜŞTERİ" : "FİRMA"}</div>
   <div class="hd"><div class="logo">${esc(F.ad)}</div><div><h1>HİZMET TALEP FORMU</h1><div style="text-align:center;margin-top:4px">Tarih: ${esc(f.tarih)}</div></div><div class="no">${esc(f.no)}<small>Başvuru</small></div></div>
   <div class="top"><table>${line("Başvuran Firma Adı", f.ad)}${line("Gsm / Sabit Tel", f.tel)}${line("Şube Adı", f.sube)}${line("Vergi Dairesi / No", f.vergi)}${line("Cihaz(lar)ın Bulunduğu Yer", f.yer)}${line("Yetkili Kişi", f.yetkili)}${line("Doğum Tarihi", f.dogum)}${line("T.C.No", f.tc)}</table>
     <table>${line("Mahalle", f.mahalle)}${line("Sokak", f.sokak)}${line("Cadde", f.cadde)}${line("İç Kapı No", f.ic)}${line("Dış Kapı No", f.dis)}${line("E-mail Adresi", f.eposta)}</table>
@@ -2772,7 +2774,7 @@ function htfDoc(){
   <div class="sign"><div class="txt">Listede nitelikleri yazılı firmamızda kullanılmakta olan *(AWI / NAWI) tartı aletlerinin, <b>${esc(f.yil)}</b> yılı (Periyodik / Tamir Sonrası) muayenelerinin yapılması,<br>mühürleme işlemlerinin gerçekleşmesi ve muayene raporlarının düzenlenerek tarafımıza iletilmesi hususunda gereğini rica ederiz.</div><div class="box">Kaşe / İmza</div></div>
   <div class="defs">*AWI: Otomatik Tartı Aletleri: Kütle belirleme, Gravimetrik Dolum, kesintili toplayıcı, Sürekli Toplayıcı, Ray Kantarı.<br>NAWI: Otomatik Olmayan Tartı Aletleri: I. ve II. Sınıf Elektronik ve mekanik hassas teraziler, III. ve IV. Sınıf çıktı verebilme veya başka elektronik cihazlarla bağlantılı çalışabilme özelliğine sahip olan tartı aletleri.</div>
   <div class="ft">${esc(F.alt)}<br>e-mail: ${esc(F.eposta)}</div>
-  </div><script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`;
+  </div>`).join("")}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`;
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
@@ -2782,10 +2784,15 @@ document.addEventListener("click", e => {
   if (a === "htfclose" || (a === "htfback" && e.target === b)){ st.htf = null; render(); }
   if (a === "htfadd"){ st.htf.rows.push({ id: 0, marka: "", tip: "", sinif: "III", kap: "", seri: "", uretim: "", d: "", e: "" }); render(); }
   if (a === "htfrm"){ st.htf.rows.splice(+b.dataset.i, 1); render(); }
-  if (a === "htfprint"){ if (!htfValid()) return; htfMark(); lsSet("damga.htfFirma", st.htf.firma); const w = window.open("", "_blank"); if (!w){ toast("Açılır pencere engellendi; tarayıcıda izin verin"); return; } w.document.open(); w.document.write(htfDoc()); w.document.close(); }
+  if (a === "htfprint"){ if (!htfValid()) return; const w = window.open("", "_blank"); if (!w){ toast("Açılır pencere engellendi; tarayıcıda izin verin"); return; }
+    w.document.write("<p style='font-family:sans-serif'>Form numarası alınıyor…</p>");
+    htfNumber().then(ok => { if (!ok){ w.close(); return; } htfMark(); lsSet("damga.htfFirma", st.htf.firma); w.document.open(); w.document.write(htfDoc()); w.document.close(); render(); }); }
 });
 document.addEventListener("input", e => { const t = e.target, H = st.htf; if (!H) return;
-  if (t.dataset.htf) H.f[t.dataset.htf] = t.value; else if (t.dataset.htfr) H.rows[+t.dataset.htfr][t.dataset.c] = t.value; else if (t.dataset.htff) H.firma[t.dataset.htff] = t.value; });
+  if (t.dataset.htf === "dogum"){ const d = t.value.replace(/\D/g, "").slice(0, 8); const v = d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
+    if (v !== t.value){ t.value = v; try { t.setSelectionRange(v.length, v.length); } catch(_){} } H.f.dogum = v; }
+  else if (t.dataset.htf === "tc"){ const v = t.value.replace(/\D/g, "").slice(0, 11); if (v !== t.value) t.value = v; H.f.tc = v; }
+  else if (t.dataset.htf) H.f[t.dataset.htf] = t.value; else if (t.dataset.htfr) H.rows[+t.dataset.htfr][t.dataset.c] = t.value; else if (t.dataset.htff) H.firma[t.dataset.htff] = t.value; });
 document.addEventListener("change", e => { const t = e.target, H = st.htf; if (!H) return;
   if (t.dataset.htfc){ H.checks[t.dataset.htfc] = t.checked; }
   if (t.dataset.htfd){ const id = +t.dataset.htfd; if (t.checked){ const o = DEVID[id]; if (o && !H.rows.some(r => r.id === id)) H.rows.push(htfDevRow(o)); } else H.rows = H.rows.filter(r => r.id !== id); render(); } });
@@ -2809,7 +2816,17 @@ document.addEventListener("click", e => {
 function htfValid(){ const f = st.htf.f; const m = String(f.dogum || "").trim().match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
   if (!String(f.yetkili || "").trim()){ toast("Yetkili kişinin adını yazın"); document.querySelector('[data-htf="yetkili"]')?.focus(); return false; }
   if (!m || +m[1] < 1 || +m[1] > 31 || +m[2] < 1 || +m[2] > 12 || +m[3] < 1900 || +m[3] > new Date().getFullYear()){ toast("Doğum tarihini gün/ay/yıl olarak yazın (örn. 05/03/1980)"); document.querySelector('[data-htf="dogum"]')?.focus(); return false; }
-  f.dogum = `${m[1].padStart(2, "0")}/${m[2].padStart(2, "0")}/${m[3]}`; return true; }
+  f.dogum = `${m[1].padStart(2, "0")}/${m[2].padStart(2, "0")}/${m[3]}`;
+  if (!tcValid(f.tc)){ toast("Geçerli bir T.C. kimlik numarası yazın (11 hane)"); document.querySelector('[data-htf="tc"]')?.focus(); return false; }
+  return true; }
+function tcValid(s){ s = String(s || "").trim(); if (!/^[1-9]\d{10}$/.test(s)) return false; const d = [...s].map(Number);
+  const o = d[0] + d[2] + d[4] + d[6] + d[8], e = d[1] + d[3] + d[5] + d[7]; if (((o * 7 - e) % 10 + 10) % 10 !== d[9]) return false;
+  return d.slice(0, 10).reduce((a, b) => a + b, 0) % 10 === d[10]; }
+function htfFirma(){ const F = Object.assign({}, HTF_FIRMA_DEF, lsGet("damga.htfFirma", {})); if (/anka\.com\.tr$/i.test(F.eposta || "")) F.eposta = HTF_FIRMA_DEF.eposta; return F; }
+// Form / başvuru no: sunucuda ay bazında artan (YYYY/AA-0001); iki nüsha aynı numarayı taşır, tekrar yazdırmada değişmez
+async function htfNumber(){ const H = st.htf; if (!H) return false; if (H.f.no) return true;
+  try { H.f.no = await q(sb.rpc("next_form_no", { p_tur: "HTF", p_business: H.k, p_plan: H.ctx ? H.ctx.split("|")[0] : null, p_devices: H.rows.map(r => r.id).filter(Boolean) })); return !!H.f.no; }
+  catch(err){ toast(/next_form_no/.test(err.message) ? "Form numarası alınamadı: supabase/damga-form.sql çalıştırılmalı" : "Form numarası alınamadı: " + err.message); return false; } }
 function htfMark(){ const H = st.htf; if (!H || !H.ctx) return; const m = lsGet("damga.htfDone", {}); m[H.ctx] = H.rows.map(r => r.id).filter(Boolean); lsSet("damga.htfDone", m);
   const [, k] = H.ctx.split("|"), d = st.draft[k]; if (d) d.done = m[H.ctx].filter(id => (BY[k]?.d || []).some(x => x[0] === id)); }
 const htfPrinted = (planId, k) => !!lsGet("damga.htfDone", {})[planId + "|" + k];
@@ -2879,11 +2896,15 @@ async function p80ble(bytes){
 function p80rawbt(bytes){ let bin = ""; bytes.forEach(b => bin += String.fromCharCode(b)); const b64 = btoa(bin);
   location.href = `intent:base64,${b64}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`; }
 /* ---- tarayıcı yazdır (80 mm sayfa) ---- */
-function p80browser(doc, title){ const C = p80cfg(), L = p80lines(doc, C.cols), w = window.open("", "_blank"); if (!w){ toast("Açılır pencere engellendi"); return; }
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:80mm auto;margin:3mm}body{margin:0;font:12px/1.35 "Courier New",monospace;width:72mm}.b{font-weight:700}.big{font-size:18px;font-weight:700}div{white-space:pre-wrap;word-break:break-word}</style></head><body>${L.map(l => `<div class="${l.b ? "b" : ""}${l.big ? " big" : ""}" style="text-align:${l.a === "c" ? "center" : l.a === "r" ? "right" : "left"}">${esc(l.s) || "&nbsp;"}</div>`).join("")}<script>onload=()=>setTimeout(()=>print(),200)<\/script></body></html>`); w.document.close(); }
+function p80browser(doc0, title, tot = 1){ const C = p80cfg(), w = window.open("", "_blank"); if (!w){ toast("Açılır pencere engellendi"); return; }
+  const L = Array.from({ length: tot }, (_, i) => p80lines(p80copy(doc0, i + 1, tot), C.cols).concat(i < tot - 1 ? [{ s: "", brk: 1 }] : [])).flat();
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:80mm auto;margin:3mm}body{margin:0;font:12px/1.35 "Courier New",monospace;width:72mm}.b{font-weight:700}.big{font-size:18px;font-weight:700}div{white-space:pre-wrap;word-break:break-word}.brk{page-break-after:always}</style></head><body>${L.map(l => `<div class="${l.b ? "b" : ""}${l.big ? " big" : ""}${l.brk ? " brk" : ""}" style="text-align:${l.a === "c" ? "center" : l.a === "r" ? "right" : "left"}">${esc(l.s) || "&nbsp;"}</div>`).join("")}<script>onload=()=>setTimeout(()=>print(),200)<\/script></body></html>`); w.document.close(); }
 
 /* ---- yazdırma penceresi (önizleme + Yazdır / İptal) ---- */
-function p80open(o){ st.p80 = Object.assign({ busy: false, err: "" }, o); render(); }
+function p80open(o){ st.p80 = Object.assign({ busy: false, err: "", copies: 2 }, o); render(); }
+// çift nüsha: her nüshanın başına etiket eklenir, aralarında kesim yapılır
+const p80copy = (doc, n, tot) => tot > 1 ? [{ t: `${n}. NÜSHA · ${n === 1 ? "MÜŞTERİ" : "FİRMA"}`, a: "c", b: 1 }, ...doc] : doc;
+function p80all(doc, tot){ const parts = Array.from({ length: tot }, (_, i) => p80bytes(p80copy(doc, i + 1, tot))); const out = new Uint8Array(parts.reduce((s, p) => s + p.length, 0)); let o = 0; parts.forEach(p => { out.set(p, o); o += p.length; }); return out; }
 function viewP80(){
   const P = st.p80; if (!P) return ""; const C = p80cfg(), doc = P.build();
   return `<div class="mfback" data-act="p80back"><div class="mfdlg card p80dlg" role="dialog" aria-modal="true" aria-label="${esc(P.title)}">
@@ -2894,7 +2915,7 @@ function viewP80(){
         <label class="f">Baskı modu<select data-p80c="mode"><option value="img" ${C.mode !== "text" ? "selected" : ""}>Görüntü · Türkçe tam uyumlu (önerilen)</option><option value="text" ${C.mode === "text" ? "selected" : ""}>Metin · hızlı</option></select></label>
         <label class="f">Türkçe karakter (metin modu)<select data-p80c="cp"><option value="pc857" ${C.cp === "pc857" ? "selected" : ""}>PC857 kod sayfası</option><option value="ascii" ${C.cp === "ascii" ? "selected" : ""}>Türkçe harfleri sadeleştir (ç→c)</option></select></label>
       </div><p class="muted" style="font-size:.78rem;margin:6px 0 0">Görüntü modu her yazıcıda Türkçe harfleri doğru basar (biraz daha yavaş gönderilir). “Bluetooth” düğmesi ilk kullanımda yazıcıyı seçtirir (L39 BT Printer).</p></details></div>
-      <div class="p80prev">${p80preview(doc)}</div></div>
+      <div class="p80prev"><div class="muted" style="font-size:.78rem;margin-bottom:6px">${P.copies > 1 ? `${P.copies} nüsha basılır (1. Müşteri, 2. Firma) · önizleme 1. nüsha` : "1 nüsha"}</div>${p80preview(p80copy(doc, 1, P.copies || 1))}</div></div>
     ${P.err ? `<div class="warnbox" style="margin:0 16px">${esc(P.err)}</div>` : ""}
     <div class="mffoot" style="flex-wrap:wrap"><button class="btn" data-act="p80close">İptal</button><span style="flex:1"></span>
       <button class="btn sm" data-act="p80go" data-m="browser">Tarayıcıda yazdır</button>
@@ -2906,10 +2927,10 @@ document.addEventListener("click", async e => {
   const b = e.target.closest("[data-act]"); if (!b || !st.p80) return; const a = b.dataset.act, P = st.p80;
   if (a === "p80close" || (a === "p80back" && e.target === b)){ st.p80 = null; render(); return; }
   if (a !== "p80go") return;
-  const m = b.dataset.m, doc = P.build(), bytes = p80bytes(doc);
+  const m = b.dataset.m, doc = P.build(), bytes = p80all(doc, P.copies || 1);
   try {
     if (m === "ble"){ P.busy = true; P.err = ""; render(); await p80ble(bytes); }
-    else if (m === "rawbt") p80rawbt(bytes); else p80browser(doc, P.title);
+    else if (m === "rawbt") p80rawbt(bytes); else p80browser(doc, P.title, P.copies || 1);
     lsSet("damga.p80", Object.assign(p80cfg(), { method: m })); P.busy = false;
     if (P.after) await P.after(m); toast(m === "ble" ? "Yazıcıya gönderildi" : m === "rawbt" ? "RawBT'ye gönderildi" : "Yazdırma penceresi açıldı");
     st.p80 = null; render();
@@ -2925,7 +2946,7 @@ function tutOpen(k){
   const devs = l.d.filter(d => !s || s.dev.includes(d[0]));
   const now = new Date(), T = { k, tarih: now.toLocaleDateString("tr-TR") + " " + now.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
     musteri: titleTR(l.n), lokasyon: `${titleTR(l.a)} ${titleTR(l.i)}/${titleTR(l.il)}`, metin: TUT_TXT, ids: devs.map(d => d[0]), all: devs.map(d => d[0]),
-    duzenleyen: st.profile?.ad || "", yetkili: "", kurum: (lsGet("damga.htfFirma", HTF_FIRMA_DEF) || {}).ad || "" };
+    duzenleyen: st.profile?.ad || "", yetkili: "", kurum: htfFirma().ad || "" };
   st.tut = T;
   p80open({ title: "Tutanak", editor: tutEditor, build: tutDoc, after: async () => { await tutSave(); } });
 }
@@ -2961,7 +2982,8 @@ function htf80Doc(){ const H = st.htf, f = H.f, F = H.firma;
     ...H.rows.flatMap((r, i) => [{ t: `${i + 1}) ${r.marka} ${r.tip}  Sınıf ${r.sinif}`, b: 1 }, { t: `   Kap. ${r.kap || "-"}  S/N ${r.seri || "-"}` }, { t: `   Üretim ${r.uretim || "-"}  d ${r.d || "-"}  e ${r.e || "-"}` }]),
     { hr: "-" }, { t: `Listede nitelikleri yazılı firmamızda kullanılmakta olan (AWI/NAWI) tartı aletlerinin ${f.yil} yılı (Periyodik / Tamir Sonrası) muayenelerinin yapılması, mühürleme işlemlerinin gerçekleşmesi ve muayene raporlarının düzenlenerek tarafımıza iletilmesi hususunda gereğini rica ederiz.` },
     { gap: 1 }, { t: "Kaşe / İmza:" }, { gap: 4 }, { hr: "-" }, { t: F.alt, a: "c" }, { t: F.eposta, a: "c" } ]; }
-document.addEventListener("click", e => { const b = e.target.closest('[data-act="htf80"]'); if (!b || !st.htf) return; if (!htfValid()) return; lsSet("damga.htfFirma", st.htf.firma);
+document.addEventListener("click", async e => { const b = e.target.closest('[data-act="htf80"]'); if (!b || !st.htf) return; if (!htfValid()) return;
+  b.disabled = true; const okNo = await htfNumber(); b.disabled = false; if (!okNo) return; lsSet("damga.htfFirma", st.htf.firma);
   const keep = st.htf; p80open({ title: "Hizmet Talep Formu", editor: () => `<p class="muted" style="margin:0;font-size:.86rem">Önizleme sağda. Bir alanı değiştirmek için İptal'e basın; form açık kalır, düzenleyip tekrar yazdırın.</p>`, build: () => { st.htf = st.htf || keep; return htf80Doc(); }, after: async () => { st.htf = st.htf || keep; htfMark(); st.htf = null; } }); st.htf = keep; render(); });
 /* ---------------- içerdeki veriyi temizle: e-posta koduyla doğrulama + sunucuda yetki kontrolü (purge_data) ---------------- */
 function viewPurge(){
