@@ -1,4 +1,4 @@
-# Elmaslar Damga Takip — teknik not (v4 · 14 Kasım 2026)
+# Elmaslar Damga Takip — teknik not (v5 · 14 Kasım 2026)
 
 Ayrı proje olarak yahyasogut.com reposunun içinde, kendi klasörlerinde yaşar. Next.js sitesinden bağımsızdır; `public/damga/` statik olarak `/damga/` adresine kopyalanır.
 
@@ -54,6 +54,12 @@ docs/DAMGA-KURULUM.md   adım adım kurulum
 
 ## Sürüm geçmişi
 
+- **v5 · 14.11.2026:**
+  - Telefonla giriş (SMS kodu). Yönetici, Planlar & ekip ekranındaki "Telefonla giriş listesi"ne ad ve numara ekler; toplu yapıştırma da var. Bu numarayla ilk kez kod alıp giren kişi otomatik etkin olur ve rolünü listeden alır. Listede olmayan numaralar pasif kalır.
+  - Henüz giriş yapmamış kişiye de plan atanabiliyor; kişi ilk girişte planına otomatik bağlanıyor. WhatsApp mesajı yine o numaraya gidiyor.
+  - Google rota hesabı Routes API'ye taşındı (eski Directions API yeni projelerde açılamıyor).
+  - Supabase panelinden rol ve aktiflik değiştirilebiliyor; uygulama kullanıcıları için koruma sürüyor.
+  - Yeni SQL eki: supabase/damga-telefon.sql (damga.sql içinde de var).
 - **v4 · 14.11.2026:**
   - Migros/YMS "kalanlar" Excel biçimi içe aktarılıyor (MAĞAZA ADI, DURUM, İŞLEM TARİHİ, MUAYENE KARTI NO + YORUM sayfası); biçim otomatik tanınıyor.
   - Aynı cihaz iki listede varsa (marka + seri no) yeni kayıt açılmıyor, durumu güncelleniyor; tamamlanmış cihaz geri "bekliyor"a düşmüyor. Aynı mağaza normalize adresle eşleniyor.

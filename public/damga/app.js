@@ -77,7 +77,7 @@ function computeSummary(){
 /* ---------------- state ---------------- */
 const st = {
   view: "ozet", role: "admin", isAdmin: false, me: null, profile: null, ready: false,
-  plans: [], results: {}, events: {}, staff: [], regions: [], names: {},
+  plans: [], results: {}, events: {}, staff: [], regions: [], invites: [], names: {},
   df: { q: "", ilce: "", s: [], next: "", flag: false, dep: false, page: 0 }, dsel: new Set(), devCode: null, cardAs: null, evReason: null,
   f: { q: "", ilce: [], cust: [], cats: { bekliyor: true, tekrar: true, tutanak: false }, showDone: false, region: "" },
   dd: null, ddq: { ilce: "", cust: "" }, poolView: "liste",
@@ -93,17 +93,18 @@ const resultFrom = r => ({ planId: r.plan_id, k: r.business_id, st: r.st, done: 
 const eventFrom = r => ({ id: r.id, devId: r.device_id, code: DEVID[r.device_id]?.d[11], type: r.type, year: r.year, e: r.e, reason: r.reason, note: r.note || "", by: r.by, at: r.at });
 const staffFrom = r => ({ id: r.id, name: r.ad || r.email || "İsimsiz", phone: r.tel || "", email: r.email || "", rol: r.rol, bolge: r.bolge_id, aktif: r.aktif });
 async function loadDynamic(){
-  const [plans, results, events, staff, regions] = await Promise.all([
+  const [plans, results, events, staff, regions, invites] = await Promise.all([
     q(sb.from("plans").select("*").order("date", { ascending: false }).limit(1000)),
     q(sb.from("results").select("*").limit(5000)),
     q(sb.from("events").select("*").order("at", { ascending: false }).limit(5000)),
     q(sb.from("profiles").select("*").order("ad")),
-    q(sb.from("regions").select("*").order("ad"))]);
+    q(sb.from("regions").select("*").order("ad")),
+    st.isAdmin ? q(sb.from("invites").select("*").order("ad")).catch(() => []) : Promise.resolve([])]);
   st.plans = plans.map(planFrom);
   st.results = Object.fromEntries(results.map(r => [r.id, resultFrom(r)]));
   st.events = Object.fromEntries(events.map(r => [r.id, eventFrom(r)]));
   st.staff = staff.filter(s => s.aktif !== false).map(staffFrom); st.staffAll = staff.map(staffFrom);
-  st.regions = regions;
+  st.regions = regions; st.invites = invites || [];
 }
 async function loadAll(){
   const [biz, devs] = await Promise.all([fetchAll("businesses"), fetchAll("devices")]);
@@ -420,7 +421,9 @@ function runOptimize(){
   }
   st.routes = R.filter(r => r.length).map((r, i) => ({ keys: r, staffId: prev[i]?.staffId || (i === 0 ? st.cfg.staff0 || "" : "") }));
 }
-function staffOpts(sel){ return `<option value="">Personel seçin…</option>` + st.staff.map(s => `<option value="${esc(s.id)}" ${sel===s.id?"selected":""}>${esc(s.name)}${s.phone?" · "+esc(s.phone):""}</option>`).join(""); }
+function staffOpts(sel){ const inv = (st.invites || []).filter(v => !v.used_by);
+  return `<option value="">Personel seçin…</option>` + st.staff.map(s => `<option value="${esc(s.id)}" ${sel===s.id?"selected":""}>${esc(s.name)}${s.phone?" · "+esc(s.phone):""}</option>`).join("")
+    + (inv.length ? `<optgroup label="Henüz giriş yapmadı (SMS)">${inv.map(v => `<option value="inv:${esc(v.phone)}" ${sel==="inv:"+v.phone?"selected":""}>${esc(v.ad)} · 0${esc(v.phone)}</option>`).join("")}</optgroup>` : ""); }
 function chunkInfo(n, per, ret){ const total = n + (ret ? 1 : 0); return Math.max(1, Math.ceil(total / per)); }
 
 function renderPlanPanel(){
@@ -654,7 +657,15 @@ function viewTeam(){
       <td><select class="inl" data-act="pf" data-id="${s.id}" data-f="rol" ${s.id===st.me?"disabled":""}>${Object.entries(ROL).map(([k,v])=>`<option value="${k}" ${s.rol===k?"selected":""}>${v}</option>`).join("")}</select></td>
       <td><select class="inl" data-act="pf" data-id="${s.id}" data-f="bolge_id"><option value="">—</option>${st.regions.map(r=>`<option value="${r.id}" ${s.bolge==r.id?"selected":""}>${esc(r.ad)}</option>`).join("")}</select></td>
       <td class="r">${s.id===st.me?"":`<button class="btn sm" data-act="pactive" data-id="${s.id}">${s.aktif===false?"Etkinleştir":"Pasifleştir"}</button>`}</td></tr>`).join("")}</tbody></table></div>
-    <details><summary>Yeni personel hesabı aç</summary>
+    <div class="stack" style="gap:6px"><h3>Telefonla giriş listesi (SMS)</h3>
+      ${(st.invites||[]).length ? `<div class="tbl-wrap"><table><tbody>${st.invites.map(v => `<tr><td><b>${esc(v.ad)}</b></td><td class="mono">0${esc(v.phone.slice(0,3))} ${esc(v.phone.slice(3,6))} ${esc(v.phone.slice(6,8))} ${esc(v.phone.slice(8))}</td><td>${ROL[v.rol]||v.rol}</td>
+        <td>${v.used_by ? `<span class="st tamam">Giriş yaptı</span>` : `<span class="st bekliyor">İlk giriş bekleniyor</span>`}</td>
+        <td class="r">${st.confirmDel==="i:"+v.phone?`<button class="btn sm warn" data-act="invdelyes" data-id="${v.phone}">Sil</button> <button class="btn sm" data-act="delno">Vazgeç</button>`:`<button class="btn sm" data-act="invdel" data-id="${v.phone}">Sil</button>`}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted" style="margin:0;font-size:.88rem">Listede kimse yok. Eklenen numara, giriş ekranında “Telefon (SMS)” ile kod alıp girebilir; ilk girişte hesabı otomatik açılır.</p>`}
+      <form class="row" id="inviteForm"><input id="iv-ad" type="text" placeholder="Ad Soyad" required style="flex:1 1 150px"><input id="iv-tel" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" required style="flex:1 1 130px">
+        <select id="iv-rol"><option value="saha">Saha</option><option value="bolge">Bölge yöneticisi</option><option value="admin">Yönetici</option></select><button class="btn primary" type="submit">Listeye ekle</button></form>
+      <details><summary style="font-size:.86rem">Birden fazla kişiyi yapıştırarak ekle</summary><div class="stack" style="gap:6px;margin-top:6px"><textarea id="iv-bulk" rows="5" placeholder="Yasin YALÇIN - 0507 220 71 07&#10;Anıl GÜÇ - 0553 966 03 01"></textarea><div><button class="btn" data-act="invbulk">Hepsini saha olarak ekle</button></div></div></details>
+    </div>
+    <details><summary>E-posta ve şifreyle hesap aç</summary>
     <form class="stack" id="staffForm" style="gap:8px;margin-top:8px">
       <div class="row"><input id="sf-name" type="text" placeholder="Ad Soyad" required style="flex:1 1 160px"><input id="sf-phone" type="text" inputmode="tel" placeholder="05xx xxx xx xx" style="flex:1 1 140px"></div>
       <div class="row"><input id="sf-email" type="email" placeholder="E-posta (giriş adı)" required style="flex:1 1 200px"><input id="sf-pass" type="text" placeholder="Geçici şifre (en az 8)" minlength="8" required style="flex:1 1 140px"></div>
@@ -943,15 +954,20 @@ document.addEventListener("click", async e => {
     case "assignqr": try { const n = await q(sb.rpc("assign_qr_numbers")); await reloadDevices(); toast(`${n} cihaza QR numarası verildi`); render(); } catch(err){ toast("Hata: " + err.message); } break;
     case "pactive": { const s = staffBy(b.dataset.id); if (!s) break; try { await q(sb.from("profiles").update({ aktif: s.aktif === false }).eq("id", s.id)); await loadDynamic(); render(); toast(s.aktif === false ? "Etkinleştirildi" : "Pasifleştirildi; artık giriş yapsa da veri göremez"); } catch(err){ toast("Hata: " + err.message); } break; }
     case "regdel": st.confirmDel = "r:" + b.dataset.id; render(); break;
+    case "invdel": st.confirmDel = "i:" + b.dataset.id; render(); break;
+    case "invdelyes": try { await q(sb.from("invites").delete().eq("phone", b.dataset.id)); await loadDynamic(); toast("Listeden çıkarıldı"); } catch(err){ toast("Silinemedi: " + err.message); } st.confirmDel = null; render(); break;
+    case "invbulk": { const rows = ($("#iv-bulk")?.value || "").split(/\n+/).map(l => { const m = l.match(/^(.*?)[\s\-–:,;]*((?:\+?90|0)?\s*5\d{2}[\s.]?\d{3}[\s.]?\d{2}[\s.]?\d{2})/); if (!m || !m[1].trim()) return null; const p = m[2].replace(/\D/g, "").slice(-10); return p.length === 10 && p[0] === "5" ? { ad: m[1].trim(), phone: p, rol: "saha" } : null; }).filter(Boolean);
+      if (!rows.length){ toast("Satırları “Ad Soyad - 05xx xxx xx xx” biçiminde yazın"); break; }
+      try { await q(sb.from("invites").upsert(rows, { onConflict: "phone" })); await loadDynamic(); render(); toast(`${rows.length} kişi listeye eklendi`); } catch(err){ toast("Eklenemedi: " + err.message); } break; }
     case "regdelyes": try { await q(sb.from("regions").delete().eq("id", +b.dataset.id)); await loadDynamic(); toast("Bölge silindi"); } catch(err){ toast("Silinemedi: " + err.message); } st.confirmDel = null; render(); break;
     case "newplan": resetPlanner(); st.shared = null; st.cfg.date = todayISO(); hydratePlanner(); break;
     case "closeshare": st.shared = null; renderPlanPanel(); break;
     case "saveplan": {
       const routes = syncRoutes(); if (!st.sel.length) break;
       const stamp = Date.now().toString(36), gid = st.editGid || ("g" + stamp), n = routes.length;
-      const plans = routes.filter(r => r.keys.length).map((r, t) => { const stops = r.keys.map(selObj); const sc = schedule(stops, st.cfg); const sf = staffBy(r.staffId);
+      const plans = routes.filter(r => r.keys.length).map((r, t) => { const stops = r.keys.map(selObj); const sc = schedule(stops, st.cfg); const iv = String(r.staffId||"").startsWith("inv:") ? (st.invites||[]).find(v => "inv:" + v.phone === r.staffId) : null; const sf = iv ? { name: iv.ad, phone: "0" + iv.phone } : staffBy(r.staffId);
         return { id: (st.editIds && st.editIds[t]) || ("p" + stamp + t), gid, team: t + 1, teams: n, date: st.cfg.date,
-          staffId: r.staffId || "", staffName: sf ? sf.name : "", phone: sf ? sf.phone || "" : "",
+          staffId: iv ? "" : (r.staffId || ""), staffName: sf ? sf.name : "", phone: sf ? sf.phone || "" : "",
           start: st.cfg.start, end: st.cfg.end, svc: st.cfg.svc, costKm: st.cfg.costKm, ret: st.cfg.ret, perLink: st.cfg.perLink,
           stops: stops.map(s => ({ k: s.k, dev: s.dev })), km: Math.round(sc.km*10)/10, min: Math.round(sc.total), dev: stops.reduce((x,s)=>x+s.dev.length,0),
           createdBy: st.me, updatedAt: new Date().toISOString() }; });
@@ -1037,6 +1053,11 @@ document.addEventListener("submit", async e => {
       await q(sb.from("profiles").update({ ad, tel, rol, aktif: true }).eq("id", uid));
       await loadDynamic(); render(); toast(`${ad} için hesap açıldı. Giriş: ${email}`);
     } catch(err){ toast("Hesap açılamadı: " + (/registered/i.test(err.message) ? "bu e-posta zaten kayıtlı" : err.message)); }
+    return; }
+  if (e.target.id === "inviteForm"){ e.preventDefault();
+    const ad = $("#iv-ad").value.trim(), phone = $("#iv-tel").value.replace(/\D/g, "").slice(-10), rol = $("#iv-rol").value;
+    if (phone.length !== 10 || phone[0] !== "5"){ toast("Cep numarasını 05xx xxx xx xx biçiminde yazın"); return; }
+    try { await q(sb.from("invites").upsert({ ad, phone, rol }, { onConflict: "phone" })); await loadDynamic(); render(); toast(`${ad} eklendi; telefonla SMS kodu alarak girebilir`); } catch(err){ toast("Eklenemedi: " + err.message); }
     return; }
   if (e.target.id === "regionForm"){ e.preventDefault();
     const ad = $("#rg-ad").value.trim(), sorumlu = $("#rg-sor").value || null, ilceler = [...document.querySelectorAll('input[name="rg-ilce"]:checked')].map(x => x.value);
@@ -1296,12 +1317,32 @@ async function start(session){
     const { data, error } = await sb.auth.signInWithPassword({ email: $("#lemail").value.trim(), password: $("#lpass").value });
     if (error){ loginMsg(/invalid/i.test(error.message) ? "E-posta veya şifre hatalı." : error.message); return; }
     start(data.session); });
+  const toE164 = v => { const d = String(v || "").replace(/\D/g, "").slice(-10); return d.length === 10 && d[0] === "5" ? "+90" + d : null; };
+  let otpPhone = null, resendT = null;
+  const setTab = m => { $("#tab-phone").setAttribute("aria-pressed", m === "phone"); $("#tab-mail").setAttribute("aria-pressed", m === "mail");
+    $("#phoneForm").hidden = m !== "phone" || !!otpPhone; $("#codeForm").hidden = m !== "phone" || !otpPhone; $("#loginForm").hidden = m !== "mail"; $("#newPassForm").hidden = true; loginMsg(""); lsSet("damga.loginTab", m); };
+  $("#tab-phone")?.addEventListener("click", () => setTab("phone")); $("#tab-mail")?.addEventListener("click", () => setTab("mail"));
+  setTab(lsGet("damga.loginTab", "phone"));
+  const startResend = () => { let s = 60; const b = $("#resend"); b.disabled = true; clearInterval(resendT); b.textContent = `Kodu tekrar gönder (${s})`;
+    resendT = setInterval(() => { s--; if (s <= 0){ clearInterval(resendT); b.disabled = false; b.textContent = "Kodu tekrar gönder"; } else b.textContent = `Kodu tekrar gönder (${s})`; }, 1000); };
+  const sendCode = async phone => { loginMsg("Kod gönderiliyor…", true);
+    const { error } = await sb.auth.signInWithOtp({ phone });
+    if (error){ loginMsg(/provider|sms|phone.*(disabled|not enabled)/i.test(error.message) ? "SMS girişi henüz etkin değil. Yöneticinize başvurun." : /rate|seconds/i.test(error.message) ? "Çok sık denendi; biraz bekleyip tekrar deneyin." : error.message); return false; }
+    otpPhone = phone; $("#codeInfo").textContent = `${phone.replace(/^\+90(\d{3})(\d{3})(\d{2})(\d{2})$/, "0$1 $2 $3 $4")} numarasına SMS kodu gönderildi.`;
+    setTab("phone"); loginMsg("", true); startResend(); setTimeout(() => $("#lcode")?.focus(), 50); return true; };
+  $("#phoneForm")?.addEventListener("submit", async e => { e.preventDefault(); const p = toE164($("#lphone").value); if (!p){ loginMsg("Numarayı 05xx xxx xx xx biçiminde yazın."); return; } sendCode(p); });
+  $("#resend")?.addEventListener("click", () => otpPhone && sendCode(otpPhone));
+  $("#chgPhone")?.addEventListener("click", () => { otpPhone = null; clearInterval(resendT); setTab("phone"); });
+  $("#codeForm")?.addEventListener("submit", async e => { e.preventDefault(); loginMsg("Doğrulanıyor…", true);
+    const { data, error } = await sb.auth.verifyOtp({ phone: otpPhone, token: $("#lcode").value.trim(), type: "sms" });
+    if (error){ loginMsg(/expired|invalid/i.test(error.message) ? "Kod hatalı ya da süresi doldu." : error.message); return; }
+    start(data.session); });
   $("#forgot")?.addEventListener("click", async () => { const email = $("#lemail").value.trim(); if (!email){ loginMsg("Önce e-posta adresinizi yazın."); return; }
     const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: APP_URL }); loginMsg(error ? error.message : "Şifre yenileme bağlantısı e-postanıza gönderildi.", !error); });
   $("#newPassForm")?.addEventListener("submit", async e => { e.preventDefault(); const p = $("#npass").value;
     const { error } = await sb.auth.updateUser({ password: p }); if (error){ loginMsg(error.message); return; }
-    $("#newPassForm").hidden = true; $("#loginForm").hidden = false; loginMsg("Şifreniz güncellendi.", true); const { data } = await sb.auth.getSession(); if (data.session) start(data.session); });
-  sb.auth.onAuthStateChange((ev) => { if (ev === "PASSWORD_RECOVERY"){ showScreen("login"); $("#loginForm").hidden = true; $("#newPassForm").hidden = false; loginMsg("Yeni şifrenizi belirleyin.", true); } });
+    $("#newPassForm").hidden = true; setTab("mail"); loginMsg("Şifreniz güncellendi.", true); const { data } = await sb.auth.getSession(); if (data.session) start(data.session); });
+  sb.auth.onAuthStateChange((ev) => { if (ev === "PASSWORD_RECOVERY"){ showScreen("login"); $("#loginForm").hidden = true; $("#phoneForm").hidden = true; $("#codeForm").hidden = true; $("#newPassForm").hidden = false; loginMsg("Yeni şifrenizi belirleyin.", true); } });
   const { data } = await sb.auth.getSession();
   if (data.session && !/type=recovery/.test(location.hash)) start(data.session); else showScreen("login");
 })();
