@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v15 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v16 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -1877,7 +1877,7 @@ function viewCustomers(){
     </div>
     <div class="tbl-wrap"><table class="cutbl"><thead><tr><th><input type="checkbox" data-act="cuall" ${allSel ? "checked" : ""} title="Filtredeki tümünü seç"></th><th>Firma</th><th>İl / ilçe</th><th>Adres</th><th class="num">${YEAR} cihaz</th><th class="num">Toplam</th><th>Grup</th></tr></thead><tbody>
       ${pg.map(l => `<tr><td><input type="checkbox" data-act="cusel" data-k="${esc(l.k)}" ${c.sel.has(l.k) ? "checked" : ""}></td>
-        <td class="wrap"><b>${esc(titleTR(l.n))}</b></td><td>${esc(titleTR(l.il))} / ${esc(titleTR(l.i))}</td><td class="wrap muted" style="font-size:.84rem">${esc(l.a)}</td>
+        <td class="wrap"><b>${esc(titleTR(l.n))}</b> <button class="link" data-act="mfopen1" data-k="${esc(l.k)}" style="font-size:.8rem">Düzenle</button></td><td>${esc(titleTR(l.il))} / ${esc(titleTR(l.i))}</td><td class="wrap muted" style="font-size:.84rem">${esc(l.a)}</td>
         <td class="num">${fmt(l.d.length)}</td><td class="num">${fmt(l.nAll)}</td>
         <td><select data-act="cugrp" data-k="${esc(l.k)}" aria-label="Grup"><option value="">—</option>${gOpts(l.g)}</select></td></tr>`).join("") || `<tr><td colspan="7" class="muted">Filtreye uyan müşteri yok.</td></tr>`}
     </tbody></table></div>
@@ -1887,8 +1887,9 @@ function viewCustomers(){
       <button class="btn primary sm" data-act="cuassign" ${GROUPS.length ? "" : "disabled"}>Gruba ata</button>
       <button class="btn sm" data-act="cuunassign">Gruptan çıkar</button>
       <button class="btn sm" data-act="smsopen">SMS gönder</button>
+      <button class="btn sm primary" data-act="mfopen">${c.sel.size > 1 ? `Seçili ${fmt(c.sel.size)} kaydı düzenle` : "Kaydı düzenle"}</button>
       <button class="link" data-act="cuclear">Seçimi temizle</button></div>` : ""}
-  </div></div>`;
+  </div>${viewCustForm()}</div>`;
 }
 async function setGroup(keys, grup){
   keys = [...keys]; if (!keys.length) return;
@@ -2334,6 +2335,93 @@ document.addEventListener("submit", async e => {
   try { const r = await smsInvoke([{ phone: p, text: `Elmaslar Damga Takip test mesajı (${new Date().toLocaleString("tr-TR")}).` }], "test");
     toast(r.sent ? "Test SMS gönderildi" : "Gönderilemedi: " + (r.results?.[0]?.error || "bilinmeyen hata")); } catch(err){ toast(err.message); }
 });
+/* ---------------- müşteri düzenleme formu (açılır pencere): müşterinin tüm alanları + tüm cihazları ---------------- */
+const MF_BIZ = [["unvan","Firma ünvanı",true],["sube","Şube",false],["il","İl",true],["ilce","İlçe",true],["mahalle","Mahalle",false],["adres","Adres",true,"wide"],
+  ["tel","Telefon",false],["gsm","Cep (GSM)",false],["eposta","E-posta",false],["vkn","Vergi no",false],["vergi_dairesi","Vergi dairesi",false],["grup","Grup",false]];
+const MF_DEV = ED_FIELDS.filter(f => f[2] !== "biz");
+function mfOpen(keys){
+  const ks = [...keys].filter(k => BY[k]); if (!ks.length){ toast("Önce müşteri seçin"); return; }
+  st.mf = { keys: ks, i: 0, vals: {}, dev: {}, busy: false, err: "" }; mfLoad(); render();
+  setTimeout(() => document.querySelector('.mfdlg [data-mfb="unvan"]')?.focus(), 30);
+}
+function mfDevices(k){ return Object.values(DEVID).filter(o => o.l.k === k).sort((a, b) => (b.inP - a.inP) || (a.d[26] || 1e12) - (b.d[26] || 1e12)); }
+function mfLoad(){
+  const M = st.mf, k = M.keys[M.i], l = BY[k], raw = RAW.biz.find(b => b.id === k) || {};
+  M.orig = Object.fromEntries(MF_BIZ.map(([f]) => [f, String(f === "grup" ? (l.g || "") : f === "unvan" ? l.n : f === "adres" ? l.a : f === "ilce" ? l.i : f === "il" ? l.il : f === "tel" ? (raw.tel ?? l.t ?? "") : (raw[f] ?? ""))]));
+  M.vals = { ...M.orig }; M.devOrig = {}; M.dev = {};
+  mfDevices(k).forEach(o => { M.devOrig[o.d[0]] = Object.fromEntries(MF_DEV.map(f => [f[0], String(f[4](o) ?? "")])); M.dev[o.d[0]] = { ...M.devOrig[o.d[0]] }; });
+  M.err = "";
+}
+function mfChanged(){ const M = st.mf; if (!M) return 0;
+  let n = MF_BIZ.filter(([f]) => M.vals[f] !== M.orig[f]).length;
+  Object.keys(M.dev).forEach(id => { n += MF_DEV.filter(f => M.dev[id][f[0]] !== M.devOrig[id][f[0]]).length; }); return n; }
+function mfInput(attr, f, v, extra = ""){
+  const def = EDF[f]; const t = def ? def[5] : (f === "grup" ? "grup" : "text");
+  if (t === "durum") return `<select ${attr}>${ED_STATUS.map(s => `<option value="${s}" ${v === s ? "selected" : ""}>${esc(CAT[s]?.l || s)}</option>`).join("")}</select>`;
+  if (t === "grup") return `<select ${attr}><option value="">—</option>${GROUPS.map(g => `<option ${v === g.ad ? "selected" : ""}>${esc(g.ad)}</option>`).join("")}</select>`;
+  if (t === "sinif") return `<select ${attr}>${["I","II","III","IIII"].map(s => `<option ${v === s ? "selected" : ""}>${s}</option>`).join("")}</select>`;
+  return `<input ${attr} value="${esc(v)}" ${t === "year" ? `inputmode="numeric" maxlength="4"` : ""} ${extra}>`;
+}
+function viewCustForm(){
+  const M = st.mf; if (!M) return "";
+  const k = M.keys[M.i], l = BY[k]; if (!l) return "";
+  const devs = mfDevices(k), nch = mfChanged();
+  const ilList = Object.keys(YER.iller || {}), ilceList = YER.iller?.[TRU(M.vals.il)] || YER.iller?.ANTALYA || [];
+  return `<div class="mfback" data-act="mfbackdrop"><div class="mfdlg card" role="dialog" aria-modal="true" aria-labelledby="mf-title">
+    <div class="mfhead"><div style="min-width:0"><div class="eyebrow">Müşteri kaydı · Lok. ${lno(l)}${M.keys.length > 1 ? ` · ${M.i + 1} / ${M.keys.length}` : ""}</div><h3 id="mf-title" style="margin:2px 0 0">${esc(titleTR(l.n))}</h3></div>
+      <div class="row" style="gap:6px">${M.keys.length > 1 ? `<button class="btn sm" data-act="mfnav" data-d="-1" ${M.i ? "" : "disabled"}>‹ Önceki</button><button class="btn sm" data-act="mfnav" data-d="1" ${M.i < M.keys.length - 1 ? "" : "disabled"}>Sonraki ›</button>` : ""}<button class="btn sm" data-act="mfcancel" aria-label="Kapat">✕</button></div></div>
+    <div class="mfbody">
+      <h4 class="mfsec">Müşteri bilgileri</h4>
+      <div class="mfgrid">${MF_BIZ.map(([f, lab, req, wide]) => `<label class="f${wide ? " wide" : ""}">${esc(lab)}${req ? " *" : ""}${mfInput(`data-mfb="${f}" class="${M.vals[f] !== M.orig[f] ? "dirty" : ""}"`, f, M.vals[f], f === "il" ? `list="mf-il"` : f === "ilce" ? `list="mf-ilce"` : "")}</label>`).join("")}</div>
+      <datalist id="mf-il">${ilList.map(x => `<option value="${esc(x)}">`).join("")}</datalist><datalist id="mf-ilce">${ilceList.map(x => `<option value="${esc(x)}">`).join("")}</datalist>
+      <h4 class="mfsec">Cihazlar (${devs.length})</h4>
+      ${devs.map(o => { const id = o.d[0], v = M.dev[id], dv = M.devOrig[id]; return `<div class="mfdev${o.inP ? "" : " out"}">
+        <div class="row" style="justify-content:space-between;gap:6px"><b class="mono" style="font-size:.84rem">Cihaz ${cno(o.d)} · ${esc(o.d[11])}</b>
+          <span class="muted" style="font-size:.78rem">${o.inP ? `${YEAR} listesinde` : `${YEAR} listesinde değil · durum alanları kaydedilmez`}${o.d[23] === false ? " · pasif" : ""}${o.d[25] ? ` · <span class="dupflag">MÜKERRER</span>` : ""}</span></div>
+        <div class="mfgrid">${MF_DEV.map(f => { const dis = f[2] === "item" && !o.inP && !st.noPeriod; return `<label class="f${f[0] === "durum_ham" || f[0] === "bilgi" ? " wide" : ""}">${esc(f[1])}${mfInput(`data-mfd="${id}" data-k="${f[0]}" class="${v[f[0]] !== dv[f[0]] ? "dirty" : ""}" ${dis ? "disabled" : ""}`, f[0], v[f[0]])}</label>`; }).join("")}</div></div>`; }).join("") || `<div class="muted">Bu müşteride cihaz yok.</div>`}
+      ${M.err ? `<div class="warnbox">${esc(M.err)}</div>` : ""}
+    </div>
+    <div class="mffoot"><span class="muted" id="mf-nch" style="font-size:.86rem">${nch ? `${nch} alan değişti` : "Değişiklik yok"}</span>
+      <span style="flex:1"></span><button class="btn" data-act="mfcancel">İptal</button><button class="btn primary" data-act="mfsave" ${M.busy ? "disabled" : ""}>${M.busy ? "Kaydediliyor…" : "Kaydet"}</button></div>
+  </div></div>`;
+}
+async function mfSave(){
+  const M = st.mf, k = M.keys[M.i];
+  const miss = MF_BIZ.filter(([f, , req]) => req && !String(M.vals[f] || "").trim()).map(x => x[1]);
+  if (miss.length){ M.err = "Zorunlu alan boş: " + miss.join(", "); render(); return false; }
+  for (const id of Object.keys(M.dev)){ const y = M.dev[id].son_damga_yili; if (y && !/^(19|20)\d\d$/.test(String(y).trim())){ M.err = `Cihaz ${cno(DEVID[id].d)}: son damga yılı 4 haneli yıl olmalı`; render(); return false; } }
+  if (!mfChanged()){ return true; }
+  M.busy = true; M.err = ""; render();
+  try {
+    const bp = {}; MF_BIZ.forEach(([f]) => { if (M.vals[f] !== M.orig[f]) bp[f] = ["unvan","il","ilce","grup"].includes(f) ? (String(M.vals[f]).trim().toLocaleUpperCase("tr-TR") || (f === "grup" ? null : "")) : String(M.vals[f]).trim(); });
+    if (bp.il !== undefined || bp.ilce !== undefined){ const pf = placeFix(bp.il ?? M.orig.il, bp.ilce ?? M.orig.ilce, bp.adres ?? M.orig.adres); bp.il = pf.il; bp.ilce = pf.ilce; }
+    if (Object.keys(bp).length) await q(sb.from("businesses").update(bp).eq("id", k));
+    const dirty = new Map(); Object.keys(M.dev).forEach(id => { const ch = {}; MF_DEV.forEach(f => { if (M.dev[id][f[0]] !== M.devOrig[id][f[0]]) ch[f[0]] = M.dev[id][f[0]]; }); if (Object.keys(ch).length) dirty.set(+id, ch); });
+    let r = { fail: 0 }; if (dirty.size) r = await saveEdits(dirty);
+    await reloadDevices(); M.busy = false;
+    toast(`Kaydedildi${r.fail ? ` · ${r.fail} alan kaydedilemedi` : ""}`); return !r.fail;
+  } catch(e){ M.busy = false; M.err = "Kaydedilemedi: " + e.message; render(); return false; }
+}
+function mfClose(force){ if (!force && mfChanged() && !confirm("Kaydedilmemiş değişiklikler silinsin mi?")) return; st.mf = null; render(); }
+document.addEventListener("click", async e => {
+  if (!st.mf && !e.target.closest('[data-act="mfopen"],[data-act="mfopen1"]')) return;
+  const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
+  if (a === "mfopen") mfOpen(st.cu.sel);
+  if (a === "mfopen1") mfOpen([b.dataset.k]);
+  if (!st.mf) return;
+  if (a === "mfbackdrop" && e.target === b) mfClose(false);
+  if (a === "mfcancel") mfClose(false);
+  if (a === "mfnav"){ if (mfChanged() && !confirm("Bu müşterideki değişiklikler kaydedilmeden geçilsin mi?")) return; st.mf.i += +b.dataset.d; mfLoad(); render(); }
+  if (a === "mfsave"){ const ok = await mfSave(); if (ok && st.mf){ if (st.mf.i < st.mf.keys.length - 1){ st.mf.i++; mfLoad(); render(); } else mfClose(true); } }
+});
+document.addEventListener("input", e => { const t = e.target, M = st.mf; if (!M) return;
+  if (t.dataset.mfb){ M.vals[t.dataset.mfb] = t.value; t.classList.toggle("dirty", M.vals[t.dataset.mfb] !== M.orig[t.dataset.mfb]); }
+  else if (t.dataset.mfd){ M.dev[t.dataset.mfd][t.dataset.k] = t.value; t.classList.toggle("dirty", t.value !== M.devOrig[t.dataset.mfd][t.dataset.k]); }
+  else return;
+  const n = mfChanged(), el = document.getElementById("mf-nch"); if (el) el.textContent = n ? `${n} alan değişti` : "Değişiklik yok";
+});
+document.addEventListener("change", e => { const t = e.target; if (st.mf && t.tagName === "SELECT" && (t.dataset.mfb || t.dataset.mfd)) t.dispatchEvent(new Event("input", { bubbles: true })); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && st.mf) mfClose(false); });
 /* ---------------- boot & giriş ---------------- */
 function showScreen(id){ ["setup","login","loading","app"].forEach(s => { const el = document.getElementById("scr-" + s); if (el) el.hidden = s !== id; }); }
 function loginMsg(m, ok){ const el = $("#lmsg"); if (el){ el.textContent = m || ""; el.className = "lmsg" + (ok ? " ok" : ""); } }

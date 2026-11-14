@@ -1,4 +1,4 @@
-# Elmaslar Damga Takip — teknik not (v15 · 14 Kasım 2026)
+# Elmaslar Damga Takip — teknik not (v16 · 14 Kasım 2026)
 
 Ayrı proje olarak yahyasogut.com reposunun içinde, kendi klasörlerinde yaşar. Next.js sitesinden bağımsızdır; `public/damga/` statik olarak `/damga/` adresine kopyalanır.
 
@@ -61,6 +61,16 @@ docs/DAMGA-KURULUM.md   adım adım kurulum
 - Ön basılı QR (sahada cihaza bağlama) Faz 3'te. Şimdilik QR numarası içe aktarımda cihaza verilir.
 
 ## Sürüm geçmişi
+
+- **v16 · 14.11.2026:**
+  - **Müşteriler & gruplar → Kaydı düzenle:** müşteri seçilince alttaki çubukta, ayrıca her satırdaki "Düzenle" bağlantısıyla açılır pencere açılıyor.
+    - Müşterinin tüm alanları düzenlenebiliyor: ünvan, şube, il, ilçe, mahalle, adres, telefon, GSM, e-posta, vergi no / dairesi, grup.
+    - Müşterinin tüm cihazları alan alan düzenlenebiliyor: tip, cins, marka, model, seri, sınıf, max/min, e/d, son damga, kullanım yeri, durum, açıklama, fatura notu, not.
+    - Değişen alanlar sarı. **Kaydet** ile kaydediliyor; **İptal**, ✕ ya da Esc değişiklik varsa onay sorup kapatıyor.
+    - Birden fazla müşteri seçiliyse Önceki / Sonraki ile geziliyor; kaydedince sıradakine geçiyor.
+    - Zorunlu alan ve yıl kontrolü var. Dönem listesinde olmayan cihazın durum alanları kapalı.
+  - SMS fonksiyonları artık site paketinde değil (GitHub derlemesini bozuyordu), ayrı `damga-sms-fonksiyonlar.zip` olarak veriliyor. Kimlik doğrulaması yalnızca `SS_API_KEY` ile otomatik.
+  - SQL değişikliği yok. Önbellek sürümü ?v=16.
 
 - **v15 · 14.11.2026:**
   - **Sayfa adresleri:** her sekmenin kendi adresi var.
