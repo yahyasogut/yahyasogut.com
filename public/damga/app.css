@@ -315,3 +315,14 @@ details summary{cursor:pointer;font-weight:600}
 body.noscroll{overflow:hidden}
 .htf{font-family:Arial,Helvetica,sans-serif;color:#000}
 .mfbody .tbl-wrap{max-height:none;overflow:auto}
+/* v20 · 80 mm termal çıktı */
+.p80dlg{width:min(1040px,100%)}
+.p80body{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}
+.p80prev{background:var(--sunk);padding:12px;border-radius:var(--r);max-height:70vh;overflow:auto}
+.p80paper{background:#fff;color:#000;font:12px/1.35 "Courier New",ui-monospace,monospace;width:calc(var(--cols) * 1ch + 20px);padding:10px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.p80l{white-space:pre;overflow:hidden}.p80l.b{font-weight:700}.p80l.big{font-size:20px;font-weight:700;line-height:1.3}
+.p80edit textarea{font:inherit;width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--surface);color:var(--ink)}
+@media (max-width:820px){.p80body{grid-template-columns:minmax(0,1fr)}.p80paper{font-size:11px}}
+/* v20 · başlıklar: her kelimenin baş harfi büyük (Türkçe kurallarıyla, html lang="tr") */
+main h2, main h3, .mfhead h3, .card > h3, .card h2{text-transform:capitalize}
+main h1{text-transform:none}

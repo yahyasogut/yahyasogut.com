@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v19 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v20 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -69,9 +69,9 @@ function applyGroupFilter(){
 const inPeriod = id => !!DEVID[id]?.inP;
 const fatKey = s => String(s || "").toLocaleUpperCase("tr-TR").trim().replace(/\s+/g, " ").replace(/FATURASI KESİLDİ|FATURA KESİDİ|^KESİLDİ$/, "FATURA KESİLDİ").replace(/^CEZA$/, "CEZALI");
 // Ödeme durumu: Excel'deki fatura / ödeme notu (Elmaslar listesinde başlıksız Q sütunu) sınıflandırılır
-const ODEME = [["bakanlik","Sanayi Bakanlığı","SANAYİ BAKANLIĞI",/BAKANL/],["cezali","Cezalı","CEZALI",/CEZA/],["kesilecek","Fatura kesilecek","FATURA KESİLECEK",/KES[İI]LECEK|KES[İI]LMED[İI]|KES[İI]LMEYECEK/],
-  ["kesildi","Fatura kesildi","FATURA KESİLDİ",/KES[İI]LD[İI]|KES[İI]D[İI]|^FATURA$|FATURALI/],["eft","EFT / havale","EFT",/EFT|HAVALE/],["nakit","Nakit","NAKİT",/NAK[İI]T/],
-  ["kart","Kredi kartı","KREDİ KARTI",/KRED[İI]|KART/],["tamir","Tamir","TAMİR",/TAM[İI]R/],["perakende","Perakende","PERAKENDE",/PAREKENDE|PERAKENDE/],["diger","Diğer not","",/./]];
+const ODEME = [["bakanlik","Sanayi Bakanlığı","SANAYİ BAKANLIĞI",/BAKANL/],["cezali","Cezalı","CEZALI",/CEZA/],["kesilecek","Fatura Kesilecek","FATURA KESİLECEK",/KES[İI]LECEK|KES[İI]LMED[İI]|KES[İI]LMEYECEK/],
+  ["kesildi","Fatura Kesildi","FATURA KESİLDİ",/KES[İI]LD[İI]|KES[İI]D[İI]|^FATURA$|FATURALI/],["eft","EFT / Havale","EFT",/EFT|HAVALE/],["nakit","Nakit","NAKİT",/NAK[İI]T/],
+  ["kart","Kredi Kartı","KREDİ KARTI",/KRED[İI]|KART/],["tamir","Tamir","TAMİR",/TAM[İI]R/],["perakende","Perakende","PERAKENDE",/PAREKENDE|PERAKENDE/],["diger","Diğer Not","",/./]];
 const ODEME_BY = Object.fromEntries(ODEME.map(x => [x[0], x]));
 const odemeCat = s => { const v = fatKey(s); if (!v) return ""; return ODEME.find(x => x[3].test(v))[0]; };
 const odemeLab = k => ODEME_BY[k]?.[1] || k;
@@ -259,16 +259,16 @@ function softRender(){ const a = document.activeElement; if (a && (a.tagName ===
 function render(){
   if (!st.ready) return;
   const tabs = st.isAdmin && st.role === "admin"
-    ? [["ozet","Yönetici özeti"],["planla","Rota planla"],["planlar","Planlar & ekip"],["musteriler","Müşteriler & cihazlar"],["raporlar","Raporlar"],["veri","Veri & ayarlar"]]
-    : [["saha","Bugünkü rotam"],["cihazlar","Cihaz bul"]];
+    ? [["ozet","Yönetici Özeti"],["planla","Rota Planla"],["planlar","Planlar & Ekip"],["musteriler","Müşteriler & Cihazlar"],["raporlar","Raporlar"],["veri","Veri & Ayarlar"]]
+    : [["saha","Bugünkü Rotam"],["cihazlar","Cihaz Bul"]];
   if (st.view === "cihazlar" && tabs.some(t => t[0] === "musteriler")) st.view = "musteriler";
   if (st.view !== "cihaz" && !(st.view === "fatura" && st.isAdmin) && !tabs.some(t => t[0] === st.view)) st.view = tabs[0][0];
   syncPath();
   const cur = st.view === "cihaz" ? (tabs.some(t => t[0] === "musteriler") ? "musteriler" : "cihazlar") : st.view === "fatura" ? "ozet" : st.view;
   $("#tabs").innerHTML = tabs.map(t => `<a class="tab" href="${BASE_PATH}${SLUG[t[0]]}/" data-act="view" data-v="${t[0]}" aria-current="${cur===t[0]}">${t[1]}</a>`).join("");
   const nm = st.profile?.ad || st.profile?.email || "";
-  $("#who").innerHTML = `${periodPicker()}${groupPicker()}${st.isAdmin ? `<button class="btn sm" data-act="role" title="Görünümü değiştir">${st.role==="admin"?"Saha görünümü":"Yönetici görünümü"}</button>` : ""}
-    <span class="pill ${st.isAdmin && st.role==="admin"?"admin":""}" title="${esc(st.profile?.email||"")}">${esc(nm.split(" ")[0] || "Hesap")} · ${st.isAdmin ? (st.role==="admin" ? "Yönetici" : "Saha önizleme") : "Saha"}</span>
+  $("#who").innerHTML = `${periodPicker()}${groupPicker()}${st.isAdmin ? `<button class="btn sm" data-act="role" title="Görünümü değiştir">${st.role==="admin"?"Saha Görünümü":"Yönetici Görünümü"}</button>` : ""}
+    <span class="pill ${st.isAdmin && st.role==="admin"?"admin":""}" title="${esc(st.profile?.email||"")}">${esc(nm.split(" ")[0] || "Hesap")} · ${st.isAdmin ? (st.role==="admin" ? "Yönetici" : "Saha Önizleme") : "Saha"}</span>
     <button class="btn sm" data-act="logout">Çıkış</button>`;
   const v = { ozet: viewSummary, planla: viewPlanner, planlar: viewPlans, saha: viewField, cihazlar: viewDevices, cihaz: viewDevice, veri: viewData, raporlar: viewReports, musteriler: viewCustomers, fatura: viewFatura }[st.view];
   if (!DEVS_P.length && !["veri","musteriler"].includes(st.view)){
@@ -276,7 +276,7 @@ function render(){
       : `<div class="card empty" style="max-width:640px;margin:40px auto">${YEAR} döneminde henüz veri yok. Yöneticiniz dönem listesini yüklediğinde burada görünecek.</div>`;
     return;
   }
-  $("#main").innerHTML = (st.view === "ozet" ? reqBanner() : "") + v() + viewHtf();
+  $("#main").innerHTML = (st.view === "ozet" ? reqBanner() : "") + v() + viewHtf() + viewP80();
   if (st.view === "planla") hydratePlanner();
 }
 /* ---- sayfa adresleri: /damga/ozet/, /damga/rota-planla/ … (her sekmenin kendi adresi; geri/ileri tuşları çalışır) ---- */
@@ -306,7 +306,7 @@ function periodPicker(){
 }
 function groupPicker(){
   if (!GROUPS.length || !(st.isAdmin && st.role === "admin")) return "";
-  const gf = st.gf || [], lab = !gf.length ? "Tüm gruplar" : gf.length === 1 ? gf[0] : gf.length + " grup";
+  const gf = st.gf || [], lab = !gf.length ? "Tüm Gruplar" : gf.length === 1 ? gf[0] : gf.length + " Grup";
   const opts = GROUPS.map(g => g.ad).concat([NOGRP]);
   return `<div class="gpick"><button class="btn sm ${gf.length ? "on" : ""}" data-act="gfopen" aria-expanded="${st.gfOpen}">Grup: ${esc(lab)} ▾</button>
     ${st.gfOpen ? `<div class="gpop card">${opts.map(g => `<label><input type="checkbox" data-act="gf" value="${esc(g)}" ${gf.includes(g) ? "checked" : ""}> ${esc(g)}</label>`).join("")}
@@ -426,7 +426,7 @@ function dailyRoutesHTML(){
 }
 document.addEventListener("click", e => {
   const b = e.target.closest('[data-act="goeditor"]'); if (!b) return;
-  const E = edState(); E.open = true; E.ids = null; E.page = 0; E.dupSeri = b.dataset.mode === "dupseri"; st.view = "veri"; render();
+  const E = edState(); E.open = true; E.ids = null; E.page = 0; E.dupSeri = b.dataset.mode === "dupseri"; st.view = "musteriler"; st.cu.mode = "tablo"; render();
   setTimeout(() => $("#editor")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
 });
 /* ---- Planner ---- */
@@ -1018,11 +1018,11 @@ function stopCard(p, s, i){
       : st.reqFor === s.k ? reqForm(s.k)
       : `<div class="big-acts four"><button class="btn ok" data-act="complete" data-k="${s.k}" ${dr.done.length?"":"disabled"}>${allChecked?"✓ Tamamlandı":`✓ ${dr.done.length}/${devs.length} tamamlandı`}</button>
         <button class="btn warn" data-act="quickmiss" data-v="ertelendi" data-k="${s.k}">Ertelendi</button>
-        <button class="btn warn" data-act="quickmiss" data-v="adresteyok" data-k="${s.k}">Adreste yok</button>
+        <button class="btn warn" data-act="tutanak" data-k="${s.k}">Adreste yok · tutanak</button>
         <button class="btn" data-act="addreq" data-k="${s.k}">+ Cihaz ekle</button></div>
         <div class="row" style="justify-content:space-between"><button class="btn sm" data-act="htf" data-k="${s.k}">🖨 Hizmet talep formu oluştur / yazdır</button><button class="link" data-act="miss" data-k="${s.k}" style="font-size:.84rem">Diğer neden / kısmi eksik</button></div>`}
       ${reqListFor(s.k)}
-      ${r?`<div class="row" style="justify-content:space-between;font-size:.82rem"><span class="muted">Kaydedildi ${new Date(r.at).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}${r.note?` · ${esc(r.note)}`:""}</span><button class="link" data-act="undo" data-k="${s.k}">Geri al</button></div>`:""}
+      ${r?`<div class="row" style="justify-content:space-between;font-size:.82rem"><span class="muted">Kaydedildi ${new Date(r.at).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}${r.note?` · ${esc(r.note)}`:""}</span>${r.st === "adresteyok" ? `<button class="link" data-act="tutanak" data-k="${s.k}">Tutanağı tekrar yazdır</button> · ` : ""}<button class="link" data-act="undo" data-k="${s.k}">Geri al</button></div>`:""}
       <div class="row" style="gap:8px"><button class="btn sm" data-act="gpsgeo" data-k="${s.k}">📍 Konumu güncelle</button><span class="muted" style="font-size:.78rem">${l.p === "ok" ? "Konum doğrulanmış" : "Konum yaklaşık"} · müşterinin yanındayken telefon konumunu kaydeder</span></div>
       <details><summary style="font-size:.85rem">Koordinatı elle gir</summary><div class="row" style="margin-top:6px"><input id="geo-${s.k}" type="text" placeholder="36.8841, 30.7056 (Google Haritalar'dan kopyalayın)" style="flex:1 1 200px"><button class="btn sm" data-act="savegeo" data-k="${s.k}">Konumu kaydet</button></div></details>
     </div>` : ""}
@@ -1724,7 +1724,6 @@ function viewData(){
   ${viewPeriodCard()}
   ${impCard("donem")}
   ${impCard("yeni")}
-  ${viewEditor()}
   ${viewSmsCard()}
   <div class="card pad stack" style="gap:10px"><h3>Konumlar</h3>
     <div class="metrics"><div><b>${fmt(prec.ok||0)}</b><span>doğrulanmış (Google / elle)</span></div><div><b>${fmt(prec.mah||0)}</b><span>≈ mahalle merkezi</span></div><div><b>${fmt(prec.ilce||0)}</b><span>≈ ilçe merkezi</span></div></div>
@@ -1974,6 +1973,10 @@ function cuDevRow(o){ const d = o.d, si = cuStamp(o), e = precOf(o);
     <td><span class="st ${SCLS[si.s]}">${esc(si.s === "buyil" ? `${YEAR} bekliyor` : si.s === "gecikmis" ? `${YEAR} · gecikmiş` : si.label)}</span>${o.inP ? "" : ` <span class="muted" style="font-size:.74rem">dönem dışı</span>`}</td></tr>`; }
 function viewCustomers(){
   CU_GEN++; const c = st.cu; c.open = c.open || new Set();
+  const modeSeg = `<div class="seg" role="group" aria-label="Görünüm"><button class="segb" data-act="cumode" data-v="liste" aria-pressed="${c.mode !== "tablo"}">Liste</button><button class="segb" data-act="cumode" data-v="tablo" aria-pressed="${c.mode === "tablo"}">Toplu tablo düzenleme</button></div>`;
+  if (c.mode === "tablo"){ const E = edState(); E.open = true;
+    return `<div class="stack" style="max-width:1240px;margin:0 auto"><div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Yönetici · ${YEAR} dönemi</div><h2>Müşteriler ve cihazlar</h2>
+      <p class="muted" style="margin:4px 0 0;font-size:.9rem">Alan seçerek tüm listeyi tablo halinde düzenleyin, toplu değer uygulayın, seriye göre mükerrerleri bulun.</p></div>${modeSeg}</div>${viewEditor()}</div>`; }
   const rows = cuFilter(null), N = 50, pages = Math.max(1, Math.ceil(rows.length / N)); if (c.page >= pages) c.page = 0;
   const pg = rows.slice(c.page * N, c.page * N + N), gc = grpCounts(), nDev = rows.reduce((s, r) => s + r.devs.length, 0);
   const sel = (id, cur, blank, opts) => `<select id="${id}"><option value="">${blank}</option>${opts.map(([v, n, lab]) => `<option value="${esc(v)}" ${String(cur) === String(v) ? "selected" : ""}>${esc(lab || titleTR(v))} · ${fmt(n)}</option>`).join("")}</select>`;
@@ -1985,7 +1988,7 @@ function viewCustomers(){
   return `<div class="stack" style="max-width:1240px;margin:0 auto">
   <div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Yönetici · ${YEAR} dönemi</div><h2>Müşteriler ve cihazlar</h2>
     <p class="muted" style="margin:4px 0 0;font-size:.9rem">Müşteriye tıklayınca cihazları açılır. Müşteri kutusu müşteriyi ve cihazlarını seçer; cihaz kutuları QR etiketi için tek tek seçilir.</p></div>
-    <span class="muted" style="font-size:.82rem">Damga 2 yılda bir · başvuru Ocak–Şubat · damgalama yıl sonuna kadar</span></div>
+    ${modeSeg}</div>
   ${st.noPeriod ? `<div class="warnbox">Gruplar ve dönemler için Supabase'de <b>supabase/damga-donem.sql</b> çalıştırılmalı.</div>` : ""}
   ${viewDevRequests()}
   <section class="kpis">
@@ -2093,6 +2096,7 @@ document.addEventListener("click", async e => {
     case "gfopen": st.gfOpen = !st.gfOpen; render(); break;
     case "gfclear": st.gf = []; lsSet("damga.grup", []); st.gfOpen = false; applyGroupFilter(); render(); break;
     case "cuscope": c.scope = b.dataset.v; c.page = 0; render(); break;
+    case "cumode": c.mode = b.dataset.v; render(); window.scrollTo(0, 0); break;
     case "cufclear": Object.assign(c, { q: "", il: "", ilce: "", g: "", marka: "", model: "", ds: "", next: "", page: 0 }); render(); break;
     case "cuds": c.ds = c.ds === b.dataset.v ? "" : b.dataset.v; c.page = 0; render(); break;
     case "cunext": c.next = c.next === b.dataset.v ? "" : b.dataset.v; c.page = 0; render(); break;
@@ -2244,7 +2248,7 @@ function viewEditor(){
   const ilces = [...new Set(DEVS.filter(o => !o.l.dep).map(o => o.l.i).filter(Boolean))].sort((a, b) => a.localeCompare(b, "tr"));
   const noSira = !DEVS.some(o => o.d[26]);
   return `<div class="card pad stack" style="gap:10px" id="editor">
-    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Kayıt düzenleyici · ${YEAR}</h3><button class="btn sm" data-act="edclose">Kapat</button></div>
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Kayıt düzenleyici · ${YEAR}</h3><button class="btn sm" data-act="cumode" data-v="liste">Listeye dön</button></div>
     ${noSira ? `<div class="warnbox">Sıra numaraları için Supabase'de <b>supabase/damga-sira.sql</b> çalıştırılmalı.</div>` : ""}
     <details id="ed-cols" ${E.colsOpen || !E.cols.length ? "open" : ""}><summary>Gösterilecek alanlar (${E.cols.length}) · seçin</summary>
       <div class="chips" style="margin-top:8px">${ED_FIELDS.map(([k, lab, lev]) => `<button class="chip" data-act="edcol" data-k="${k}" aria-pressed="${E.cols.includes(k)}">${esc(lab)}${lev === "biz" ? " ⌂" : ""}</button>`).join("")}
@@ -2368,7 +2372,7 @@ document.addEventListener("toggle", e => { if (e.target.id === "ed-cols" && st.e
 document.addEventListener("click", e => {
   const b = e.target.closest('[data-act="dupedit"]'); if (!b || !st.dup) return;
   const grp = st.dup.dev[+b.dataset.g]; if (!grp) return; const E = edState();
-  E.open = true; E.page = 0; E.ids = new Set(grp.map(o => o.d[0])); E.idsLabel = `Mükerrer grup: ${grp[0].d[2]} · seri ${grp[0].d[4]}`;
+  E.open = true; E.page = 0; st.view = "musteriler"; st.cu.mode = "tablo"; E.ids = new Set(grp.map(o => o.d[0])); E.idsLabel = `Mükerrer grup: ${grp[0].d[2]} · seri ${grp[0].d[4]}`;
   ["marka","seri_no","model","max_cap","durum_grup"].forEach(k => { if (!E.cols.includes(k)) E.cols.push(k); });
   render(); setTimeout(() => $("#editor")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
 });
@@ -2491,12 +2495,31 @@ function viewSmsComposer(){
 function viewSmsCard(){
   const L = st.smsLog;
   return `<div class="card pad stack" style="gap:10px"><h3>SMS · Sanal Santral</h3>
-    <p class="muted" style="margin:0;font-size:.9rem">Saha ekibinin telefonla girişindeki doğrulama kodu ve müşteri bilgilendirme SMS'leri Sanal Santral üzerinden gider. Kullanıcı adı, şifre ve gönderici başlığı Supabase'de gizli tutulur, bu sayfada görünmez. Müşterilere toplu SMS: Müşteriler & gruplar → müşterileri seçin → SMS gönder.</p>
-    <form id="smsTest" class="row"><input id="sms-test-no" inputmode="tel" placeholder="05xx xxx xx xx" style="width:170px" required><button class="btn">Test SMS gönder</button><button class="link" type="button" data-act="smslog">${L ? "Günlüğü yenile" : "Son gönderimleri göster"}</button></form>
+    <p class="muted" style="margin:0;font-size:.9rem">Saha ekibinin telefonla girişindeki doğrulama kodu ve müşteri bilgilendirme SMS'leri Sanal Santral üzerinden gider. API anahtarı ve gönderici başlığı Supabase'de gizli tutulur, bu sayfada görünmez. Müşterilere toplu SMS: Müşteriler & gruplar → müşterileri seçin → SMS gönder.</p>
+    <form id="smsTest" class="row"><input id="sms-test-no" inputmode="tel" placeholder="05xx xxx xx xx" style="width:170px" required><button class="btn">Test SMS gönder</button><button class="btn sm" type="button" data-act="smsdiag">Kurulumu kontrol et</button><button class="link" type="button" data-act="smslog">${L ? "Günlüğü yenile" : "Son gönderimleri göster"}</button></form>
+    ${st.smsDiagR ? `<div class="share" style="gap:4px"><div class="muted" style="font-size:.78rem">Kontrol · ${esc(st.smsDiagR.at)}</div>${st.smsDiagR.rows.map(r => `<div style="font-size:.88rem"><b style="color:${r.ok ? "var(--ok)" : "var(--retry)"}">${r.ok ? "✓" : "✗"}</b> ${esc(r.t)}${r.h ? `<div class="muted" style="font-size:.8rem;margin-left:18px">${esc(r.h)}</div>` : ""}</div>`).join("")}</div>` : ""}
     ${L ? (L.err ? `<div class="warnbox">${esc(L.err)}</div>` : `<div class="tbl-wrap"><table class="rptbl" style="font-size:.84rem"><thead><tr><th>Zaman</th><th>Tür</th><th>Telefon</th><th>Durum</th><th>Mesaj / hata</th></tr></thead><tbody>
       ${L.rows.map(r => `<tr><td class="mono">${esc(String(r.gonderim || "").slice(0, 16).replace("T", " "))}</td><td>${esc(r.tur || "")}</td><td class="mono">${esc(r.telefon || "")}</td><td>${r.durum === "gonderildi" ? `<span class="st tamam">Gönderildi</span>` : `<span class="st tekrar">${esc(r.durum || "")}</span>`}</td><td class="muted" style="white-space:normal">${esc(r.hata || r.mesaj || "")}</td></tr>`).join("") || `<tr><td colspan="5" class="muted">Henüz gönderim yok.</td></tr>`}
     </tbody></table></div>`) : ""}
   </div>`;
+}
+async function smsDiag(){
+  const D = { at: new Date().toLocaleTimeString("tr-TR"), rows: [] }, add = (ok, t, h) => D.rows.push({ ok, t, h });
+  let tok = ""; try { tok = (await sb.auth.getSession()).data.session?.access_token || ""; } catch(_){}
+  try {
+    const r = await fetch(`${CFG.SUPABASE_URL}/functions/v1/sms-gonder`, { method: "POST", headers: { "Content-Type": "application/json", apikey: CFG.SUPABASE_ANON_KEY, Authorization: "Bearer " + (tok || CFG.SUPABASE_ANON_KEY) }, body: JSON.stringify({ ping: true }) });
+    let j = null; try { j = await r.json(); } catch(_){}
+    if (r.status === 404) add(false, "sms-gonder fonksiyonu bulunamadı", "Supabase → Edge Functions'ta fonksiyon adı birebir “sms-gonder” olmalı ve Deploy edilmiş olmalı.");
+    else if (r.status === 401) add(false, "Fonksiyon oturumu reddetti (401)", "Sayfadan çıkış yapıp tekrar girin. Sürerse fonksiyonun “Verify JWT” ayarı açık kalmalı, anahtarlar config.js ile aynı projeye ait olmalı.");
+    else if (r.status === 403) add(false, "Yalnızca yönetici SMS gönderebilir (403)", "Bu hesabın rolü admin olmalı.");
+    else if (!r.ok) add(false, `Fonksiyon hata verdi (${r.status})`, (j && (j.error || j.message || j.msg)) || "Supabase → Edge Functions → sms-gonder → Logs bölümüne bakın.");
+    else if (j && j.ok){ add(true, "sms-gonder fonksiyonu çalışıyor", "Adres: " + (j.api || ""));
+      add(!!j.secrets.SS_API_KEY, "SS_API_KEY tanımlı", j.secrets.SS_API_KEY ? "" : "Edge Functions → Secrets → SS_API_KEY adıyla ss_live_… anahtarını ekleyin.");
+      add(!!j.secrets.SS_SENDER, "SS_SENDER (gönderici başlığı)", j.secrets.SS_SENDER ? "" : "Tanımlı değil; Sanal Santral varsayılan başlığı kullanır. Onaylı başlığınız varsa ekleyin.");
+      add(!!j.secrets.SEND_SMS_HOOK_SECRET, "SEND_SMS_HOOK_SECRET (giriş kodu kancası)", j.secrets.SEND_SMS_HOOK_SECRET ? "" : "Telefonla giriş için: sms-otp fonksiyonu + Authentication → Auth Hooks → Send SMS hook → üretilen secret bu adla eklenmeli."); }
+    else add(false, "Fonksiyon eski sürüm", "damga-sms-fonksiyonlar.zip içindeki güncel sms-gonder/index.ts ile yeniden Deploy edin.");
+  } catch(e){ add(false, "Fonksiyona ulaşılamadı", "sms-gonder Supabase'de yüklü değil ya da açılışta hata veriyor. Edge Functions listesinde sms-gonder görünüyor mu? Görünüyorsa Logs'taki kırmızı satırı kontrol edin."); }
+  st.smsDiagR = D; render();
 }
 async function smsInvoke(items, tur){
   const { data, error } = await sb.functions.invoke("sms-gonder", { body: { items, tur, donem: YEAR } });
@@ -2515,6 +2538,7 @@ document.addEventListener("click", async e => {
       toast(`${fmt(all.sent)} SMS gönderildi${all.failed ? `, ${all.failed} gönderilemedi` : ""}`);
     } catch(err){ toast("SMS gönderilemedi: " + err.message); }
     C.busy = false; C.res = all; render(); }
+  if (a === "smsdiag"){ b.disabled = true; b.textContent = "Kontrol ediliyor…"; await smsDiag(); }
   if (a === "smslog"){ try { st.smsLog = { rows: await q(sb.from("sms_log").select("*").order("gonderim", { ascending: false }).limit(30)) }; } catch(err){ st.smsLog = { err: "Günlük okunamadı: " + err.message + " (damga-sms.sql çalıştırıldı mı?)" }; } render(); }
 });
 document.addEventListener("input", e => { if (e.target.id === "sms-text" && st.smsc){ st.smsc.text = e.target.value; clearTimeout(cfgT); cfgT = setTimeout(() => { const pos = e.target.selectionStart; render(); const n = $("#sms-text"); if (n){ n.focus(); try { n.setSelectionRange(pos, pos); } catch(_){} } }, 400); } });
@@ -2720,7 +2744,7 @@ function viewHtf(){
         <label class="f">Kurum adı<input data-htff="ad" value="${esc(H.firma.ad)}"></label><label class="f wide">Alt bilgi (adres / telefon)<input data-htff="alt" value="${esc(H.firma.alt)}"></label><label class="f">E-posta<input data-htff="eposta" value="${esc(H.firma.eposta)}"></label></div></details>
       <p class="muted" style="margin:0;font-size:.8rem">Formdaki değişiklikler yalnızca bu çıktı içindir; cihaz kaydını değiştirmek için yönetici “Kaydı düzenle”yi kullanır.</p>
     </div>
-    <div class="mffoot"><span style="flex:1"></span><button class="btn" data-act="htfclose">İptal</button><button class="btn primary" data-act="htfprint">Formu yazdır / PDF</button></div>
+    <div class="mffoot"><span style="flex:1"></span><button class="btn" data-act="htfclose">İptal</button><button class="btn" data-act="htfprint">A4 yazdır / PDF</button><button class="btn primary" data-act="htf80">🖨 80 mm yazıcıya</button></div>
   </div></div>`;
 }
 function htfDoc(){
@@ -2777,6 +2801,141 @@ document.addEventListener("click", e => {
   }, err => { b.disabled = false; b.textContent = "📍 Konumu güncelle"; toast(err.code === 1 ? "Konum izni verilmedi. Tarayıcı ayarlarından bu siteye konum izni verin." : "Konum alınamadı: " + err.message); },
   { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
 });
+/* ---------------- 80 mm termal yazıcı (SP-L39 BT): ESC/POS, Bluetooth (BLE) / RawBT / tarayıcı ---------------- */
+const P80_DEF = { cols: 48, cp: "pc857", method: "" };
+const p80cfg = () => Object.assign({}, P80_DEF, lsGet("damga.p80", {}));
+// PC857 (Türkçe) kod sayfası
+const CP857 = { "Ç":0x80,"ü":0x81,"é":0x82,"â":0x83,"ä":0x84,"à":0x85,"å":0x86,"ç":0x87,"ê":0x88,"ë":0x89,"è":0x8A,"ï":0x8B,"î":0x8C,"ı":0x8D,"Ä":0x8E,"Å":0x8F,"É":0x90,"æ":0x91,"Æ":0x92,
+  "ô":0x93,"ö":0x94,"ò":0x95,"û":0x96,"ù":0x97,"İ":0x98,"Ö":0x99,"Ü":0x9A,"ø":0x9B,"£":0x9C,"Ø":0x9D,"Ş":0x9E,"ş":0x9F,"á":0xA0,"í":0xA1,"ó":0xA2,"ú":0xA3,"ñ":0xA4,"Ñ":0xA5,"Ğ":0xA6,"ğ":0xA7 };
+const P80_SUB = { "·":"-","•":"*","—":"-","–":"-","“":'"',"”":'"',"‘":"'","’":"'","…":"...","₺":"TL","→":"->","✓":"X","\u00a0":" " };
+const ASCII_TR = { "ç":"c","Ç":"C","ğ":"g","Ğ":"G","ı":"i","İ":"I","ö":"o","Ö":"O","ş":"s","Ş":"S","ü":"u","Ü":"U","â":"a","î":"i","û":"u" };
+function p80enc(s, cp){ const out = []; for (let ch of String(s)){ if (P80_SUB[ch] !== undefined){ for (const x of P80_SUB[ch]) out.push(x.charCodeAt(0)); continue; } const c = ch.charCodeAt(0);
+  if (c < 128) out.push(c); else if (cp === "pc857" && CP857[ch] !== undefined) out.push(CP857[ch]); else { const a = ASCII_TR[ch] || "?"; for (const x of a) out.push(x.charCodeAt(0)); } } return out; }
+function p80wrap(text, w){ const out = []; String(text).split("\n").forEach(par => { const ind = (par.match(/^ */) || [""])[0]; let line = ind;
+  par.split(/\s+/).filter(Boolean).forEach(word => { while (word.length > w){ if (line){ out.push(line); line = ""; } out.push(word.slice(0, w)); word = word.slice(w); }
+    if (!line.trim()) line = line + word; else if ((line + " " + word).length <= w) line += " " + word; else { out.push(line); line = ind + word; } });
+  out.push(line); }); return out; }
+// satır modeli: { t, a: "l"|"c"|"r", b: bold, big: çift boy, hr: çizgi, kv: [anahtar, değer], gap: n }
+function p80lines(doc, cols){ const L = [];
+  doc.forEach(x => { const w = x.big ? Math.floor(cols / 2) : cols;
+    if (x.hr){ L.push({ s: (x.hr === "=" ? "=" : "-").repeat(cols) }); return; }
+    if (x.gap){ for (let i = 0; i < x.gap; i++) L.push({ s: "" }); return; }
+    if (x.kv){ const k = x.kv[0] + ": ", v = String(x.kv[1] ?? ""); const ws = p80wrap(k + v, w); ws.forEach((s, i) => L.push({ s: i ? "  " + s : s, b: x.b })); return; }
+    p80wrap(x.t ?? "", w).forEach(s => L.push({ s, a: x.a, b: x.b, big: x.big })); });
+  return L; }
+function p80bytes(doc){ const C = p80cfg(), L = p80lines(doc, C.cols), B = [0x1B,0x40];
+  if (C.cp === "pc857") B.push(0x1B,0x74,13);
+  L.forEach(l => { B.push(0x1B,0x61, l.a === "c" ? 1 : l.a === "r" ? 2 : 0, 0x1B,0x45, l.b ? 1 : 0, 0x1D,0x21, l.big ? 0x11 : 0x00); B.push(...p80enc(l.s, C.cp), 0x0A); });
+  B.push(0x1B,0x45,0, 0x1D,0x21,0, 0x1B,0x61,0, 0x1B,0x64,4, 0x1D,0x56,0x42,0x00);
+  return new Uint8Array(B); }
+function p80preview(doc){ const C = p80cfg(), L = p80lines(doc, C.cols);
+  return `<div class="p80paper" style="--cols:${C.cols}">${L.map(l => `<div class="p80l${l.b ? " b" : ""}${l.big ? " big" : ""}" style="text-align:${l.a === "c" ? "center" : l.a === "r" ? "right" : "left"}">${esc(l.s) || "&nbsp;"}</div>`).join("")}</div>`; }
+
+/* ---- Bluetooth (BLE) — Chrome/Android: navigator.bluetooth ---- */
+const P80_SERVICES = ["000018f0-0000-1000-8000-00805f9b34fb","e7810a71-73ae-499d-8c15-faa9aef0c3f2","49535343-fe7d-4ae5-8fa9-9fafd205e455","0000ff00-0000-1000-8000-00805f9b34fb",
+  "0000fee7-0000-1000-8000-00805f9b34fb","0000ae30-0000-1000-8000-00805f9b34fb","0000ffe0-0000-1000-8000-00805f9b34fb","000018f1-0000-1000-8000-00805f9b34fb"];
+let p80dev = null, p80ch = null;
+async function p80ble(bytes){
+  if (!navigator.bluetooth) throw new Error("Bu tarayıcı Bluetooth'a doğrudan bağlanamıyor (Android'de Chrome gerekir). “RawBT ile yazdır”ı kullanın.");
+  if (!p80ch || !p80dev?.gatt?.connected){
+    if (!p80dev) p80dev = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: P80_SERVICES });
+    const srv = await p80dev.gatt.connect(); p80ch = null;
+    for (const s of await srv.getPrimaryServices()){ for (const c of await s.getCharacteristics()){ if (c.properties.writeWithoutResponse || c.properties.write){ p80ch = c; break; } } if (p80ch) break; }
+    if (!p80ch) throw new Error("Yazıcıda yazılabilir Bluetooth (BLE) kanalı bulunamadı. Bu model yalnızca klasik Bluetooth kullanıyorsa “RawBT ile yazdır”ı seçin.");
+  }
+  const step = p80ch.properties.writeWithoutResponse ? 180 : 100;
+  for (let i = 0; i < bytes.length; i += step){ const part = bytes.slice(i, i + step);
+    try { p80ch.properties.writeWithoutResponse ? await p80ch.writeValueWithoutResponse(part) : await p80ch.writeValue(part); }
+    catch(e){ for (let j = 0; j < part.length; j += 20){ await p80ch.writeValue(part.slice(j, j + 20)); } }
+    await new Promise(r => setTimeout(r, 25)); }
+}
+/* ---- RawBT (Android uygulaması; klasik Bluetooth yazıcılar için) ---- */
+function p80rawbt(bytes){ let bin = ""; bytes.forEach(b => bin += String.fromCharCode(b)); const b64 = btoa(bin);
+  location.href = `intent:base64,${b64}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`; }
+/* ---- tarayıcı yazdır (80 mm sayfa) ---- */
+function p80browser(doc, title){ const C = p80cfg(), L = p80lines(doc, C.cols), w = window.open("", "_blank"); if (!w){ toast("Açılır pencere engellendi"); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:80mm auto;margin:3mm}body{margin:0;font:12px/1.35 "Courier New",monospace;width:72mm}.b{font-weight:700}.big{font-size:18px;font-weight:700}div{white-space:pre-wrap;word-break:break-word}</style></head><body>${L.map(l => `<div class="${l.b ? "b" : ""}${l.big ? " big" : ""}" style="text-align:${l.a === "c" ? "center" : l.a === "r" ? "right" : "left"}">${esc(l.s) || "&nbsp;"}</div>`).join("")}<script>onload=()=>setTimeout(()=>print(),200)<\/script></body></html>`); w.document.close(); }
+
+/* ---- yazdırma penceresi (önizleme + Yazdır / İptal) ---- */
+function p80open(o){ st.p80 = Object.assign({ busy: false, err: "" }, o); render(); }
+function viewP80(){
+  const P = st.p80; if (!P) return ""; const C = p80cfg(), doc = P.build();
+  return `<div class="mfback" data-act="p80back"><div class="mfdlg card p80dlg" role="dialog" aria-modal="true" aria-label="${esc(P.title)}">
+    <div class="mfhead"><div><div class="eyebrow">80 mm termal yazıcı · SP-L39 BT</div><h3 style="margin:2px 0 0">${esc(P.title)}</h3></div><button class="btn sm" data-act="p80close" aria-label="Kapat">✕</button></div>
+    <div class="mfbody p80body"><div class="p80edit">${P.editor ? P.editor() : ""}
+      <details><summary style="font-size:.84rem">Yazıcı ayarları</summary><div class="mfgrid" style="margin-top:8px">
+        <label class="f">Satır genişliği<select data-p80c="cols">${[48,42,32].map(n => `<option value="${n}" ${C.cols === n ? "selected" : ""}>${n} karakter${n === 48 ? " (80 mm)" : n === 32 ? " (58 mm)" : ""}</option>`).join("")}</select></label>
+        <label class="f">Türkçe karakter<select data-p80c="cp"><option value="pc857" ${C.cp === "pc857" ? "selected" : ""}>PC857 kod sayfası</option><option value="ascii" ${C.cp === "ascii" ? "selected" : ""}>Türkçe harfleri sadeleştir (ç→c)</option></select></label>
+      </div><p class="muted" style="font-size:.78rem;margin:6px 0 0">Türkçe harfler bozuk çıkarsa “sadeleştir”i seçin. “Bluetooth” düğmesi ilk kullanımda yazıcıyı seçtirir (L39 BT Printer).</p></details></div>
+      <div class="p80prev">${p80preview(doc)}</div></div>
+    ${P.err ? `<div class="warnbox" style="margin:0 16px">${esc(P.err)}</div>` : ""}
+    <div class="mffoot" style="flex-wrap:wrap"><button class="btn" data-act="p80close">İptal</button><span style="flex:1"></span>
+      <button class="btn sm" data-act="p80go" data-m="browser">Tarayıcıda yazdır</button>
+      <button class="btn sm" data-act="p80go" data-m="rawbt">RawBT ile yazdır</button>
+      <button class="btn primary" data-act="p80go" data-m="ble" ${P.busy ? "disabled" : ""}>${P.busy ? "Gönderiliyor…" : "🖨 Yazdır (Bluetooth)"}</button></div>
+  </div></div>`;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b || !st.p80) return; const a = b.dataset.act, P = st.p80;
+  if (a === "p80close" || (a === "p80back" && e.target === b)){ st.p80 = null; render(); return; }
+  if (a !== "p80go") return;
+  const m = b.dataset.m, doc = P.build(), bytes = p80bytes(doc);
+  try {
+    if (m === "ble"){ P.busy = true; P.err = ""; render(); await p80ble(bytes); }
+    else if (m === "rawbt") p80rawbt(bytes); else p80browser(doc, P.title);
+    lsSet("damga.p80", Object.assign(p80cfg(), { method: m })); P.busy = false;
+    if (P.after) await P.after(m); toast(m === "ble" ? "Yazıcıya gönderildi" : m === "rawbt" ? "RawBT'ye gönderildi" : "Yazdırma penceresi açıldı");
+    st.p80 = null; render();
+  } catch(err){ P.busy = false; P.err = err.name === "NotFoundError" ? "Yazıcı seçilmedi." : (err.message || String(err)); if (/GATT|disconnect/i.test(P.err)){ p80dev = null; p80ch = null; } render(); }
+});
+document.addEventListener("change", e => { const t = e.target; if (!st.p80 || !t.dataset.p80c) return; const C = p80cfg(); C[t.dataset.p80c] = t.dataset.p80c === "cols" ? +t.value : t.value; lsSet("damga.p80", C); render(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && st.p80){ st.p80 = null; render(); } });
+
+/* ---------------- Tutanak (Adreste yok) ---------------- */
+const TUT_TXT = "Yukarıda bilgileri yazılı cihaz(lar) lokasyonda yer almadığı için damga yapılamadı, işbu tutanak ile imza altına alınmıştır.";
+function tutOpen(k){
+  const p = st.plans.find(x => x.id === st.fieldPlan), s = p?.stops.find(x => x.k === k), l = BY[k]; if (!l) return;
+  const devs = l.d.filter(d => !s || s.dev.includes(d[0]));
+  const now = new Date(), T = { k, tarih: now.toLocaleDateString("tr-TR") + " " + now.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
+    musteri: titleTR(l.n), lokasyon: `${titleTR(l.a)} ${titleTR(l.i)}/${titleTR(l.il)}`, metin: TUT_TXT, ids: devs.map(d => d[0]), all: devs.map(d => d[0]),
+    duzenleyen: st.profile?.ad || "", yetkili: "", kurum: (lsGet("damga.htfFirma", HTF_FIRMA_DEF) || {}).ad || "" };
+  st.tut = T;
+  p80open({ title: "Tutanak", editor: tutEditor, build: tutDoc, after: async () => { await tutSave(); } });
+}
+function tutEditor(){ const T = st.tut, inp = (k, lab, w) => `<label class="f${w ? " wide" : ""}">${lab}<input data-tut="${k}" value="${esc(T[k])}"></label>`;
+  return `<div class="mfgrid">${inp("tarih","Tarih")}${inp("musteri","Müşteri",1)}${inp("lokasyon","Lokasyon",1)}${inp("duzenleyen","Düzenleyen (saha)")}${inp("yetkili","Firma yetkilisi")}</div>
+    <label class="f" style="margin-top:8px">Açıklama<textarea data-tut="metin" rows="3">${esc(T.metin)}</textarea></label>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px;font-size:.84rem">${T.all.map(id => { const o = DEVID[id]; return o ? `<label class="chip" style="cursor:pointer"><input type="checkbox" data-tutd="${id}" ${T.ids.includes(id) ? "checked" : ""}> ${esc(o.d[2] || "?")} ${esc(o.d[3] || "")} ${esc(o.d[4] || "")}</label>` : ""; }).join("")}</div>
+    <p class="muted" style="font-size:.78rem;margin:6px 0 0">Yazdırınca durak “Adreste yok” olarak kaydedilir ve tutanak notu sonuca eklenir.</p>`; }
+function tutDoc(){ const T = st.tut;
+  return [ ...(T.kurum ? [{ t: T.kurum, a: "c", b: 1 }] : []), { t: "TUTANAKTIR", a: "c", big: 1 }, { hr: "=" },
+    { kv: ["Tarih", T.tarih] }, { kv: ["Müşteri", T.musteri], b: 1 }, { kv: ["Lokasyon", T.lokasyon] }, { hr: "-" },
+    { t: "Cihaz(lar):", b: 1 }, ...T.ids.map((id, i) => { const d = DEVID[id]?.d || []; return { t: `${i + 1}) ${d[2] || "-"} ${d[3] || ""} · S/N ${d[4] || "-"}` }; }), { hr: "-" },
+    { t: T.metin }, { gap: 1 },
+    { kv: ["Düzenleyen", T.duzenleyen] }, { t: "İmza:" }, { gap: 2 },
+    { kv: ["Firma yetkilisi", T.yetkili] }, { t: "Kaşe / İmza:" }, { gap: 3 }, { hr: "-" } ]; }
+async function tutSave(){ const T = st.tut, p = st.plans.find(x => x.id === st.fieldPlan); if (!p) return;
+  const devTxt = T.ids.map(id => { const d = DEVID[id]?.d || []; return `${d[2] || ""} ${d[4] || ""}`.trim(); }).join(", ");
+  const r = { planId: p.id, k: T.k, st: "adresteyok", done: [], note: `Tutanak düzenlendi (${T.tarih}): ${devTxt}`.slice(0, 500), by: st.me, at: new Date().toISOString() };
+  try { await saveResult(r); delete st.draft[T.k]; st.reasonFor = null; } catch(err){ toast("Durak kaydedilemedi: " + err.message); } }
+document.addEventListener("click", e => { const b = e.target.closest('[data-act="tutanak"]'); if (b) tutOpen(b.dataset.k); });
+document.addEventListener("input", e => { const t = e.target; if (st.tut && t.dataset.tut){ st.tut[t.dataset.tut] = t.value; const pv = document.querySelector(".p80prev"); if (pv && st.p80) pv.innerHTML = p80preview(st.p80.build()); } });
+document.addEventListener("change", e => { const t = e.target; if (st.tut && t.dataset.tutd){ const id = +t.dataset.tutd; st.tut.ids = t.checked ? [...new Set([...st.tut.ids, id])] : st.tut.ids.filter(x => x !== id); render(); } });
+
+/* ---------------- Hizmet Talep Formu → 80 mm ---------------- */
+function htf80Doc(){ const H = st.htf, f = H.f, F = H.firma;
+  return [ { t: F.ad, a: "c", b: 1 }, { t: "HİZMET TALEP FORMU", a: "c", big: 1 }, { t: `Tarih: ${f.tarih}${f.no ? "   No: " + f.no : ""}`, a: "c" }, { hr: "=" },
+    { kv: ["Firma", f.ad], b: 1 }, ...(f.sube ? [{ kv: ["Şube", f.sube] }] : []), ...(f.tel ? [{ kv: ["Tel", f.tel] }] : []), ...(f.vergi ? [{ kv: ["Vergi D./No", f.vergi] }] : []),
+    { kv: ["Cihaz yeri", f.yer] }, ...(f.mahalle ? [{ kv: ["Mahalle", f.mahalle] }] : []), ...(f.cadde ? [{ kv: ["Cadde", f.cadde] }] : []), ...(f.sokak ? [{ kv: ["Sokak", f.sokak] }] : []),
+    ...((f.dis || f.ic) ? [{ kv: ["Kapı no", [f.dis, f.ic && "İç " + f.ic].filter(Boolean).join(" / ")] }] : []), ...(f.eposta ? [{ kv: ["E-mail", f.eposta] }] : []),
+    { kv: ["Yetkili", f.yetkili || "______________"] }, { kv: ["T.C. No", f.tc || "______________"] }, { hr: "-" },
+    ...HTF_CHECKS.map(([k, lab]) => ({ t: `[${H.checks[k] ? "X" : " "}] ${lab}` })), { hr: "-" },
+    { t: `CİHAZLAR (${H.rows.length})`, b: 1 },
+    ...H.rows.flatMap((r, i) => [{ t: `${i + 1}) ${r.marka} ${r.tip}  Sınıf ${r.sinif}`, b: 1 }, { t: `   Kap. ${r.kap || "-"}  S/N ${r.seri || "-"}` }, { t: `   Üretim ${r.uretim || "-"}  d ${r.d || "-"}  e ${r.e || "-"}` }]),
+    { hr: "-" }, { t: `Listede nitelikleri yazılı firmamızda kullanılmakta olan (AWI/NAWI) tartı aletlerinin ${f.yil} yılı (Periyodik / Tamir Sonrası) muayenelerinin yapılması, mühürleme işlemlerinin gerçekleşmesi ve muayene raporlarının düzenlenerek tarafımıza iletilmesi hususunda gereğini rica ederiz.` },
+    { gap: 1 }, { t: "Kaşe / İmza:" }, { gap: 4 }, { hr: "-" }, { t: F.alt, a: "c" }, { t: F.eposta, a: "c" } ]; }
+document.addEventListener("click", e => { const b = e.target.closest('[data-act="htf80"]'); if (!b || !st.htf) return; lsSet("damga.htfFirma", st.htf.firma);
+  const keep = st.htf; p80open({ title: "Hizmet Talep Formu", editor: () => `<p class="muted" style="margin:0;font-size:.86rem">Önizleme sağda. Bir alanı değiştirmek için İptal'e basın; form açık kalır, düzenleyip tekrar yazdırın.</p>`, build: () => { st.htf = st.htf || keep; return htf80Doc(); }, after: async () => { st.htf = null; } }); st.htf = keep; render(); });
 /* ---------------- boot & giriş ---------------- */
 function showScreen(id){ ["setup","login","loading","app"].forEach(s => { const el = document.getElementById("scr-" + s); if (el) el.hidden = s !== id; }); }
 function loginMsg(m, ok){ const el = $("#lmsg"); if (el){ el.textContent = m || ""; el.className = "lmsg" + (ok ? " ok" : ""); } }
@@ -2818,7 +2977,7 @@ async function start(session){
     resendT = setInterval(() => { s--; if (s <= 0){ clearInterval(resendT); b.disabled = false; b.textContent = "Kodu tekrar gönder"; } else b.textContent = `Kodu tekrar gönder (${s})`; }, 1000); };
   const sendCode = async phone => { loginMsg("Kod gönderiliyor…", true);
     const { error } = await sb.auth.signInWithOtp({ phone });
-    if (error){ loginMsg(/provider|sms|phone.*(disabled|not enabled)/i.test(error.message) ? "SMS girişi henüz etkin değil. Yöneticinize başvurun." : /rate|seconds/i.test(error.message) ? "Çok sık denendi; biraz bekleyip tekrar deneyin." : error.message); return false; }
+    if (error){ loginMsg(/provider|sms|phone.*(disabled|not enabled)/i.test(error.message) ? "SMS girişi henüz etkin değil (" + error.message + "). Yöneticinize başvurun." : /rate|seconds/i.test(error.message) ? "Çok sık denendi; biraz bekleyip tekrar deneyin." : "Kod gönderilemedi: " + error.message); console.warn("SMS OTP", error); return false; }
     otpPhone = phone; $("#codeInfo").textContent = `${phone.replace(/^\+90(\d{3})(\d{3})(\d{2})(\d{2})$/, "0$1 $2 $3 $4")} numarasına SMS kodu gönderildi.`;
     setTab("phone"); loginMsg("", true); startResend(); setTimeout(() => $("#lcode")?.focus(), 50); return true; };
   $("#phoneForm")?.addEventListener("submit", async e => { e.preventDefault(); const p = toE164($("#lphone").value); if (!p){ loginMsg("Numarayı 05xx xxx xx xx biçiminde yazın."); return; } sendCode(p); });
