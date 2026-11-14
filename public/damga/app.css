@@ -260,3 +260,12 @@ details summary{cursor:pointer;font-weight:600}
 .cutbl td.wrap{white-space:normal;min-width:220px}
 @media (max-width:640px){.who{width:100%;justify-content:flex-start}.gpop{left:0;right:auto}}
 @media (max-width:640px){.tab{white-space:nowrap}}
+/* v10 · kayıt düzenleyici */
+.edwrap{max-height:70vh}
+.edtbl th{position:sticky;top:0;background:var(--surface);z-index:1;white-space:nowrap}
+.edtbl td{padding:3px 6px;white-space:nowrap}
+.edin{font:inherit;font-size:.84rem;border:1px solid transparent;border-radius:6px;padding:4px 6px;background:transparent;color:var(--ink);min-width:90px}
+.edin:hover{border-color:var(--line)}
+.edin:focus{border-color:var(--brand);background:var(--surface);outline:none}
+.edin.dirty{background:var(--wait-soft);border-color:var(--wait)}
+.edtbl tr.chg td:first-child{box-shadow:inset 3px 0 0 var(--wait)}

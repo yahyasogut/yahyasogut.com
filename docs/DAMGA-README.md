@@ -1,4 +1,4 @@
-# Elmaslar Damga Takip — teknik not (v9 · 14 Kasım 2026)
+# Elmaslar Damga Takip — teknik not (v10 · 14 Kasım 2026)
 
 Ayrı proje olarak yahyasogut.com reposunun içinde, kendi klasörlerinde yaşar. Next.js sitesinden bağımsızdır; `public/damga/` statik olarak `/damga/` adresine kopyalanır.
 
@@ -13,6 +13,7 @@ public/damga/
   manifest.webmanifest, mark.png, wordmark.png
 supabase/damga.sql  tablolar, RLS, fonksiyonlar (tekrar çalıştırılabilir)
 supabase/damga-donem.sql  v9 eki: dönemler (period_items) + müşteri grupları
+supabase/damga-sira.sql   v10 eki: lokasyon ve cihaz sıra numaraları
 docs/DAMGA-KURULUM.md   adım adım kurulum
 ```
 
@@ -54,6 +55,16 @@ docs/DAMGA-KURULUM.md   adım adım kurulum
 - Ön basılı QR (sahada cihaza bağlama) Faz 3'te. Şimdilik QR numarası içe aktarımda cihaza verilir.
 
 ## Sürüm geçmişi
+
+- **v10 · 14.11.2026:**
+  - **Sıra numaraları.** Her lokasyon (`businesses.sira`) ve cihaz (`devices.sira`) kalıcı bir numara alır. Mevcut kayıtlar il / ilçe / ad sırasıyla numaralandı; yeni kayıtlar otomatik numara alır. Numaralar raporlarda, CSV'de, cihaz listesinde, cihaz kartında ve Excel'de görünür.
+  - **Kayıt düzenleyici** (Veri & ayarlar): dönem listesi tablo halinde.
+    - Gösterilecek alanlar seçilir (lokasyon, cihaz ve dönem alanları; seçim hatırlanır). Hücreler yerinde düzenlenir, değişenler sarı işaretlenir.
+    - Seçili satırlara toplu değer uygulanır; seçilenler dönemden çıkarılabilir. Tek tuşla kaydedilir.
+    - Lokasyon alanları (⌂) o adresteki tüm cihazlara uygulanır. Arama, ilçe ve durum filtresi var; grup filtresine uyar.
+  - **Dönem listesi kartı:** "Dönem şablonunu indir" (Cihazlar + Açıklamalar + Listeler sayfaları) ve "Mevcut verisini indir".
+  - İndirilen liste Excel'de düzenlenip geri yüklenebilir. **CİHAZ NO** dolu satırlar o cihazı günceller (yalnızca değişen ve boş olmayan hücreler; önizlemede "eski → yeni" gösterilir). Numarasız satırlar yeni kayıt olur ve mükerrer kuralı uygulanır.
+  - Yeni SQL eki: `supabase/damga-sira.sql` (damga.sql içinde de var). Önbellek sürümü ?v=10.
 
 - **v9 · 14.11.2026:**
   - **Dönem (yıl) yapısı.** Sağ üstte "Dönem" seçici (2026, 2027…; seçim tarayıcıda hatırlanır). Cihaz, QR ve müşteri kayıtları ortaktır; her dönemin listesi ve durumu `period_items` tablosunda tutulur. Mevcut kayıtlar 2026 dönemine taşındı. Planlar dönemle kaydedilir (`plans.donem`); saha "tamamlandı" ve cihaz kartındaki damga kaydı, planın/dönemin listesini günceller.
