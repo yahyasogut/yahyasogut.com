@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v10 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v11 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -1269,9 +1269,11 @@ function parseWorkbook(wb, listYear){
 }
 
 /* ---- Migros / YMS formatı (MAĞAZA ADI · ÜNVAN · DURUM · İŞLEM TARİHİ · MUAYENE KARTI NO + "kalanlar" YORUM sayfası) ---- */
-const BLANK_SERI = new Set(["BILA","BİLA","-","YOK","0",""]);
+const BLANK_SERI = new Set(["BILA","BİLA","BİLLA","BILLA","-","--","YOK","0","00","000","YOKTUR","OKUNMUYOR","SİLİK","SILIK","BELİRSİZ","?","X","NULL","N/A","NA",""]);
+// seri no gerçek mi: boş/BILA gibi yer tutucular ve rakam içermeyen kısa değerler mükerrer kontrolüne girmez
+const realSeri = s => { const v = TRU(s).replace(/\s/g, ""); return v && !BLANK_SERI.has(v) && /\d/.test(v) && v.length >= 3 ? v : ""; };
 const seriOf = v => { const x = cellStr(v); return BLANK_SERI.has(TRU(x)) ? "" : x; };
-const devKey = (marka, seri) => { const s = TRU(seri).replace(/\s/g, ""); return s ? TRU(marka).replace(/İ/g, "I").replace(/[^A-Z]/g, "") + "|" + s : ""; };
+const devKey = (marka, seri) => { const s = TRU(seri).replace(/\s/g, ""); return s && !BLANK_SERI.has(s) ? TRU(marka).replace(/İ/g, "I").replace(/[^A-Z]/g, "") + "|" + s : ""; };
 function noteCat(y){ const u = TRU(y); if (!u) return null;
   if (/YAPILDI|DÜZELTİLDİ|GİDERİLDİ|YAPILMIŞ SİSTEM/.test(u) && !/YAPILMAMIŞ/.test(u)) return "islenecek";
   if (/TUTANAK/.test(u)) return "tutanak"; if (/MAĞZA KAPATILMIŞ|DEPO KAPANMIŞ|KAPANMIŞ|KAPANDI/.test(u)) return "kapsamdisi";
@@ -1653,8 +1655,8 @@ function dupAudit(){
   by(l => { const c = custNorm(l.n); return c.length > 3 ? c + "#" + l.i : null; });
   const g = new Map(); locs.forEach(l => { const r = find(l.k); (g.get(r) || g.set(r, []).get(r)).push(l); });
   const cust = [...g.values()].filter(x => x.length > 1).map(x => x.sort((a, b) => b.d.length - a.d.length)).sort((a, b) => b.length - a.length);
-  // Cihaz: aynı marka + seri no (aktif kayıtlar)
-  const dm = new Map(); DEVS_P.forEach(o => { if (o.d[23] === false || o.l.dep) return; const k = devKey(o.d[2], o.d[4]); if (!k) return; (dm.get(k) || dm.set(k, []).get(k)).push(o); });
+  // Cihaz: marka ve seri numarası birebir aynı olan aktif kayıtlar (BILA / boş / rakamsız seri hariç)
+  const dm = new Map(); DEVS_P.forEach(o => { if (o.d[23] === false || o.l.dep) return; const s = realSeri(o.d[4]); if (!s) return; const k = TRU(o.d[2]) + "|" + s; (dm.get(k) || dm.set(k, []).get(k)).push(o); });
   const dev = [...dm.values()].filter(x => x.length > 1);
   return { cust, dev };
 }
@@ -1667,10 +1669,10 @@ function viewDupes(){
     ${grp.map(l => `<label class="row" style="gap:8px;font-size:.86rem;align-items:flex-start"><input type="radio" name="dupc-${gi}" value="${l.k}" ${D.target[gi] === l.k ? "checked" : ""} data-act="duptgt" data-g="${gi}">
       <span style="flex:1;min-width:0"><b>${esc(titleTR(l.n))}</b> <span class="muted">· ${esc(titleTR(l.i))} · ${l.d.length} cihaz</span><br><span class="muted">${esc(titleTR(l.a))}</span></span></label>`).join("")}
     <div class="row"><button class="btn sm" data-act="dupmerge" data-g="${gi}">Seçili kayıtta birleştir</button><button class="link" data-act="dupskip" data-g="${gi}" style="font-size:.82rem">Mükerrer değil, gizle</button></div></div>`).join("");
-  const dev = D.dev.slice(0, 80).map((grp, gi) => `<div class="share" style="gap:6px"><div class="muted" style="font-size:.8rem">${esc(grp[0].d[2])} · seri <span class="mono">${esc(grp[0].d[4])}</span> · ${grp.length} kayıt · tutulacak kaydı seçin</div>
+  const dev = D.dev.slice(0, 80).map((grp, gi) => `<div class="share" style="gap:6px"><div class="muted" style="font-size:.8rem">${esc(grp[0].d[2])} · seri <span class="mono"><b>${esc(grp[0].d[4])}</b></span> (birebir aynı) · ${grp.length} kayıt · tutulacak kaydı seçin</div>
     ${grp.map(o => { const si = stampInfo(o); return `<label class="row" style="gap:8px;font-size:.86rem;align-items:flex-start"><input type="radio" name="dupd-${gi}" value="${o.d[0]}" ${D.keep[gi] === o.d[0] ? "checked" : ""} data-act="dupkeep" data-g="${gi}">
-      <span style="flex:1;min-width:0"><b>${esc(titleTR(o.l.n))}</b> <span class="muted">· ${esc(titleTR(o.l.i))}</span><br><span class="muted">${esc(o.d[3])} · Max ${esc(o.d[12]||"?")} · ${esc(CAT[o.d[8]]?.l || o.d[8])} · son damga ${si.last || "—"} · QR ${esc(o.d[11])}</span></span></label>`; }).join("")}
-    <div class="row"><button class="btn sm" data-act="dupdev" data-g="${gi}">Seçiliyi tut, diğerlerini pasife al</button><button class="link" data-act="dupdskip" data-g="${gi}" style="font-size:.82rem">Mükerrer değil, gizle</button></div></div>`).join("");
+      <span style="flex:1;min-width:0"><b>${esc(titleTR(o.l.n))}</b> <span class="muted">· ${esc(titleTR(o.l.i))}</span><br><span class="muted"><span class="mono">#${lno(o.l)}·${cno(o.d)}</span> · ${esc(o.d[3])} · Max ${esc(o.d[12]||"?")} · ${esc(CAT[o.d[8]]?.l || o.d[8])} · son damga ${si.last || "—"} · QR ${esc(o.d[11])}</span></span></label>`; }).join("")}
+    <div class="row"><button class="btn sm primary" data-act="dupedit" data-g="${gi}">Düzenle</button><button class="btn sm" data-act="dupdev" data-g="${gi}">Seçiliyi tut, diğerlerini pasife al</button><button class="link" data-act="dupdskip" data-g="${gi}" style="font-size:.82rem">Mükerrer değil, gizle</button></div></div>`).join("");
   return `<div class="card pad stack" style="gap:10px"><div class="row" style="justify-content:space-between"><h3>Mükerrer müşteri ve cihazlar</h3><button class="link" data-act="dupcheck">Yeniden tara</button></div>
     <div class="metrics"><div><b>${fmt(D.cust.length)}</b><span>mükerrer müşteri grubu</span></div><div><b>${fmt(D.dev.length)}</b><span>mükerrer cihaz grubu</span></div></div>
     ${D.cust.length ? `<details open><summary>Müşteriler (${fmt(D.cust.length)} grup)</summary><p class="muted" style="font-size:.82rem;margin:6px 0">Birleştirince diğer kayıtların cihazları ana kayda taşınır. Eski kayıtlar silinmez, cihazsız kaldıkları için listelerde görünmez.</p><div class="stack" style="gap:8px">${cust}</div>${D.cust.length > 60 ? `<p class="muted">İlk 60 grup gösteriliyor.</p>` : ""}</details>` : `<p class="muted" style="margin:0">Mükerrer müşteri bulunmadı.</p>`}
@@ -1963,6 +1965,7 @@ function edState(){
 }
 function edRows(){
   const E = edState(), qq = TRU(E.q);
+  if (E.ids) return [...E.ids].map(id => DEVID[id]).filter(Boolean);
   return DEVS.filter(o => !o.l.dep && (!E.ilce || o.l.i === E.ilce) && (!E.durum || o.d[8] === E.durum)
     && (!qq || TRU([o.l.n, o.l.a, o.d[2], o.d[3], o.d[4], o.d[11], lno(o.l), cno(o.d)].join(" ")).includes(qq)))
     .sort((a, b) => (a.l.no || 1e12) - (b.l.no || 1e12) || (a.d[26] || 1e12) - (b.d[26] || 1e12));
@@ -1991,7 +1994,8 @@ function viewEditor(){
     <details id="ed-cols" ${E.colsOpen || !E.cols.length ? "open" : ""}><summary>Gösterilecek alanlar (${E.cols.length}) · seçin</summary>
       <div class="chips" style="margin-top:8px">${ED_FIELDS.map(([k, lab, lev]) => `<button class="chip" data-act="edcol" data-k="${k}" aria-pressed="${E.cols.includes(k)}">${esc(lab)}${lev === "biz" ? " ⌂" : ""}</button>`).join("")}</div>
       <div class="muted" style="font-size:.8rem;margin-top:6px">⌂ lokasyon alanı: değişiklik o adresteki tüm cihazlara uygulanır. <button class="link" data-act="edcolreset">Varsayılana dön</button> · <button class="link" data-act="edcolall">Tümü</button></div></details>
-    <div class="row">
+    ${E.ids ? `<div class="row warnbox" style="justify-content:space-between"><span>${esc(E.idsLabel || "Seçili kayıtlar")} · ${fmt(E.ids.size)} cihaz gösteriliyor</span><button class="btn sm" data-act="edidsclear">Tüm listeye dön</button></div>` : ""}
+    <div class="row" ${E.ids ? "hidden" : ""}>
       <input id="ed-q" type="search" placeholder="Firma, adres, seri no, QR, sıra no ara" value="${esc(E.q)}" style="min-width:260px">
       <select id="ed-ilce"><option value="">Tüm ilçeler</option>${ilces.map(x => `<option ${x === E.ilce ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
       <select id="ed-durum"><option value="">Tüm durumlar</option>${ED_STATUS.map(s => `<option value="${s}" ${E.durum === s ? "selected" : ""}>${esc(CAT[s]?.l || s)}</option>`).join("")}</select>
@@ -2047,6 +2051,7 @@ document.addEventListener("click", async e => {
     case "edpage": E.page = +b.dataset.p; render(); $("#editor")?.scrollIntoView(); break;
     case "edselall": edRows().forEach(o => E.sel.add(o.d[0])); render(); break;
     case "edselclear": E.sel.clear(); render(); break;
+    case "edidsclear": E.ids = null; E.idsLabel = ""; E.page = 0; render(); break;
     case "edundo": E.dirty.clear(); render(); break;
     case "edbulk": { const k = $("#ed-bk").value, v = $("#ed-bv").value; const f = EDF[k];
       if (f[5] === "durum" && !ED_STATUS.includes(v) && !statusCat(v)){ toast("Durum için: " + ED_STATUS.join(", ")); break; }
@@ -2060,6 +2065,8 @@ document.addEventListener("click", async e => {
         E.sel.clear(); await reloadDevices(); render(); toast(`${ids.length} cihaz dönemden çıkarıldı`); } catch(err){ toast("Çıkarılamadı: " + err.message); } break; }
     case "edsave": { E.busy = true; render();
       try { const r = await saveEdits(E.dirty); E.dirty.clear(); await reloadDevices();
+        if (st.dup){ st.dup = { ...dupAudit(), target: {}, keep: {} }; initDupDefaults(); }
+        if (E.ids){ E.ids = new Set([...E.ids].filter(id => DEVID[id])); }
         toast(`Kaydedildi: ${r.dev} cihaz, ${r.biz} lokasyon, ${r.item} dönem satırı${r.fail ? ` · ${r.fail} hata` : ""}`); }
       catch(err){ toast("Kaydedilemedi: " + err.message); }
       E.busy = false; render(); break; }
@@ -2087,6 +2094,13 @@ document.addEventListener("input", e => {
   cfgT = setTimeout(() => { const pos = e.target.selectionStart; render(); const n = document.getElementById("ed-q"); if (n){ n.focus(); try { n.setSelectionRange(pos, pos); } catch(_){} } }, 300);
 });
 document.addEventListener("toggle", e => { if (e.target.id === "ed-cols" && st.ed) st.ed.colsOpen = e.target.open; }, true);
+document.addEventListener("click", e => {
+  const b = e.target.closest('[data-act="dupedit"]'); if (!b || !st.dup) return;
+  const grp = st.dup.dev[+b.dataset.g]; if (!grp) return; const E = edState();
+  E.open = true; E.page = 0; E.ids = new Set(grp.map(o => o.d[0])); E.idsLabel = `Mükerrer grup: ${grp[0].d[2]} · seri ${grp[0].d[4]}`;
+  ["marka","seri_no","model","max_cap","durum_grup"].forEach(k => { if (!E.cols.includes(k)) E.cols.push(k); });
+  render(); setTimeout(() => $("#editor")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+});
 /* ---------------- boot & giriş ---------------- */
 function showScreen(id){ ["setup","login","loading","app"].forEach(s => { const el = document.getElementById("scr-" + s); if (el) el.hidden = s !== id; }); }
 function loginMsg(m, ok){ const el = $("#lmsg"); if (el){ el.textContent = m || ""; el.className = "lmsg" + (ok ? " ok" : ""); } }

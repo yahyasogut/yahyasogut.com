@@ -1,4 +1,4 @@
-# Elmaslar Damga Takip — teknik not (v10 · 14 Kasım 2026)
+# Elmaslar Damga Takip — teknik not (v11 · 14 Kasım 2026)
 
 Ayrı proje olarak yahyasogut.com reposunun içinde, kendi klasörlerinde yaşar. Next.js sitesinden bağımsızdır; `public/damga/` statik olarak `/damga/` adresine kopyalanır.
 
@@ -55,6 +55,13 @@ docs/DAMGA-KURULUM.md   adım adım kurulum
 - Ön basılı QR (sahada cihaza bağlama) Faz 3'te. Şimdilik QR numarası içe aktarımda cihaza verilir.
 
 ## Sürüm geçmişi
+
+- **v11 · 14.11.2026:**
+  - Mükerrer cihaz taraması artık yalnızca marka ve seri numarası **birebir aynı** olan aktif kayıtları gösteriyor.
+    - BILA, YOK, "-", 0 gibi yer tutucular ve rakam içermeyen seri numaraları gruba girmiyor.
+    - Aynı kural içe aktarmadaki eşleşmede de geçerli.
+  - Her mükerrer grubun altında **Düzenle** düğmesi var: kayıt düzenleyici yalnızca o gruptaki cihazlarla açılıyor (Lok./Cihaz no ile). Kaydettikten sonra tarama kendiliğinden yenileniyor. Grup satırlarında Lok. no · Cihaz no gösteriliyor.
+  - SQL değişikliği yok. Önbellek sürümü ?v=11.
 
 - **v10 · 14.11.2026:**
   - **Sıra numaraları.** Her lokasyon (`businesses.sira`) ve cihaz (`devices.sira`) kalıcı bir numara alır. Mevcut kayıtlar il / ilçe / ad sırasıyla numaralandı; yeni kayıtlar otomatik numara alır. Numaralar raporlarda, CSV'de, cihaz listesinde, cihaz kartında ve Excel'de görünür.
