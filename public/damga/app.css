@@ -3,9 +3,9 @@
 /* Layout: a field-service console. Sticky brand bar, then one working view at a time
    (Özet / Rota Planla / Planlar & Saha / Saha). Planner = pool list | plan + map. */
 :root{
-  --wm:url("wordmark.png"); --mk:url("mark.png");
-  --bg:#F3F4F9; --surface:#FFFFFF; --sunk:#E9EAF3; --ink:#15163A; --muted:#5C5F82; --line:#D9DBEA;
-  --brand:#2D2A8E; --brand-ink:#FFFFFF; --brand-soft:#E5E5F7;
+  --logo:url("antka-logo.png"); --accent:#D71920;
+  --bg:#F4F4F5; --surface:#FFFFFF; --sunk:#EBEBED; --ink:#18181B; --muted:#5E5F66; --line:#DCDCE0;
+  --brand:#1F2024; --brand-ink:#FFFFFF; --brand-soft:#ECECEF;
   --ok:#1C8A57; --wait:#B98000; --retry:#D35B22; --tut:#11807A; --off:#8A8CA6; --bad:#C2333B;
   --ok-soft:#E1F3EA; --wait-soft:#FBF0D3; --retry-soft:#FCE6DA; --tut-soft:#DDF1EF; --off-soft:#ECECF2;
   --f-display:"Saira",ui-sans-serif,system-ui,sans-serif;
@@ -14,14 +14,16 @@
   --r:10px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0E0F1F; --surface:#171931; --sunk:#111226; --ink:#E7E8F6; --muted:#9C9FC4; --line:#2B2E50;
-  --brand:#9B98FF; --brand-ink:#0E0F1F; --brand-soft:#25265A;
+  --logo:url("antka-logo-dark.png"); --accent:#FF4D52;
+  --bg:#111113; --surface:#1A1A1D; --sunk:#141416; --ink:#ECECEE; --muted:#A1A1AA; --line:#2E2E33;
+  --brand:#ECECEE; --brand-ink:#111113; --brand-soft:#2A2A2F;
   --ok:#4CC88B; --wait:#E7B53C; --retry:#F08A55; --tut:#3CC2B9; --off:#8E91AE; --bad:#F06A70;
   --ok-soft:#163626; --wait-soft:#3A2F10; --retry-soft:#3E2416; --tut-soft:#123532; --off-soft:#23243A;
   color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0E0F1F; --surface:#171931; --sunk:#111226; --ink:#E7E8F6; --muted:#9C9FC4; --line:#2B2E50;
-  --brand:#9B98FF; --brand-ink:#0E0F1F; --brand-soft:#25265A;
+  --logo:url("antka-logo-dark.png"); --accent:#FF4D52;
+  --bg:#111113; --surface:#1A1A1D; --sunk:#141416; --ink:#ECECEE; --muted:#A1A1AA; --line:#2E2E33;
+  --brand:#ECECEE; --brand-ink:#111113; --brand-soft:#2A2A2F;
   --ok:#4CC88B; --wait:#E7B53C; --retry:#F08A55; --tut:#3CC2B9; --off:#8E91AE; --bad:#F06A70;
   --ok-soft:#163626; --wait-soft:#3A2F10; --retry-soft:#3E2416; --tut-soft:#123532; --off-soft:#23243A;
   color-scheme:dark}
@@ -42,8 +44,8 @@ h3{font-size:1rem;font-weight:700}
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
 .bar-in{max-width:1320px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .logo{display:flex;align-items:center;gap:12px;min-width:0}
-.wm{width:132px;aspect-ratio:732/164;max-width:100%;background:var(--brand);-webkit-mask:var(--wm) center/contain no-repeat;mask:var(--wm) center/contain no-repeat}
-.mk{width:26px;aspect-ratio:197/189;background:var(--brand);-webkit-mask:var(--mk) center/contain no-repeat;mask:var(--mk) center/contain no-repeat;flex:none}
+.wm{width:104px;aspect-ratio:382/183;max-width:100%;background:var(--logo) left center/contain no-repeat}
+.mk{width:30px;aspect-ratio:1;background:url("antka-mark.png") center/contain no-repeat;flex:none}
 .appname{font-family:var(--f-display);font-stretch:118%;font-weight:600;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border-left:1px solid var(--line);padding-left:12px}
 .tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
 .tab{border:0;background:none;text-decoration:none;display:inline-block;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;color:var(--muted)}
@@ -326,3 +328,11 @@ body.noscroll{overflow:hidden}
 /* v20 · başlıklar: her kelimenin baş harfi büyük (Türkçe kurallarıyla, html lang="tr") */
 main h2, main h3, .mfhead h3, .card > h3, .card h2{text-transform:capitalize}
 main h1{text-transform:none}
+
+/* v23 · Antka marka: alt bant, kırmızı vurgu */
+.eyebrow{color:var(--accent)!important}
+.tab[aria-current="true"]{box-shadow:inset 0 -2px 0 var(--accent)}
+.sitefoot{border-top:3px solid var(--accent);background:var(--surface);margin-top:24px}
+.sitefoot-in{max-width:1320px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-left,0px));display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-size:.84rem;color:var(--muted)}
+.sitefoot-in b{color:var(--ink)}.sitefoot-in a{color:inherit}
+.sitefoot .wm{width:86px}

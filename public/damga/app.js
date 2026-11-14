@@ -1,10 +1,10 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v22 */
+/* Antka Damga Takip · yahyasogut.com/damga · v23 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
 const APP_URL = CFG.APP_URL || (location.origin + "/damga/");
 const PUBLIC_QR_URL = CFG.PUBLIC_QR_URL || (location.origin + "/damga/c/");
-const DEPOT = Object.assign({ k: "_depot", n: "Elmaslar — Atölye", a: "Muratpaşa Mah. 567 Sok. Tezcan Apt. No:57/A", i: "MURATPAŞA", lat: 36.8915, lng: 30.7165 }, CFG.DEPOT || {});
+const DEPOT = Object.assign({ k: "_depot", n: "Antka — Atölye", a: "Muratpaşa Mah. 567 Sk. Barış Apt. No:58/A", i: "MURATPAŞA", lat: 36.8915, lng: 30.7165 }, CFG.DEPOT || {});
 const CAT = {
   tamam:{l:"Tamamlandı",c:"var(--ok)"}, bekliyor:{l:"Bekliyor",c:"var(--wait)"}, tekrar:{l:"Tekrar ziyaret",c:"var(--retry)"},
   tutanak:{l:"Tutanak",c:"var(--tut)"}, islenecek:{l:"Yapıldı · sisteme işlenecek",c:"var(--brand)"}, cihazyok:{l:"Cihaz yok",c:"var(--off)"}, kapsamdisi:{l:"Kapandı / iptal",c:"var(--off)"}, baskasi:{l:"Başkası damgaladı",c:"var(--off)"}
@@ -387,7 +387,7 @@ function viewSummary(){
       <div class="card pad"><h2>Son damga yılı</h2><p class="muted" style="margin:.2rem 0 0;font-size:.85rem">Cihazların güncel son damga yılı; ${fmt(S.yilNA)} cihazda bilinmiyor.</p><div class="vbars">${vb}</div></div>
       <div class="card pad"><h2 style="margin-bottom:8px">Veri kalitesi</h2>
       <ul style="margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:6px;font-size:.9rem">
-      <li><b>${q.durumBos}</b> satırda durum boş; ${S.dep.cats.bekliyor||0} tanesi atölye stoku (Elmaslar adresi).</li>
+      <li><b>${q.durumBos}</b> satırda durum boş; ${S.dep.cats.bekliyor||0} tanesi atölye stoku (atölye adresi).</li>
       <li>Durum sütununda <b>${q.durumYazim}</b> farklı yazım var (YAPILDI / tutanak / yok / YOKK…). Sabit seçim listesine geçilmeli.</li>
       <li>Marka sütununda <b>${q.markaVar}</b> yazım var (BİZERBA, BIZERBA, BİZERBAA gibi).</li>
       <li>Seri no: <b>${q.seriYok}</b> cihazda boş, <b>${q.seriTekrar}</b> cihazda tekrar ediyor.</li>
@@ -564,7 +564,7 @@ function renderPlanPanel0(){
     </div>
     <label class="row" style="font-size:.88rem"><input id="c-ret" type="checkbox" ${cfg.ret?"checked":""}> Gün sonunda atölyeye dön</label>
     <div class="row"><button class="btn primary" data-act="optimize" ${st.sel.length<2?"disabled":""}>${cfg.teams>1?`Rotayı ${cfg.teams} ekibe böl ve optimize et`:"Rotayı optimize et"}</button>
-      <span class="muted" style="font-size:.85rem">${st.sel.length} durak seçili · başlangıç: Elmaslar atölyesi</span></div>
+      <span class="muted" style="font-size:.85rem">${st.sel.length} durak seçili · başlangıç: Antka atölyesi</span></div>
   </div>
   ${st.sel.length ? `
   <div class="card pad stack">
@@ -637,7 +637,7 @@ function mapSVG(routes, scs){
 
 
 let gmap = null, gmarkers = [];
-const MCOL = { bekliyor: "#B98000", tekrar: "#D35B22", tutanak: "#11807A", sel: "#2D2A8E" };
+const MCOL = { bekliyor: "#B98000", tekrar: "#D35B22", tutanak: "#11807A", sel: "#D71920" };
 async function renderPoolMap(list, sel){
   const box = $("#pool");
   if (!CFG.GOOGLE_MAPS_KEY){ box.innerHTML = `<div class="empty">Harita için config.js dosyasına Google Maps anahtarı eklenmeli.</div>`; return; }
@@ -657,7 +657,7 @@ async function renderPoolMap(list, sel){
   drawRouteLines();
 }
 /* optimize edilen rotaları haritada çizer: her ekip ayrı renk, duraklar sıra numaralı */
-const ROUTE_HEX = ["#2D2A8E","#D35B22","#11807A","#B98000","#1C8A57"];
+const ROUTE_HEX = ["#D71920","#D35B22","#11807A","#B98000","#1C8A57"];
 let groutes = [];
 function drawRouteLines(){
   if (!gmap || !window.google?.maps) return; const maps = google.maps;
@@ -740,7 +740,7 @@ function routeLinks(p){
 }
 function planMsg(p){
   const links = routeLinks(p); const nm = personName(p);
-  const lines = [`*Elmaslar damga rotası · ${dTR(p.date)}${p.teams>1?` · Ekip ${p.team}/${p.teams}`:""}*`,
+  const lines = [`*ANTKA KALİBRASYON damga rotası · ${dTR(p.date)}${p.teams>1?` · Ekip ${p.team}/${p.teams}`:""}*`,
     `${nm !== "Atanmadı" ? "Merhaba " + nm + ", " : ""}${p.stops.length} durak, ${p.dev} cihaz, yaklaşık ${Math.round(p.km)} km. Başlangıç ${p.start}, atölyeden.`, "",
     "Panel (durakları buradan tamamlayın / eksik girin):", `${APP_URL}#plan-${p.id}`, "",
     "Google Maps rotası:", ...links.map(l => `${l.label} (${l.range}): ${l.url}`), "Rota açılmazsa paneldeki her durağın “Yol tarifi” düğmesini kullanın.", "", "Duraklar:",
@@ -919,7 +919,7 @@ function viewDevices(){
 function cardRole(){ if (st.isAdmin) return st.cardAs || "admin"; return st.cardAs === "musteri" ? "musteri" : "saha"; }
 function viewDevice(){
   const o = DEVBY[st.devCode];
-  if (!o) return `<div class="field card empty">Bu QR koduna ait cihaz bulunamadı (${esc(st.devCode)}). Etiketteki kodu Elmaslar'a iletin.</div>`;
+  if (!o) return `<div class="field card empty">Bu QR koduna ait cihaz bulunamadı (${esc(st.devCode)}). Etiketteki kodu ANTKA KALİBRASYON'a iletin.</div>`;
   const d = o.d, l = o.l, si = stampInfo(o), role = cardRole(), e = precOf(o), evs = devEvents(d[11]);
   const spec = [["Lokasyon / cihaz no", `${lno(l)} / ${cno(d)}`],["Cinsi", titleTR(d[1]) || "—"],["Marka / model", `${d[2]||"—"} ${d[3]}`],["Seri no", d[4] || "Kayıtlı değil"],["Kapasite (Max)", d[12] || "—"],
     ["Hassasiyet (e)", e || "Girilmedi"],["Doğruluk sınıfı", d[16]],["Son damga", si.last || "—"],["Sonraki damga", si.next ? `${si.next} · başvuru Oca–Şub ${si.next}` : "—"]];
@@ -958,23 +958,23 @@ function viewDevice(){
         <div class="row"><button class="btn primary" data-act="label1" data-c="${d[11]}">Bu cihazın etiketini indir</button><button class="btn" data-act="labelfirm" data-c="${d[11]}">Firmanın tüm cihaz etiketleri</button></div>
         <div class="muted" style="font-size:.8rem">QR adresi: <span class="mono" style="word-break:break-all">${esc(qrURL(d[11]))}</span></div></div>
     </article>` : ""}
-    <p class="muted" style="font-size:.8rem;text-align:center;margin:0">Elmaslar Elektronik Tartı Sistemleri ve Kalibrasyon Hizmetleri · Bu kart tartı aletinin periyodik muayene (damga) durumunu gösterir.</p>
+    <p class="muted" style="font-size:.8rem;text-align:center;margin:0">ANTKA KALİBRASYON · Muratpaşa Mah. 567 Sk. Barış Apt. 58/A Muratpaşa/ANTALYA · 0 242 244 0 967 · info@antka.com.tr · Bu kart tartı aletinin periyodik muayene (damga) durumunu gösterir.</p>
   </div>`;
 }
 function labelDoc(codes){
   const items = codes.map(c => DEVBY[c]).filter(Boolean);
   const lab = o => { const d = o.d, si = stampInfo(o), e = precOf(o), n = titleTR(o.l.n);
-    return `<div class="lb"><div class="q">${qrSVG(qrURL(d[11]))}</div><div class="t"><div class="b">ELMASLAR · DAMGA TAKİP</div>
+    return `<div class="lb"><div class="q">${qrSVG(qrURL(d[11]))}</div><div class="t"><div class="b">ANTKA KALİBRASYON · DAMGA</div>
       <div class="f">${esc(n.length>46?n.slice(0,45)+"…":n)}</div>
       <div>${esc(d[2])} ${esc(d[3])}</div><div>S/N <b>${esc(d[4]||"—")}</b></div>
       <div>Max ${esc(d[12]||"?")} · e ${esc(e||"____")} · Sınıf ${esc(d[16])}</div>
       <div>Son damga <b>${si.last||"—"}</b> · Sonraki <b>${si.next||"—"}</b></div><div class="c">${esc(d[11])}</div></div></div>`; };
-  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Elmaslar QR etiketleri (${items.length})</title><style>
+  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Antka QR etiketleri (${items.length})</title><style>
   @page{size:A4;margin:12mm 7mm}*{box-sizing:border-box}body{margin:0;font:7.2pt/1.25 Arial,Helvetica,sans-serif;color:#000}
   .sheet{display:grid;grid-template-columns:repeat(3,63.5mm);grid-auto-rows:38.1mm;gap:0 2.5mm;justify-content:center}
   .lb{display:flex;gap:2mm;padding:2mm;border:0.2mm dashed #bbb;overflow:hidden;break-inside:avoid}
   .q{width:24mm;flex:none}.q svg{width:24mm;height:24mm;display:block}.t{min-width:0;display:flex;flex-direction:column;gap:.4mm}
-  .b{font-weight:700;letter-spacing:.06em;color:#2D2A8E;font-size:6.4pt}.f{font-weight:700;font-size:7.6pt}.c{font-family:monospace;color:#444;margin-top:auto}
+  .b{font-weight:700;letter-spacing:.06em;color:#D71920;font-size:6.4pt}.f{font-weight:700;font-size:7.6pt}.c{font-family:monospace;color:#444;margin-top:auto}
   .hint{font:10pt Arial;margin:0 0 4mm;color:#555}@media print{.hint{display:none}.lb{border-color:transparent}}
   </style></head><body><p class="hint">${items.length} etiket · A4, 3×7 (63,5×38,1 mm, L7160 uyumlu). Yazdırırken ölçek %100 seçin.</p><div class="sheet">${items.map(lab).join("")}</div></body></html>`;
 }
@@ -983,7 +983,7 @@ async function downloadLabels(codes){
   const html = labelDoc(codes).replace("</body>", "<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body>");
   const w = window.open("", "_blank");
   if (w){ w.document.open(); w.document.write(html); w.document.close(); toast("Etiket sayfası açıldı; yazdırma penceresinde ölçek %100 seçin"); }
-  else { downloadFile(`elmaslar-qr-etiket-${codes.length}-${todayISO()}.html`, labelDoc(codes), "text/html;charset=utf-8"); toast("Açılır pencere engellendi; etiket dosyası indirildi"); }
+  else { downloadFile(`antka-qr-etiket-${codes.length}-${todayISO()}.html`, labelDoc(codes), "text/html;charset=utf-8"); toast("Açılır pencere engellendi; etiket dosyası indirildi"); }
 }
 async function downloadAppList(){
   const y = YEAR + 1; const rows = [["Firma","İlçe","Adres","Telefon","Cinsi","Marka","Model","Seri No","Kapasite","Hassasiyet","Sınıf","Son damga","Sonraki damga","QR kodu"]];
@@ -1335,7 +1335,7 @@ function parseWorkbook(wb, listYear){
     const ad = cellStr(r[C.ad]), adres = cellStr(r[C.adres]), ilceKey = normIlce(r[C.ilce]), pf = placeFix(r[C.il], r[C.ilce], adres), ilce = pf.ilce;
     const bk = TRU(ad) + "|" + TRU(adres) + "|" + ilceKey, bid = "b" + hkey(bk);
     if (!biz.has(bid)){ const c = approxCoord(ilce, mahOf(adres), bid);
-      biz.set(bid, { id: bid, unvan: ad, adres, mahalle: mahOf(adres), ilce, il: pf.il, tel: cellStr(r[C.tel]), lat: c.lat, lng: c.lng, geo_src: c.src, is_depot: TRU(ad).startsWith("ELMASLAR") }); }
+      biz.set(bid, { id: bid, unvan: ad, adres, mahalle: mahOf(adres), ilce, il: pf.il, tel: cellStr(r[C.tel]), lat: c.lat, lng: c.lng, geo_src: c.src, is_depot: /^(ELMASLAR|ANTKA)/.test(TRU(ad)) }); }
     else if (!biz.get(bid).tel && cellStr(r[C.tel])) biz.get(bid).tel = cellStr(r[C.tel]);
     const durum = cellStr(r[C.durum]), cat = statusCat(durum), seri = cellStr(r[C.seri]), marka = cellStr(r[C.marka]);
     const yRaw = cellStr(r[C.yil]); let son = /^(19|20)\d\d$/.test(yRaw) ? +yRaw : null;
@@ -1551,7 +1551,7 @@ function parseGeneric(G, listYear){
   const cats = devs.reduce((m, d) => (m[d.durum_grup] = (m[d.durum_grup] || 0) + 1, m), {});
   const used = new Set(devs.map(x => x.business_id));
   return { biz: [...biz.values()].filter(b => used.has(b.id)), bizAll: [...biz.values()], devs, contacts, skipped, other, errors, noSerial, dup, link, edits, editList, unchanged, cats, rows: nRows, upd: [],
-    format: G.map.cno !== undefined ? "Sistemden indirilen dönem listesi (CİHAZ NO ile güncelleme)" : G.sheet === "Cihazlar" && G.head.some(h => /FİRMA ÜNVANI/.test(TRU(h))) ? "Elmaslar yeni müşteri şablonu" : `Yeni müşteri listesi (“${G.sheet}” sayfası, ${G.hr + 1}. satır başlık)`, template: true, G };
+    format: G.map.cno !== undefined ? "Sistemden indirilen dönem listesi (CİHAZ NO ile güncelleme)" : G.sheet === "Cihazlar" && G.head.some(h => /FİRMA ÜNVANI/.test(TRU(h))) ? "Yeni müşteri şablonu" : `Yeni müşteri listesi (“${G.sheet}” sayfası, ${G.hr + 1}. satır başlık)`, template: true, G };
 }
 function isElmaslarList(wb){ const ws = wb.Sheets[wb.SheetNames[0]]; const h = (XLSX.utils.sheet_to_json(ws, { header: 1, range: 0 })[0] || []).map(TRU); return h.some(x => x.startsWith("MÜŞTERİ ADI")) && h.includes("DURUMU"); }
 
@@ -1563,7 +1563,7 @@ async function readImportFile(file, listYear, kind){
   await loadXLSX(); const buf = await file.arrayBuffer(); const wb = XLSX.read(buf, { type: "array" });
   if (kind === "yeni"){ const G = prepGeneric(wb); G.fileName = file.name; return parseGeneric(G, listYear); }
   if (isMigrosFormat(wb)) return splitMatches(parseMigros(wb, listYear));
-  if (isElmaslarList(wb)) return splitMatches({ ...parseWorkbook(wb, listYear), format: "Elmaslar damga listesi" });
+  if (isElmaslarList(wb)) return splitMatches({ ...parseWorkbook(wb, listYear), format: "Damga listesi (Excel)" });
   const G = prepGeneric(wb); G.fileName = file.name; return parseGeneric(G, listYear);
 }
 async function runImport(){
@@ -1674,9 +1674,9 @@ document.addEventListener("input", e => { if (e.target.id !== "geo-q") return; s
 function impCard(kind){
   const P = st.imp && st.imp.kind === kind ? st.imp : {}; const d = P.data;
   return `  <div class="card pad stack" style="gap:10px" id="imp-${kind}">${kind === "donem" ? `<h3>${YEAR} dönem listesini içe aktar</h3>
-    <p class="muted" style="margin:0;font-size:.9rem">Elmaslar damga listesi, Migros/YMS “kalanlar” listesi ya da bu ekrandan indirilen dönem Excel'i (.xlsx). Biçim otomatik tanınır. Sistemde olan cihazlar (marka + seri no) yeni kayıt açılmadan ${YEAR} dönemine eklenir ve durumu güncellenir; konumlar ve QR numaraları korunur. ${YEAR} döneminde şu an ${fmt(DEVS_P.length)} cihaz, ${fmt(LOCS_P.length)} lokasyon var.</p>` : `<h3>Yeni müşteri ekle (toplu) · ${YEAR}</h3>
+    <p class="muted" style="margin:0;font-size:.9rem">Damga listesi (Excel), Migros/YMS “kalanlar” listesi ya da bu ekrandan indirilen dönem Excel'i (.xlsx). Biçim otomatik tanınır. Sistemde olan cihazlar (marka + seri no) yeni kayıt açılmadan ${YEAR} dönemine eklenir ve durumu güncellenir; konumlar ve QR numaraları korunur. ${YEAR} döneminde şu an ${fmt(DEVS_P.length)} cihaz, ${fmt(LOCS_P.length)} lokasyon var.</p>` : `<h3>Yeni müşteri ekle (toplu) · ${YEAR}</h3>
     <p class="muted" style="margin:0;font-size:.9rem">Müşteriden gelen toplu listeyi yükleyin; sütunlar sistem alanlarıyla eşlenir ve kayıtlar ${YEAR} dönem listesinin altına eklenir. <b>Müşteri + adres + cihaz (marka) + seri no</b> aynıysa satır mükerrer sayılır.</p>
-    <div class="row" style="font-size:.88rem"><a class="btn sm" href="elmaslar-yeni-musteri-sablonu.xlsx" download>Yeni müşteri şablonunu indir (.xlsx)</a><span class="muted">Farklı biçimdeki Excel'ler de kabul edilir; başlıklar otomatik eşlenir.</span></div>`}
+    <div class="row" style="font-size:.88rem"><a class="btn sm" href="antka-yeni-musteri-sablonu.xlsx" download>Yeni müşteri şablonunu indir (.xlsx)</a><span class="muted">Farklı biçimdeki Excel'ler de kabul edilir; başlıklar otomatik eşlenir.</span></div>`}
     <div class="row"><input id="impfile-${kind}" data-act="impfile" data-kind="${kind}" type="file" accept=".xlsx,.xls"><span class="pill admin">Hedef dönem: ${YEAR}</span></div>
     ${kind === "donem" ? `<div class="row" style="font-size:.88rem"><button class="btn sm" data-act="ptemplate">Dönem şablonunu indir (.xlsx)</button><button class="btn sm" data-act="pexport" ${DEVS.length ? "" : "disabled"}>Mevcut ${YEAR} verisini indir (.xlsx · ${fmt(DEVS.filter(o => !o.l.dep).length)} cihaz)</button>
       <span class="muted">İndirdiğiniz listeyi Excel'de düzenleyip buraya geri yükleyin: <b>CİHAZ NO</b> sütunu olan satırlar o cihazı günceller, numarasız satırlar yeni kayıt olur.</span></div>` : ""}
@@ -2076,7 +2076,7 @@ async function exportPeriod(template){
   ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: Math.max(rows.length, 1), c: head.length - 1 } }) };
   ws["!freeze"] = { xSplit: 2, ySplit: 1 };
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Cihazlar");
-  const help = [["Elmaslar Damga Takip · dönem listesi"], [""],
+  const help = [["ANTKA KALİBRASYON · Damga Takip · dönem listesi"], [""],
     ["LOK NO / CİHAZ NO", "Sistemin verdiği kalıcı sıra numaraları. Dolu satır o cihazı günceller; yeni cihaz için boş bırakın."],
     ["Zorunlu (yeni satır)", "FİRMA ÜNVANI, ADRES, İLÇE, MARKA, SERİ NO"],
     ["DURUM", "Listeler sayfasındaki değerlerden biri ya da saha notu (örn. YAPILDI, TUTANAK, ULAŞILAMADI)."],
@@ -2086,9 +2086,9 @@ async function exportPeriod(template){
   const hs = XLSX.utils.aoa_to_sheet(help); hs["!cols"] = [{ wch: 22 }, { wch: 100 }]; XLSX.utils.book_append_sheet(wb, hs, "Açıklamalar");
   const ls = XLSX.utils.aoa_to_sheet([["DURUM", "GRUP", "SINIF"], ...Array.from({ length: Math.max(8, GROUPS.length) }, (_, i) => [CAT[["bekliyor","tamam","islenecek","tekrar","tutanak","cihazyok","kapsamdisi","baskasi"][i]]?.l || "", GROUPS[i]?.ad || "", ["I","II","III","IIII"][i] || ""])]);
   XLSX.utils.book_append_sheet(wb, ls, "Listeler");
-  if (template){ XLSX.writeFile(wb, `elmaslar-donem-sablonu.xlsx`); toast("Dönem şablonu indirildi"); return; }
+  if (template){ XLSX.writeFile(wb, `antka-donem-sablonu.xlsx`); toast("Dönem şablonu indirildi"); return; }
   const gf = (st.gf || []).length ? "-" + st.gf.join("-").replace(/[^0-9A-Za-zÇĞİÖŞÜçğıöşü]+/g, "_").slice(0, 40) : "";
-  XLSX.writeFile(wb, `elmaslar-damga-${YEAR}${gf}.xlsx`);
+  XLSX.writeFile(wb, `antka-damga-${YEAR}${gf}.xlsx`);
   toast(`${fmt(rows.length)} cihaz Excel'e aktarıldı`);
 }
 
@@ -2466,7 +2466,7 @@ document.addEventListener("click", async e => {
   if (b.dataset.act === "fatbulk"){ const v = $("#fat-bulk").value, ids = [...st.fsel]; if (!confirm(`${ids.length} cihazın ödeme durumu değiştirilsin mi?`)) return; await fatSave(ids, v); }
 });
 /* ---------------- SMS (Sanal Santral, Supabase Edge Function "sms-gonder") ---------------- */
-const SMS_TPL = "Sayın {firma}, {donem} yılı periyodik damga (muayene) çalışması kapsamında ekibimiz {ilce} bölgesinde olacaktır. {cihaz} cihazınız için bilgilendirme. Elmaslar Elektronik Tartı";
+const SMS_TPL = "Sayın {firma}, {donem} yılı periyodik damga (muayene) çalışması kapsamında ekibimiz {ilce} bölgesinde olacaktır. {cihaz} cihazınız için bilgilendirme. ANTKA KALİBRASYON";
 const mob90 = p => { let d = String(p || "").replace(/\D/g, ""); if (d.startsWith("0")) d = "90" + d.slice(1); if (d.length === 10 && d[0] === "5") d = "90" + d; return /^905\d{9}$/.test(d) ? d : null; };
 const GSM7 = /^[A-Za-z0-9 @£$¥èéùìòÇØøÅå_ÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà\n\r^{}\\[~\]|€]*$/;
 function smsParts(t){ const n = [...t].length, g = GSM7.test(t); const one = g ? 160 : 70, multi = g ? 153 : 67; return { n, g, parts: n <= one ? (n ? 1 : 0) : Math.ceil(n / multi) }; }
@@ -2549,7 +2549,7 @@ document.addEventListener("input", e => { if (e.target.id === "sms-text" && st.s
 document.addEventListener("submit", async e => {
   if (e.target.id !== "smsTest") return; e.preventDefault();
   const p = mob90($("#sms-test-no").value); if (!p){ toast("Cep numarasını 05xx xxx xx xx biçiminde yazın"); return; }
-  try { const r = await smsInvoke([{ phone: p, text: `Elmaslar Damga Takip test mesajı (${new Date().toLocaleString("tr-TR")}).` }], "test");
+  try { const r = await smsInvoke([{ phone: p, text: `ANTKA KALİBRASYON Damga Takip test mesajı (${new Date().toLocaleString("tr-TR")}).` }], "test");
     toast(r.sent ? "Test SMS gönderildi" : "Gönderilemedi: " + (r.results?.[0]?.error || "bilinmeyen hata")); } catch(err){ toast(err.message); }
 });
 /* ---------------- müşteri düzenleme formu (açılır pencere): müşterinin tüm alanları + tüm cihazları ---------------- */
@@ -2686,6 +2686,9 @@ async function reqApprove(id){
   if (!st.noPeriod) await q(sb.from("period_items").upsert({ donem: YEAR, device_id: row.id, durum_grup: dev.durum_grup, durum_ham: dev.durum_ham, bilgi: dev.bilgi, kaynak: "saha talebi" }, { onConflict: "donem,device_id" }));
   await q(sb.from("device_requests").update({ durum: "onaylandi", device_id: row.id, karar_veren: st.me, karar_zamani: new Date().toISOString() }).eq("id", id));
   try { await q(sb.rpc("assign_qr_numbers")); } catch(_){}
+  // talep bir rotadan geldiyse cihaz o rotadaki müşteri durağına eklenir (saha ekranında cihaz listesinin altına düşer)
+  if (r.plan_id){ const p = st.plans.find(x => x.id === r.plan_id), s = p?.stops?.find(x => x.k === r.business_id);
+    if (p && s && !s.dev.includes(row.id)){ s.dev.push(row.id); p.dev = (p.dev || 0) + 1; try { await savePlan(p); } catch(_){} } }
   await reloadDevices(); await loadDynamic();
 }
 document.addEventListener("click", async e => {
@@ -2711,7 +2714,7 @@ document.addEventListener("submit", async e => {
 /* ---------------- Hizmet Talep Formu: sistemdeki cihaz verileriyle dolar, düzenlenir, yazdırılır ---------------- */
 const HTF_CHECKS = [["nawi","Otomatik olmayan tartı aleti",true],["uretici","Üretici yerinde muayene",false],["periyodik","Periyodik muayene",true],
   ["awi","Otomatik tartı aleti",false],["yerinde","Cihazın kurulu olduğu yerde muayene",false],["tamir","Tamir sonrası/İlk muayene",false]];
-const HTF_FIRMA_DEF = { ad: "ANTKA", alt: "Muratpaşa Mah. 567 Sk. Barış Apt. 58/A Muratpaşa / ANTALYA • Tel: 0 242 244 0 967 • Gsm: 0 553 844 0 967", eposta: "info@antka.com.tr" };
+const HTF_FIRMA_DEF = { ad: "ANTKA KALİBRASYON", alt: "Muratpaşa Mah. 567 Sk. Barış Apt. 58/A Muratpaşa / ANTALYA • Tel: 0 242 244 0 967 • Gsm: 0 553 844 0 967", eposta: "info@antka.com.tr" };
 function htfAddrParts(a){ const A = TRU(a).replace(/^.*?(?:MAHALLESİ|MAHALLE|MAH\.?|MH\.?)\s+/, "");
   const pick = re => { const m = A.match(re); return m ? titleTR(m[1].trim()) : ""; };
   return { sokak: pick(/([0-9A-ZÇĞİÖŞÜ.]+(?:\s[0-9A-ZÇĞİÖŞÜ.]+)?\s+(?:SOKAĞI|SOKAK|SOK\.?|SK\.?))(?![A-ZÇĞİÖŞÜ])/), cadde: pick(/([0-9A-ZÇĞİÖŞÜ.]+(?:\s[0-9A-ZÇĞİÖŞÜ.]+)?\s+(?:CADDESİ|CADDE|CAD\.?|CD\.?))(?![A-ZÇĞİÖŞÜ])/),
@@ -2748,15 +2751,15 @@ function viewHtf(){
         <label class="f">Kurum adı<input data-htff="ad" value="${esc(H.firma.ad)}"></label><label class="f wide">Alt bilgi (adres / telefon)<input data-htff="alt" value="${esc(H.firma.alt)}"></label><label class="f">E-posta<input data-htff="eposta" value="${esc(H.firma.eposta)}"></label></div></details>
       <p class="muted" style="margin:0;font-size:.8rem">Formdaki değişiklikler yalnızca bu çıktı içindir; cihaz kaydını değiştirmek için yönetici “Kaydı düzenle”yi kullanır.</p>
     </div>
-    <div class="mffoot"><span style="flex:1"></span><button class="btn" data-act="htfclose">İptal</button><button class="btn" data-act="htfprint">A4 yazdır / PDF</button><button class="btn primary" data-act="htf80">🖨 80 mm yazıcıya</button></div>
+    <div class="mffoot"><span style="flex:1"></span><button class="btn" data-act="htfclose">İptal</button><button class="btn" data-act="htfprint">${(st.htf.a4next || 1) === 2 ? "A4 · 2. nüshayı yazdır" : "A4 yazdır / PDF (1. nüsha)"}</button><button class="btn primary" data-act="htf80">🖨 80 mm yazıcıya</button></div>
   </div></div>`;
 }
-function htfDoc(){
+function htfDoc(nus){
   const H = st.htf, f = H.f, F = H.firma, n = Math.max(6, H.rows.length), cb = k => `<span class="cb">${H.checks[k] ? "✓" : ""}</span>`;
   const line = (lab, v) => `<tr><td class="lb">${lab}</td><td>: ${esc(v)}</td></tr>`;
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Hizmet Talep Formu · ${esc(f.ad)}</title><style>
   @page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0;font-size:12px}
-  .frm{border:1.5px solid #000;padding:10px 14px}.hd{display:grid;grid-template-columns:160px 1fr 220px;align-items:center}.logo{font:800 30px/1 Arial;letter-spacing:-1px;font-style:italic}
+  .frm{border:1.5px solid #000;padding:10px 14px}.hd{display:grid;grid-template-columns:160px 1fr 220px;align-items:center}.logo{line-height:1}
   h1{text-align:center;font-size:22px;margin:0;letter-spacing:.5px}.no{color:#b00;font-size:26px;font-weight:700;text-align:right}.no small{display:block;font-size:13px;color:#b00}
   .top{display:grid;grid-template-columns:1.3fr 1fr 1.1fr;gap:12px;margin-top:8px}.top table{width:100%;border-collapse:collapse}.top td{padding:3px 2px;vertical-align:top}.lb{white-space:nowrap;width:1%;padding-right:6px!important;background:#e9e9e9}
   .cbs div{display:flex;justify-content:space-between;gap:8px;padding:2px 0}.cb{display:inline-block;width:16px;height:16px;border:1px solid #000;text-align:center;line-height:15px;font-weight:700}
@@ -2764,8 +2767,8 @@ function htfDoc(){
   .txt{margin-top:8px;line-height:1.5}.sign{display:flex;justify-content:space-between;margin-top:6px}.box{width:260px;height:70px;border-top:1px dotted #000;text-align:center;padding-top:4px}
   .defs{font-size:10px;margin-top:6px}.ft{text-align:center;margin-top:8px;border-top:1px solid #000;padding-top:6px;font-size:12px}
   .nu{position:absolute;right:16px;top:6px;font-size:11px;font-weight:700;border:1px solid #000;padding:2px 6px}.frm{position:relative;page-break-after:always}.frm:last-of-type{page-break-after:auto}
-  </style></head><body>${[1, 2].map(nu => `<div class="frm"><div class="nu">${nu}. NÜSHA · ${nu === 1 ? "MÜŞTERİ" : "FİRMA"}</div>
-  <div class="hd"><div class="logo">${esc(F.ad)}</div><div><h1>HİZMET TALEP FORMU</h1><div style="text-align:center;margin-top:4px">Tarih: ${esc(f.tarih)}</div></div><div class="no">${esc(f.no)}<small>Başvuru</small></div></div>
+  </style></head><body>${[nus || 1].map(nu => `<div class="frm"><div class="nu">${nu}. NÜSHA · ${nu === 1 ? "MÜŞTERİ" : "FİRMA"}</div>
+  <div class="hd"><div class="logo"><img src="${APP_URL}antka-logo.png" alt="" style="height:58px;display:block"><div style="font:700 10px Arial;letter-spacing:.06em;margin-top:2px">${esc(F.ad)}</div></div><div><h1>HİZMET TALEP FORMU</h1><div style="text-align:center;margin-top:4px">Tarih: ${esc(f.tarih)}</div></div><div class="no">${esc(f.no)}<small>Başvuru</small></div></div>
   <div class="top"><table>${line("Başvuran Firma Adı", f.ad)}${line("Gsm / Sabit Tel", f.tel)}${line("Şube Adı", f.sube)}${line("Vergi Dairesi / No", f.vergi)}${line("Cihaz(lar)ın Bulunduğu Yer", f.yer)}${line("Yetkili Kişi", f.yetkili)}${line("Doğum Tarihi", f.dogum)}${line("T.C.No", f.tc)}</table>
     <table>${line("Mahalle", f.mahalle)}${line("Sokak", f.sokak)}${line("Cadde", f.cadde)}${line("İç Kapı No", f.ic)}${line("Dış Kapı No", f.dis)}${line("E-mail Adresi", f.eposta)}</table>
     <div class="cbs">${HTF_CHECKS.slice(0, 3).map(([k, lab]) => `<div><span>${lab}</span>${cb(k)}</div>`).join("")}<div class="grp"></div>${HTF_CHECKS.slice(3).map(([k, lab]) => `<div><span>${lab}</span>${cb(k)}</div>`).join("")}</div></div>
@@ -2786,7 +2789,9 @@ document.addEventListener("click", e => {
   if (a === "htfrm"){ st.htf.rows.splice(+b.dataset.i, 1); render(); }
   if (a === "htfprint"){ if (!htfValid()) return; const w = window.open("", "_blank"); if (!w){ toast("Açılır pencere engellendi; tarayıcıda izin verin"); return; }
     w.document.write("<p style='font-family:sans-serif'>Form numarası alınıyor…</p>");
-    htfNumber().then(ok => { if (!ok){ w.close(); return; } htfMark(); lsSet("damga.htfFirma", st.htf.firma); w.document.open(); w.document.write(htfDoc()); w.document.close(); render(); }); }
+    const nus = st.htf.a4next || 1;
+    htfNumber().then(ok => { if (!ok){ w.close(); return; } if (nus === 1) htfMark(); lsSet("damga.htfFirma", st.htf.firma); w.document.open(); w.document.write(htfDoc(nus)); w.document.close();
+      st.htf.a4next = nus === 1 ? 2 : 1; toast(nus === 1 ? "1. nüsha açıldı. Yazdırdıktan sonra “A4 2. nüsha” düğmesine basın." : "2. nüsha açıldı."); render(); }); }
 });
 document.addEventListener("input", e => { const t = e.target, H = st.htf; if (!H) return;
   if (t.dataset.htf === "dogum"){ const d = t.value.replace(/\D/g, "").slice(0, 8); const v = d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
@@ -2822,7 +2827,7 @@ function htfValid(){ const f = st.htf.f; const m = String(f.dogum || "").trim().
 function tcValid(s){ s = String(s || "").trim(); if (!/^[1-9]\d{10}$/.test(s)) return false; const d = [...s].map(Number);
   const o = d[0] + d[2] + d[4] + d[6] + d[8], e = d[1] + d[3] + d[5] + d[7]; if (((o * 7 - e) % 10 + 10) % 10 !== d[9]) return false;
   return d.slice(0, 10).reduce((a, b) => a + b, 0) % 10 === d[10]; }
-function htfFirma(){ const F = Object.assign({}, HTF_FIRMA_DEF, lsGet("damga.htfFirma", {})); if (/anka\.com\.tr$/i.test(F.eposta || "")) F.eposta = HTF_FIRMA_DEF.eposta; return F; }
+function htfFirma(){ const F = Object.assign({}, HTF_FIRMA_DEF, lsGet("damga.htfFirma", {})); if (/anka\.com\.tr$/i.test(F.eposta || "")) F.eposta = HTF_FIRMA_DEF.eposta; if (!F.ad || F.ad === "ANTKA") F.ad = HTF_FIRMA_DEF.ad; return F; }
 // Form / başvuru no: sunucuda ay bazında artan (YYYY/AA-0001); iki nüsha aynı numarayı taşır, tekrar yazdırmada değişmez
 async function htfNumber(){ const H = st.htf; if (!H) return false; if (H.f.no) return true;
   try { H.f.no = await q(sb.rpc("next_form_no", { p_tur: "HTF", p_business: H.k, p_plan: H.ctx ? H.ctx.split("|")[0] : null, p_devices: H.rows.map(r => r.id).filter(Boolean) })); return !!H.f.no; }
@@ -2845,8 +2850,10 @@ function p80wrap(text, w){ const out = []; String(text).split("\n").forEach(par 
     if (!line.trim()) line = line + word; else if ((line + " " + word).length <= w) line += " " + word; else { out.push(line); line = ind + word; } });
   out.push(line); }); return out; }
 // satır modeli: { t, a: "l"|"c"|"r", b: bold, big: çift boy, hr: çizgi, kv: [anahtar, değer], gap: n }
+const P80_LOGO = (() => { const i = new Image(); i.src = "antka-logo.png"; return i; })();
 function p80lines(doc, cols){ const L = [];
   doc.forEach(x => { const w = x.big ? Math.floor(cols / 2) : cols;
+    if (x.logo){ L.push({ s: "", logo: 1 }); return; }
     if (x.hr){ L.push({ s: (x.hr === "=" ? "=" : "-").repeat(cols) }); return; }
     if (x.gap){ for (let i = 0; i < x.gap; i++) L.push({ s: "" }); return; }
     if (x.kv){ const k = x.kv[0] + ": ", v = String(x.kv[1] ?? ""); const ws = p80wrap(k + v, w); ws.forEach((s, i) => L.push({ s: i ? "  " + s : s, b: x.b })); return; }
@@ -2855,10 +2862,11 @@ function p80lines(doc, cols){ const L = [];
 // Görüntü (raster) modu: metin tuvale çizilip GS v 0 ile basılır; yazıcının kod sayfasından bağımsız, tüm Türkçe harfler doğru çıkar
 function p80raster(doc){
   const C = p80cfg(), L = p80lines(doc, C.cols), W = C.cols <= 32 ? 384 : 576, fs = Math.floor(W / C.cols / 0.6), lh = Math.round(fs * 1.28);
-  const H = L.reduce((h, l) => h + (l.big ? lh * 2 : lh), 0) + 8;
+  const logoOk = P80_LOGO.complete && P80_LOGO.naturalWidth > 0, LH = logoOk ? Math.round(Math.min(W * 0.55, 320) * P80_LOGO.naturalHeight / P80_LOGO.naturalWidth) + 8 : 0;
+  const H = L.reduce((h, l) => h + (l.logo ? LH : l.big ? lh * 2 : lh), 0) + 8;
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
   g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.fillStyle = "#000"; g.textBaseline = "top";
-  let y = 4; L.forEach(l => { const size = l.big ? fs * 2 : fs; g.font = `${l.b || l.big ? "bold " : ""}${size}px "DejaVu Sans Mono","Droid Sans Mono","Roboto Mono","Courier New",monospace`;
+  let y = 4; L.forEach(l => { if (l.logo){ if (logoOk){ const lw = Math.min(W * 0.55, 320), lhh = LH - 8; g.drawImage(P80_LOGO, (W - lw) / 2, y, lw, lhh); } y += LH; return; } const size = l.big ? fs * 2 : fs; g.font = `${l.b || l.big ? "bold " : ""}${size}px "DejaVu Sans Mono","Droid Sans Mono","Roboto Mono","Courier New",monospace`;
     const w = g.measureText(l.s).width, x = l.a === "c" ? Math.max(0, (W - w) / 2) : l.a === "r" ? Math.max(0, W - w) : 0;
     g.fillText(l.s, x, y + (l.big ? 2 : 1)); y += l.big ? lh * 2 : lh; });
   const px = g.getImageData(0, 0, W, H).data, bw = W / 8, B = [0x1B,0x40];
@@ -2868,11 +2876,11 @@ function p80raster(doc){
 }
 function p80bytes(doc){ if (p80cfg().mode !== "text") return p80raster(doc); const C = p80cfg(), L = p80lines(doc, C.cols), B = [0x1B,0x40];
   if (C.cp === "pc857") B.push(0x1B,0x74,13);
-  L.forEach(l => { B.push(0x1B,0x61, l.a === "c" ? 1 : l.a === "r" ? 2 : 0, 0x1B,0x45, l.b ? 1 : 0, 0x1D,0x21, l.big ? 0x11 : 0x00); B.push(...p80enc(l.s, C.cp), 0x0A); });
+  L.filter(l => !l.logo).forEach(l => { B.push(0x1B,0x61, l.a === "c" ? 1 : l.a === "r" ? 2 : 0, 0x1B,0x45, l.b ? 1 : 0, 0x1D,0x21, l.big ? 0x11 : 0x00); B.push(...p80enc(l.s, C.cp), 0x0A); });
   B.push(0x1B,0x45,0, 0x1D,0x21,0, 0x1B,0x61,0, 0x1B,0x64,4, 0x1D,0x56,0x42,0x00);
   return new Uint8Array(B); }
 function p80preview(doc){ const C = p80cfg(), L = p80lines(doc, C.cols);
-  return `<div class="p80paper" style="--cols:${C.cols}">${L.map(l => `<div class="p80l${l.b ? " b" : ""}${l.big ? " big" : ""}" style="text-align:${l.a === "c" ? "center" : l.a === "r" ? "right" : "left"}">${esc(l.s) || "&nbsp;"}</div>`).join("")}</div>`; }
+  return `<div class="p80paper" style="--cols:${C.cols}">${L.map(l => l.logo ? `<div style="text-align:center;padding:4px 0"><img src="antka-logo.png" alt="" style="width:55%;filter:grayscale(1) contrast(2)"></div>` : `<div class="p80l${l.b ? " b" : ""}${l.big ? " big" : ""}" style="text-align:${l.a === "c" ? "center" : l.a === "r" ? "right" : "left"}">${esc(l.s) || "&nbsp;"}</div>`).join("")}</div>`; }
 
 /* ---- Bluetooth (BLE) — Chrome/Android: navigator.bluetooth ---- */
 const P80_SERVICES = ["000018f0-0000-1000-8000-00805f9b34fb","e7810a71-73ae-499d-8c15-faa9aef0c3f2","49535343-fe7d-4ae5-8fa9-9fafd205e455","0000ff00-0000-1000-8000-00805f9b34fb",
@@ -2898,12 +2906,12 @@ function p80rawbt(bytes){ let bin = ""; bytes.forEach(b => bin += String.fromCha
 /* ---- tarayıcı yazdır (80 mm sayfa) ---- */
 function p80browser(doc0, title, tot = 1){ const C = p80cfg(), w = window.open("", "_blank"); if (!w){ toast("Açılır pencere engellendi"); return; }
   const L = Array.from({ length: tot }, (_, i) => p80lines(p80copy(doc0, i + 1, tot), C.cols).concat(i < tot - 1 ? [{ s: "", brk: 1 }] : [])).flat();
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:80mm auto;margin:3mm}body{margin:0;font:12px/1.35 "Courier New",monospace;width:72mm}.b{font-weight:700}.big{font-size:18px;font-weight:700}div{white-space:pre-wrap;word-break:break-word}.brk{page-break-after:always}</style></head><body>${L.map(l => `<div class="${l.b ? "b" : ""}${l.big ? " big" : ""}${l.brk ? " brk" : ""}" style="text-align:${l.a === "c" ? "center" : l.a === "r" ? "right" : "left"}">${esc(l.s) || "&nbsp;"}</div>`).join("")}<script>onload=()=>setTimeout(()=>print(),200)<\/script></body></html>`); w.document.close(); }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:80mm auto;margin:3mm}body{margin:0;font:12px/1.35 "Courier New",monospace;width:72mm}.b{font-weight:700}.big{font-size:18px;font-weight:700}div{white-space:pre-wrap;word-break:break-word}.brk{page-break-after:always}</style></head><body>${L.map(l => l.logo ? `<div style="text-align:center"><img src="${APP_URL}antka-logo.png" style="width:55%"></div>` : `<div class="${l.b ? "b" : ""}${l.big ? " big" : ""}${l.brk ? " brk" : ""}" style="text-align:${l.a === "c" ? "center" : l.a === "r" ? "right" : "left"}">${esc(l.s) || "&nbsp;"}</div>`).join("")}<script>onload=()=>setTimeout(()=>print(),200)<\/script></body></html>`); w.document.close(); }
 
 /* ---- yazdırma penceresi (önizleme + Yazdır / İptal) ---- */
 function p80open(o){ st.p80 = Object.assign({ busy: false, err: "", copies: 2 }, o); render(); }
 // çift nüsha: her nüshanın başına etiket eklenir, aralarında kesim yapılır
-const p80copy = (doc, n, tot) => tot > 1 ? [{ t: `${n}. NÜSHA · ${n === 1 ? "MÜŞTERİ" : "FİRMA"}`, a: "c", b: 1 }, ...doc] : doc;
+const p80copy = (doc, n, tot) => { if (tot <= 1) return doc; const lab = { t: `${n}. NÜSHA · ${n === 1 ? "MÜŞTERİ" : "FİRMA"}`, a: "c", b: 1 }; return doc[0] && doc[0].logo ? [doc[0], lab, ...doc.slice(1)] : [lab, ...doc]; };
 function p80all(doc, tot){ const parts = Array.from({ length: tot }, (_, i) => p80bytes(p80copy(doc, i + 1, tot))); const out = new Uint8Array(parts.reduce((s, p) => s + p.length, 0)); let o = 0; parts.forEach(p => { out.set(p, o); o += p.length; }); return out; }
 function viewP80(){
   const P = st.p80; if (!P) return ""; const C = p80cfg(), doc = P.build();
@@ -2915,24 +2923,29 @@ function viewP80(){
         <label class="f">Baskı modu<select data-p80c="mode"><option value="img" ${C.mode !== "text" ? "selected" : ""}>Görüntü · Türkçe tam uyumlu (önerilen)</option><option value="text" ${C.mode === "text" ? "selected" : ""}>Metin · hızlı</option></select></label>
         <label class="f">Türkçe karakter (metin modu)<select data-p80c="cp"><option value="pc857" ${C.cp === "pc857" ? "selected" : ""}>PC857 kod sayfası</option><option value="ascii" ${C.cp === "ascii" ? "selected" : ""}>Türkçe harfleri sadeleştir (ç→c)</option></select></label>
       </div><p class="muted" style="font-size:.78rem;margin:6px 0 0">Görüntü modu her yazıcıda Türkçe harfleri doğru basar (biraz daha yavaş gönderilir). “Bluetooth” düğmesi ilk kullanımda yazıcıyı seçtirir (L39 BT Printer).</p></details></div>
-      <div class="p80prev"><div class="muted" style="font-size:.78rem;margin-bottom:6px">${P.copies > 1 ? `${P.copies} nüsha basılır (1. Müşteri, 2. Firma) · önizleme 1. nüsha` : "1 nüsha"}</div>${p80preview(p80copy(doc, 1, P.copies || 1))}</div></div>
+      <div class="p80prev"><div class="muted" style="font-size:.78rem;margin-bottom:6px">${P.copies > 1 ? `${P.copies} nüsha ayrı ayrı basılır (1. Müşteri, 2. Firma) · sıradaki: <b>${P.next || 1}. nüsha</b>` : "1 nüsha"}</div>${p80preview(p80copy(doc, P.next || 1, P.copies || 1))}</div></div>
     ${P.err ? `<div class="warnbox" style="margin:0 16px">${esc(P.err)}</div>` : ""}
-    <div class="mffoot" style="flex-wrap:wrap"><button class="btn" data-act="p80close">İptal</button><span style="flex:1"></span>
-      <button class="btn sm" data-act="p80go" data-m="browser">Tarayıcıda yazdır</button>
-      <button class="btn sm" data-act="p80go" data-m="rawbt">RawBT ile yazdır</button>
-      <button class="btn primary" data-act="p80go" data-m="ble" ${P.busy ? "disabled" : ""}>${P.busy ? "Gönderiliyor…" : "🖨 Yazdır (Bluetooth)"}</button></div>
+    ${P.next > 1 ? `<div class="savings" style="margin:0 16px;font-size:.9rem">✓ ${P.next - 1}. nüsha gönderildi. Kağıdı koparın, ardından <b>${P.next}. nüshayı yazdır</b> düğmesine basın.${P.lastM && P.lastM !== "ble" ? ` (Son kullanılan yöntem: ${P.lastM === "rawbt" ? "RawBT" : "tarayıcı"})` : ""}</div>` : ""}
+    <div class="mffoot" style="flex-wrap:wrap"><button class="btn" data-act="p80close">${P.next > 1 ? "Kapat" : "İptal"}</button><span style="flex:1"></span>
+      <button class="btn sm" data-act="p80go" data-m="browser">Tarayıcıda${P.copies > 1 ? ` (${P.next || 1}. nüsha)` : ""}</button>
+      <button class="btn sm" data-act="p80go" data-m="rawbt">RawBT${P.copies > 1 ? ` (${P.next || 1}. nüsha)` : ""}</button>
+      <button class="btn primary" data-act="p80go" data-m="ble" ${P.busy ? "disabled" : ""}>${P.busy ? "Gönderiliyor…" : (P.copies > 1 ? `🖨 ${P.next || 1}. nüshayı yazdır` : "🖨 Yazdır") + " (Bluetooth)"}</button></div>
   </div></div>`;
 }
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-act]"); if (!b || !st.p80) return; const a = b.dataset.act, P = st.p80;
-  if (a === "p80close" || (a === "p80back" && e.target === b)){ st.p80 = null; render(); return; }
+  if (a === "p80close" || (a === "p80back" && e.target === b)){ if (P.next > 1 && P.next <= (P.copies || 1) && !confirm(`${P.next}. nüsha henüz yazdırılmadı. Yine de kapatılsın mı?`)) return; st.p80 = null; render(); return; }
   if (a !== "p80go") return;
-  const m = b.dataset.m, doc = P.build(), bytes = p80all(doc, P.copies || 1);
+  // nüshalar ayrı ayrı basılır: 1. nüsha sonrası kağıt koparılır, 2. nüsha düğmeyle gönderilir (tek parça çıkmaz)
+  const tot = P.copies || 1, n = P.next || 1, doc = P.build(), one = p80copy(doc, n, tot), bytes = p80bytes(one), m = b.dataset.m;
   try {
     if (m === "ble"){ P.busy = true; P.err = ""; render(); await p80ble(bytes); }
-    else if (m === "rawbt") p80rawbt(bytes); else p80browser(doc, P.title, P.copies || 1);
+    else if (m === "rawbt") p80rawbt(bytes); else p80browser(one, `${P.title}${tot > 1 ? ` · ${n}. nüsha` : ""}`, 1);
     lsSet("damga.p80", Object.assign(p80cfg(), { method: m })); P.busy = false;
-    if (P.after) await P.after(m); toast(m === "ble" ? "Yazıcıya gönderildi" : m === "rawbt" ? "RawBT'ye gönderildi" : "Yazdırma penceresi açıldı");
+    if (n === 1 && P.after) await P.after(m);
+    if (n < tot){ P.next = n + 1; P.lastM = m; toast(`${n}. nüsha gönderildi. Kağıdı koparın, sonra ${n + 1}. nüshayı yazdırın.`); render(); return; }
+    if (P.final) await P.final(m);
+    toast(tot > 1 ? "Son nüsha da gönderildi" : m === "ble" ? "Yazıcıya gönderildi" : m === "rawbt" ? "RawBT'ye gönderildi" : "Yazdırma penceresi açıldı");
     st.p80 = null; render();
   } catch(err){ P.busy = false; P.err = err.name === "NotFoundError" ? "Yazıcı seçilmedi." : (err.message || String(err)); if (/GATT|disconnect/i.test(P.err)){ p80dev = null; p80ch = null; } render(); }
 });
@@ -2956,7 +2969,7 @@ function tutEditor(){ const T = st.tut, inp = (k, lab, w) => `<label class="f${w
     <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px;font-size:.84rem">${T.all.map(id => { const o = DEVID[id]; return o ? `<label class="chip" style="cursor:pointer"><input type="checkbox" data-tutd="${id}" ${T.ids.includes(id) ? "checked" : ""}> ${esc(o.d[2] || "?")} ${esc(o.d[3] || "")} ${esc(o.d[4] || "")}</label>` : ""; }).join("")}</div>
     <p class="muted" style="font-size:.78rem;margin:6px 0 0">Yazdırınca durak “Adreste yok” olarak kaydedilir ve tutanak notu sonuca eklenir.</p>`; }
 function tutDoc(){ const T = st.tut;
-  return [ ...(T.kurum ? [{ t: T.kurum, a: "c", b: 1 }] : []), { t: "TUTANAKTIR", a: "c", big: 1 }, { hr: "=" },
+  return [ { logo: 1 }, ...(T.kurum ? [{ t: T.kurum, a: "c", b: 1 }] : []), { t: "TUTANAKTIR", a: "c", big: 1 }, { hr: "=" },
     { kv: ["Tarih", T.tarih] }, { kv: ["Müşteri", T.musteri], b: 1 }, { kv: ["Lokasyon", T.lokasyon] }, { hr: "-" },
     { t: "Cihaz(lar):", b: 1 }, ...T.ids.map((id, i) => { const d = DEVID[id]?.d || []; return { t: `${i + 1}) ${d[2] || "-"} ${d[3] || ""} · S/N ${d[4] || "-"}` }; }), { hr: "-" },
     { t: T.metin }, { gap: 1 },
@@ -2972,7 +2985,7 @@ document.addEventListener("change", e => { const t = e.target; if (st.tut && t.d
 
 /* ---------------- Hizmet Talep Formu → 80 mm ---------------- */
 function htf80Doc(){ const H = st.htf, f = H.f, F = H.firma;
-  return [ { t: F.ad, a: "c", b: 1 }, { t: "HİZMET TALEP FORMU", a: "c", big: 1 }, { t: `Tarih: ${f.tarih}${f.no ? "   No: " + f.no : ""}`, a: "c" }, { hr: "=" },
+  return [ { logo: 1 }, { t: F.ad, a: "c", b: 1 }, { t: "HİZMET TALEP FORMU", a: "c", big: 1 }, { t: `Tarih: ${f.tarih}${f.no ? "   No: " + f.no : ""}`, a: "c" }, { hr: "=" },
     { kv: ["Firma", f.ad], b: 1 }, ...(f.sube ? [{ kv: ["Şube", f.sube] }] : []), ...(f.tel ? [{ kv: ["Tel", f.tel] }] : []), ...(f.vergi ? [{ kv: ["Vergi D./No", f.vergi] }] : []),
     { kv: ["Cihaz yeri", f.yer] }, ...(f.mahalle ? [{ kv: ["Mahalle", f.mahalle] }] : []), ...(f.cadde ? [{ kv: ["Cadde", f.cadde] }] : []), ...(f.sokak ? [{ kv: ["Sokak", f.sokak] }] : []),
     ...((f.dis || f.ic) ? [{ kv: ["Kapı no", [f.dis, f.ic && "İç " + f.ic].filter(Boolean).join(" / ")] }] : []), ...(f.eposta ? [{ kv: ["E-mail", f.eposta] }] : []),
@@ -2984,7 +2997,7 @@ function htf80Doc(){ const H = st.htf, f = H.f, F = H.firma;
     { gap: 1 }, { t: "Kaşe / İmza:" }, { gap: 4 }, { hr: "-" }, { t: F.alt, a: "c" }, { t: F.eposta, a: "c" } ]; }
 document.addEventListener("click", async e => { const b = e.target.closest('[data-act="htf80"]'); if (!b || !st.htf) return; if (!htfValid()) return;
   b.disabled = true; const okNo = await htfNumber(); b.disabled = false; if (!okNo) return; lsSet("damga.htfFirma", st.htf.firma);
-  const keep = st.htf; p80open({ title: "Hizmet Talep Formu", editor: () => `<p class="muted" style="margin:0;font-size:.86rem">Önizleme sağda. Bir alanı değiştirmek için İptal'e basın; form açık kalır, düzenleyip tekrar yazdırın.</p>`, build: () => { st.htf = st.htf || keep; return htf80Doc(); }, after: async () => { st.htf = st.htf || keep; htfMark(); st.htf = null; } }); st.htf = keep; render(); });
+  const keep = st.htf; p80open({ title: "Hizmet Talep Formu", editor: () => `<p class="muted" style="margin:0;font-size:.86rem">Önizleme sağda. Bir alanı değiştirmek için İptal'e basın; form açık kalır, düzenleyip tekrar yazdırın.</p>`, build: () => { const cur = st.htf; st.htf = keep; const d = htf80Doc(); st.htf = cur; return d; }, after: async () => { const cur = st.htf; st.htf = keep; htfMark(); st.htf = cur; }, final: async () => { st.htf = null; } }); st.htf = keep; render(); });
 /* ---------------- içerdeki veriyi temizle: e-posta koduyla doğrulama + sunucuda yetki kontrolü (purge_data) ---------------- */
 function viewPurge(){
   const P = st.purge; if (!P) return "";
@@ -3032,7 +3045,8 @@ document.addEventListener("input", e => { if (!st.purge) return; if (e.target.id
 function showScreen(id){ ["setup","login","loading","app"].forEach(s => { const el = document.getElementById("scr-" + s); if (el) el.hidden = s !== id; }); }
 function loginMsg(m, ok){ const el = $("#lmsg"); if (el){ el.textContent = m || ""; el.className = "lmsg" + (ok ? " ok" : ""); } }
 let rtTimer = null;
-function scheduleRefresh(){ clearTimeout(rtTimer); rtTimer = setTimeout(async () => { try { await loadDynamic(); softRender(); } catch(e){} }, 600); }
+let rtFull = false;
+function scheduleRefresh(full){ if (full === true) rtFull = true; clearTimeout(rtTimer); rtTimer = setTimeout(async () => { const f = rtFull; rtFull = false; try { if (f) await reloadDevices(); await loadDynamic(); softRender(); } catch(e){} }, 600); }
 async function start(session){
   showScreen("loading"); $("#loadmsg").textContent = "Veriler yükleniyor…";
   try {
@@ -3046,7 +3060,7 @@ async function start(session){
     if (st.f.region){ const r = st.regions.find(x => String(x.id) === st.f.region); if (r) st.f.ilce = (r.ilceler || []).slice(); }
     st.ready = true; routeFromPath(); applyHash(); showScreen("app"); render();
     sb.channel("damga-canli")
-      .on("postgres_changes", { event: "*", schema: "public", table: "plans" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "plans" }, () => scheduleRefresh(true))
       .on("postgres_changes", { event: "*", schema: "public", table: "results" }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, scheduleRefresh)
       .subscribe();

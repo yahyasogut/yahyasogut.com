@@ -3,20 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Tartı Aleti Muayene Kartı · Elmaslar</title>
+<title>Tartı Aleti Muayene Kartı · Antka Kalibrasyon</title>
 <meta name="robots" content="noindex,nofollow">
-<link rel="icon" href="../mark.png">
+<link rel="icon" href="../antka-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:wdth,wght@100..125,500..800&family=Figtree:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
 <style>
-:root{--bg:#F3F4F9;--surface:#fff;--ink:#15163A;--muted:#5C5F82;--line:#D9DBEA;--brand:#2D2A8E;
+:root{--bg:#F3F4F9;--surface:#fff;--ink:#15163A;--muted:#5C5F82;--line:#D9DBEA;--brand:#1F2024;
   --ok:#1C8A57;--ok-soft:#E1F3EA;--wait:#B98000;--wait-soft:#FBF0D3;--bad:#C2333B;--bad-soft:#FBE3E4;--off:#8A8CA6;--off-soft:#ECECF2}
 @media (prefers-color-scheme: dark){:root{--bg:#0E0F1F;--surface:#171931;--ink:#E7E8F6;--muted:#9C9FC4;--line:#2B2E50;--brand:#9B98FF;
   --ok:#4CC88B;--ok-soft:#163626;--wait:#E7B53C;--wait-soft:#3A2F10;--bad:#F06A70;--bad-soft:#3E1C20;--off:#8E91AE;--off-soft:#23243A;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Figtree,system-ui,sans-serif}
 main{max-width:560px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
-.wm{width:150px;aspect-ratio:732/164;background:var(--brand);-webkit-mask:url(../wordmark.png) center/contain no-repeat;mask:url(../wordmark.png) center/contain no-repeat}
+.wm{width:130px;aspect-ratio:382/183;background:url(../antka-logo.png) left center/contain no-repeat}@media (prefers-color-scheme:dark){.wm{background-image:url(../antka-logo-dark.png)}}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .eyebrow{font:600 .72rem Saira,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 h1{font:700 1.35rem/1.2 Saira,sans-serif;font-stretch:110%;margin:2px 0 0}
@@ -36,9 +36,9 @@ p.note{font-size:.82rem;color:var(--muted);margin:0;text-align:center}
 </head>
 <body>
 <main>
-  <div class="wm" role="img" aria-label="Elmaslar"></div>
+  <div class="wm" role="img" aria-label="Antka Kalibrasyon"></div>
   <div id="out" class="card"><div class="empty">Cihaz bilgisi yükleniyor…</div></div>
-  <p class="note">Elmaslar Elektronik Tartı Sistemleri ve Kalibrasyon Hizmetleri · Bu kart, tartı aletinin periyodik muayene (damga) durumunu gösterir. Periyodik muayene 2 yılda bir yapılır; başvurular Ocak–Şubat aylarında alınır.</p>
+  <p class="note">ANTKA KALİBRASYON · 0 242 244 0 967 · info@antka.com.tr · Bu kart, tartı aletinin periyodik muayene (damga) durumunu gösterir. Periyodik muayene 2 yılda bir yapılır; başvurular Ocak–Şubat aylarında alınır.</p>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="../config.js?v=1"></script>
@@ -65,7 +65,7 @@ p.note{font-size:.82rem;color:var(--muted);margin:0;text-align:center}
     else { cls = "s-bad"; label = "Muayene süresi geçmiş"; sub = `Son damga ${last}. Cihaz muayene edilene kadar ticari tartımda kullanılmamalı.`; }
     const spec = [["İşletme", titleTR(d.unvan) + (d.ilce ? " · " + titleTR(d.ilce) : "")],["Tip", d.tip || "—"],["Marka / model", `${d.marka||"—"} ${d.model||""}`],["Seri no", d.seri_no || "—"],
       ["Max", d.max_cap || "—"],["Min", d.min_cap || "—"],["e / d", `${d.e || "—"} / ${d.d || "—"}`],["Doğruluk sınıfı", d.sinif || "—"],["Son damga", last || "—"],["Sonraki damga", next || "—"]];
-    document.title = `${d.qr_no} · ${label} · Elmaslar`;
+    document.title = `${d.qr_no} · ${label} · Antka Kalibrasyon`;
     out.innerHTML = `<div class="head"><div class="eyebrow">Tartı aleti periyodik muayene kartı</div><h1>${esc(titleTR(d.cins) || "Tartı aleti")} · ${esc(d.marka||"")}</h1></div>
       <div class="status ${cls}"><b>${esc(label)}</b><span>${esc(sub)}</span></div>
       <dl>${spec.map(([k,v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
