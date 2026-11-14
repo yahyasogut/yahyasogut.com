@@ -470,3 +470,8 @@ alter table public.devices alter column sira set default nextval('public.devices
 create unique index if not exists businesses_sira_uq on public.businesses (sira);
 create unique index if not exists devices_sira_uq on public.devices (sira);
 grant usage, select on sequence public.businesses_sira_seq, public.devices_sira_seq to authenticated;
+
+-- ---------- Rota oluşturma zamanı · v13 ----------
+alter table public.plans add column if not exists created_at timestamptz;
+update public.plans set created_at = coalesce(updated_at, now()) where created_at is null;
+alter table public.plans alter column created_at set default now();

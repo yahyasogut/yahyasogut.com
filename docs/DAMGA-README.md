@@ -1,4 +1,4 @@
-# Elmaslar Damga Takip — teknik not (v12 · 14 Kasım 2026)
+# Elmaslar Damga Takip — teknik not (v13 · 14 Kasım 2026)
 
 Ayrı proje olarak yahyasogut.com reposunun içinde, kendi klasörlerinde yaşar. Next.js sitesinden bağımsızdır; `public/damga/` statik olarak `/damga/` adresine kopyalanır.
 
@@ -14,6 +14,7 @@ public/damga/
 supabase/damga.sql  tablolar, RLS, fonksiyonlar (tekrar çalıştırılabilir)
 supabase/damga-donem.sql  v9 eki: dönemler (period_items) + müşteri grupları
 supabase/damga-sira.sql   v10 eki: lokasyon ve cihaz sıra numaraları
+supabase/damga-rota-gunluk.sql  v13 eki: plans.created_at
 docs/DAMGA-KURULUM.md   adım adım kurulum
 ```
 
@@ -55,6 +56,12 @@ docs/DAMGA-KURULUM.md   adım adım kurulum
 - Ön basılı QR (sahada cihaza bağlama) Faz 3'te. Şimdilik QR numarası içe aktarımda cihaza verilir.
 
 ## Sürüm geçmişi
+
+- **v13 · 14.11.2026:**
+  - Yönetici özeti → **Sahadan gelen sonuçlar**: son 10 günün rota özeti gün gün ve toplam satırıyla. Sütunlar: rota sayısı, durak / cihaz, tamamlanan, eksik (sorun bildirilen), kalan (sonuç gelmemiş), yeni eklenen (o gün ilk rotadan 30 dk sonra eklenen rotalar). Bugün vurgulu. Altında sonuç türü rozetleri.
+  - **Veri kalitesi** kartına "Bu verileri düzenle" (Veri & ayarlar → kayıt düzenleyiciyi açar) ve "Tekrar eden seri numaraları" (düzenleyiciyi seri mükerrer filtresiyle açar) düğmeleri eklendi.
+  - "Öne çıkanlar" bölümü kaldırıldı.
+  - Yeni SQL eki: `supabase/damga-rota-gunluk.sql` (`plans.created_at`, "yeni eklenen" için; damga.sql içinde de var). Önbellek sürümü ?v=13.
 
 - **v12 · 14.11.2026:**
   - Yönetici özeti → **Fatura / ödeme notları**: not adları ve adetleri tıklanabilir. Her not ayrı bir sayfa açıyor ve sayfalar arası geçiş için notlar sekme olarak gösteriliyor ("Tümü" de var).

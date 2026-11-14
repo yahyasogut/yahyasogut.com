@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v12 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v13 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -109,8 +109,8 @@ const st = {
 };
 
 /* ---------------- store ---------------- */
-const planRow = p => { const { id, gid, team, teams, date, staffId, staffName, phone, donem, ...data } = p; const r = { id, gid, team, teams, date, staff_id: staffId || null, staff_name: staffName || "", phone: phone || "", data }; if (!st.noPeriod) r.donem = donem || YEAR; return r; };
-const planFrom = r => ({ ...(r.data || {}), id: r.id, gid: r.gid, team: r.team, teams: r.teams, date: r.date, staffId: r.staff_id || "", staffName: r.staff_name, phone: r.phone, donem: r.donem || (+String(r.date || "").slice(0, 4) || null) });
+const planRow = p => { const { id, gid, team, teams, date, staffId, staffName, phone, donem, createdAt, ...data } = p; const r = { id, gid, team, teams, date, staff_id: staffId || null, staff_name: staffName || "", phone: phone || "", data }; if (!st.noPeriod) r.donem = donem || YEAR; return r; };
+const planFrom = r => ({ ...(r.data || {}), id: r.id, gid: r.gid, team: r.team, teams: r.teams, date: r.date, staffId: r.staff_id || "", staffName: r.staff_name, phone: r.phone, donem: r.donem || (+String(r.date || "").slice(0, 4) || null), createdAt: r.created_at || null });
 const resultFrom = r => ({ planId: r.plan_id, k: r.business_id, st: r.st, done: (r.done || []).map(Number), note: r.note || "", by: r.by, at: r.at });
 const eventFrom = r => ({ id: r.id, devId: r.device_id, code: DEVID[r.device_id]?.d[11], type: r.type, year: r.year, e: r.e, reason: r.reason, note: r.note || "", by: r.by, at: r.at });
 const staffFrom = r => ({ id: r.id, name: r.ad || r.email || "İsimsiz", phone: r.tel || "", email: r.email || "", rol: r.rol, bolge: r.bolge_id, aktif: r.aktif });
@@ -312,8 +312,8 @@ function viewSummary(){
   // live field results
   const rs = Object.values(st.results); const rc = {};
   rs.forEach(r => { rc[r.st] = (rc[r.st]||0) + 1; });
-  const live = rs.length ? `<div class="row">${Object.entries(rc).map(([k,n]) => `<span class="st ${k==="tamam"?"tamam":"eksik"}">${k==="tamam"?"Tamamlandı":(RL[k]?RL[k][1]:k)} · ${n}</span>`).join("")}</div>`
-    : `<p class="muted" style="margin:0">Henüz sahadan sonuç gelmedi. Saha çalışanı bir durağı tamamladığında burada görünür ve cihazın damga yılı otomatik güncellenir.</p>`;
+  const live = dailyRoutesHTML() + (rs.length ? `<div class="row" style="margin-top:10px">${Object.entries(rc).map(([k,n]) => `<span class="st ${k==="tamam"?"tamam":"eksik"}">${k==="tamam"?"Tamamlandı":(RL[k]?RL[k][1]:k)} · ${n}</span>`).join("")}</div>`
+    : `<p class="muted" style="margin:8px 0 0;font-size:.85rem">Henüz sahadan sonuç gelmedi. Saha çalışanı bir durağı tamamladığında burada görünür ve cihazın damga yılı otomatik güncellenir.</p>`);
   const q = S.dq;
   const openOf = x => x.bek + x.tek + x.tut;
   const byOpen = S.ilce.slice().sort((a,b) => openOf(b) - openOf(a));
@@ -336,16 +336,6 @@ function viewSummary(){
     ${isl ? `<div class="card kpi" style="--c:var(--brand)"><span>Yapıldı · sisteme işlenecek</span><b>${fmt(isl)}</b><small>muayene kartı girilmeli</small></div>` : `<div class="card kpi" style="--c:var(--retry)"><span>Tekrar ziyaret</span><b>${fmt(C.tekrar||0)}</b><small>ulaşılamadı, getirecek, süresi geçmiş…</small></div>`}
     <div class="card kpi" style="--c:var(--tut)"><span>Tutanak</span><b>${fmt(C.tutanak)}</b><small>takip kararı bekliyor</small></div>
     <div class="card kpi" style="--c:var(--off)"><span>Kapsam dışı</span><b>${fmt(out)}</b><small>cihaz yok · kapandı · başkası damgaladı</small></div>
-  </section>
-  <section class="stack" style="margin-bottom:16px">
-    <div><div class="eyebrow" style="margin-bottom:8px">Öne çıkanlar</div>
-    <ul class="findings">
-      <li class="card" style="--c:var(--brand)"><b>Merkez ilçelerin açık işteki payı %${fmt(pct(metro, S.fieldOpenDev))}</b><p>Kepez, Muratpaşa, Konyaaltı, Döşemealtı ve Aksu'da ${metro} açık cihaz var; günlük rotalar atölyeden 15 km çevrede kurulabilir.</p></li>
-      <li class="card" style="--c:var(--wait)"><b>En yoğun ilçe: ${esc(titleTR(top1.i))}</b><p>${openOf(top1)} açık cihaz (${top1.bek} bekliyor, ${top1.tek} tekrar, ${top1.tut} tutanak). Rota planlamaya buradan başlanabilir.</p></li>
-      <li class="card" style="--c:var(--retry)"><b>${esc(titleTR(yor.n).split(" ").slice(0,3).join(" "))}: ${yor.d} cihaz, ${yor.l} lokasyon</b><p>En çok açık cihazı olan müşteri. ${yor.b} bekleyen, ${yor.u} tutanaklı cihaz.</p></li>
-      ${isl ? `<li class="card" style="--c:var(--brand)"><b>${fmt(isl)} cihaz sahada yapılmış, sistemde açık</b><p>Sahadan notlara göre muayenesi yapılmış ama kaydı kapanmamış. Rota gerekmez; muayene kartı sisteme girilmeli.</p></li>`
-        : `<li class="card" style="--c:var(--off)"><b>En düşük tamamlanma: ${esc(titleTR(worst.i))} %${fmt(pct(worst.tamam, worst.n))}</b><p>${worst.n} cihazdan ${worst.tamam}'i tamamlandı. Kapsam dışı kayıtlar ve açık işler birlikte incelenmeli.</p></li>`}
-    </ul></div>
   </section>
   <section class="grid3" style="margin-bottom:16px">
     <div class="card pad"><h2 style="margin-bottom:10px">İlçe bazında ilerleme</h2>
@@ -371,7 +361,8 @@ function viewSummary(){
         <li>Seri no: <b>${q.seriYok}</b> cihazda boş, <b>${q.seriTekrar}</b> cihazda tekrar ediyor.</li>
         <li><b>${q.adresKisa}</b> satırda adres 20 karakterden kısa (“KAŞ”, “DEPO”, “BELEK”). “Veri & ayarlar” sekmesinden Google ile konum bulunabilir.</li>
         <li>Q–T sütunlarının başlığı yok (fatura, ödeme şekli, tutar). Başlık verilmeli.</li>
-      </ul></div>
+      </ul>
+      <div class="row" style="margin-top:12px"><button class="btn primary" data-act="goeditor">Bu verileri düzenle</button><button class="btn sm" data-act="goeditor" data-mode="dupseri">Tekrar eden seri numaraları</button></div></div>
     <div class="card pad"><h2 style="margin-bottom:8px">Durum eşleme tablosu</h2>
       <details><summary>Ham değer → grup (${S.raw.length} satır)</summary>
       <div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Grup</th><th>Excel'deki değer</th><th class="r">Cihaz</th></tr></thead><tbody>${rawRows}</tbody></table></div></details>
@@ -379,6 +370,34 @@ function viewSummary(){
   </section>`;
 }
 
+
+/* günlük rota özeti: rota tarihine göre planlanan / tamamlanan / eksik / kalan / gün içinde eklenen */
+function dailyRoutesHTML(){
+  const byDay = new Map();
+  st.plans.forEach(p => { const d = String(p.date || "").slice(0, 10); if (!d) return; const x = byDay.get(d) || { d, rota: 0, durak: 0, cihaz: 0, done: 0, doneDev: 0, miss: 0, kalan: 0, yeni: 0, yeniDev: 0 };
+    x.rota++; const stops = p.stops || []; x.durak += stops.length;
+    const nDev = stops.reduce((s, sp) => s + (sp.dev || []).length, 0); x.cihaz += nDev;
+    stops.forEach(sp => { const r = st.results[p.id + "__" + sp.k]; if (!r) x.kalan++; else if (r.st === "tamam"){ x.done++; } else x.miss++; if (r) x.doneDev += (r.done || []).length; });
+    if (p.createdAt && String(p.createdAt).slice(0, 10) === d){ const created = new Date(p.createdAt), first = st.plans.filter(q => String(q.date).slice(0, 10) === d && q.createdAt).map(q => +new Date(q.createdAt)).sort((a, b) => a - b)[0];
+      if (+created - first > 30 * 60 * 1000){ x.yeni++; x.yeniDev += nDev; } }
+    byDay.set(d, x); });
+  const days = [...byDay.values()].sort((a, b) => b.d.localeCompare(a.d)).slice(0, 10);
+  if (!days.length) return `<p class="muted" style="margin:0;font-size:.85rem">Henüz rota planı yok. Rota planla sekmesinden günlük rota verildiğinde tamamlanan, kalan ve gün içinde eklenen işler burada gün gün görünür.</p>`;
+  const today = todayISO(), fd = d => d.split("-").reverse().join(".");
+  const tot = days.reduce((a, x) => { Object.keys(x).forEach(k => { if (k !== "d") a[k] = (a[k] || 0) + x[k]; }); return a; }, {});
+  const td = 'style="padding:6px 4px"';
+  return `<div class="tbl-wrap"><table class="rptbl" style="font-size:.84rem;width:100%"><thead><tr><th ${td}>Gün</th><th class="r" ${td}>Rota</th><th class="r" ${td} title="Durak / cihaz">Durak</th><th class="r" ${td}>Tamam</th><th class="r" ${td}>Eksik</th><th class="r" ${td}>Kalan</th><th class="r" ${td} title="Gün başladıktan sonra (ilk rotadan 30 dk+ sonra) eklenen rotalar">Yeni</th></tr></thead><tbody>
+    ${days.map(x => `<tr${x.d === today ? ` style="background:var(--brand-soft)"` : ""}><td class="mono" ${td}>${fd(x.d).slice(0, 5)}${x.d === today ? " <small>bugün</small>" : ""}</td><td class="r" ${td}><b>${x.rota}</b></td><td class="r" ${td}>${x.durak}<small class="muted">/${x.cihaz}</small></td>
+      <td class="r" ${td}><b style="color:var(--ok)">${x.done}</b><small class="muted">/${x.doneDev}</small></td><td class="r" ${td}>${x.miss ? `<b style="color:var(--retry)">${x.miss}</b>` : "—"}</td><td class="r" ${td}><b>${x.kalan}</b></td><td class="r" ${td}>${x.yeni ? `${x.yeni}<small class="muted">/${x.yeniDev}</small>` : "—"}</td></tr>`).join("")}
+    ${days.length > 1 ? `<tr style="border-top:2px solid var(--line)"><td ${td}><b>Toplam</b></td><td class="r" ${td}><b>${tot.rota}</b></td><td class="r" ${td}>${tot.durak}<small class="muted">/${tot.cihaz}</small></td><td class="r" ${td}><b>${tot.done}</b><small class="muted">/${tot.doneDev}</small></td><td class="r" ${td}>${tot.miss || "—"}</td><td class="r" ${td}><b>${tot.kalan}</b></td><td class="r" ${td}>${tot.yeni || "—"}</td></tr>` : ""}
+  </tbody></table></div>
+  <p class="muted" style="font-size:.78rem;margin:6px 0 0">Sayılar durak; eğik çizgiden sonrası cihaz. Tamam = durak tamamlandı, eksik = sorun bildirildi, kalan = henüz sonuç yok, yeni = o gün ilk rotadan sonra eklenen rotalar.</p>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest('[data-act="goeditor"]'); if (!b) return;
+  const E = edState(); E.open = true; E.ids = null; E.page = 0; E.dupSeri = b.dataset.mode === "dupseri"; st.view = "veri"; render();
+  setTimeout(() => $("#editor")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+});
 /* ---- Planner ---- */
 function viewPlanner(){
   return `<div class="planner">
