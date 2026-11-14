@@ -292,3 +292,20 @@ details summary{cursor:pointer;font-weight:600}
 .mfdev{border:1px solid var(--line);border-radius:var(--r);padding:10px;display:flex;flex-direction:column;gap:8px}
 .mfdev.out{border-style:dashed}
 @media (max-width:640px){.mfback{padding:0}.mfdlg{max-height:100vh;height:100vh;border-radius:0}}
+/* v18 · müşteriler & cihazlar */
+.kpib{text-align:left;cursor:pointer;font:inherit;color:inherit}
+.kpib[aria-pressed="true"]{outline:2px solid var(--c);outline-offset:-2px}
+.cufilters select{max-width:200px}
+.cutog{all:unset;cursor:pointer;width:22px;height:22px;display:inline-grid;place-items:center;border-radius:6px;color:var(--brand)}
+.cutog:hover{background:var(--brand-soft)}
+.cutog:focus-visible{outline:2px solid var(--brand)}
+.cucust.open td{background:var(--brand-soft)}
+.cudevs > td{padding:0 0 10px 0!important;background:var(--sunk)}
+.cudevtbl{width:100%;font-size:.84rem;border-collapse:collapse}
+.cudevtbl th{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:6px 6px}
+.cudevtbl td{padding:5px 6px;border-top:1px solid var(--line);white-space:nowrap}
+.cudevtbl .num{text-align:right}
+.logo{cursor:pointer}
+.big-acts.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:640px){.big-acts.four{grid-template-columns:1fr 1fr}}
+.reqform{border:1px dashed var(--brand);border-radius:var(--r);padding:10px}

@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v17 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v18 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -11,7 +11,7 @@ const CAT = {
 };
 const REASONS = [
   ["yapilmadi","Yapılmadı","YAPILMADI"],["yoktu","Cihaz yoktu","YOK"],["sonra","Sonra gelinecek","SONRA GELİNECEK"],
-  ["kapali","İşyeri kapalı","MAĞAZA KAPALI"],["ulasilamadi","Yetkili yoktu / ulaşılamadı","ULAŞILAMADI"],["istemedi","Müşteri istemedi","İSTEMEDİ"],["diger","Diğer","DİĞER"]
+  ["kapali","İşyeri kapalı","MAĞAZA KAPALI"],["ulasilamadi","Yetkili yoktu / ulaşılamadı","ULAŞILAMADI"],["istemedi","Müşteri istemedi","İSTEMEDİ"],["ertelendi","Ertelendi","ERTELENDİ"],["adresteyok","Adreste yok","ADRESTE YOK"],["diger","Diğer","DİĞER"]
 ];
 const RL = Object.fromEntries(REASONS.map(r => [r[0], r]));
 const ILCE_C = {"MURATPAŞA":[36.884,30.722],"KEPEZ":[36.93,30.705],"KONYAALTI":[36.872,30.64],"DÖŞEMEALTI":[37.02,30.6],"AKSU":[36.945,30.84],"ALANYA":[36.545,32.0],"MANAVGAT":[36.787,31.443],"SERİK":[36.917,31.1],"KORKUTELİ":[37.065,30.196],"ELMALI":[36.737,29.917],"KUMLUCA":[36.37,30.291],"FİNİKE":[36.3,30.146],"KAŞ":[36.2,29.638],"KEMER":[36.598,30.56],"GAZİPAŞA":[36.269,32.317],"BUCAK":[37.459,30.595],"DEMRE":[36.245,29.985]};
@@ -68,6 +68,13 @@ function applyGroupFilter(){
 }
 const inPeriod = id => !!DEVID[id]?.inP;
 const fatKey = s => String(s || "").toLocaleUpperCase("tr-TR").trim().replace(/\s+/g, " ").replace(/FATURASI KESİLDİ|FATURA KESİDİ|^KESİLDİ$/, "FATURA KESİLDİ").replace(/^CEZA$/, "CEZALI");
+// Ödeme durumu: Excel'deki fatura / ödeme notu (Elmaslar listesinde başlıksız Q sütunu) sınıflandırılır
+const ODEME = [["bakanlik","Sanayi Bakanlığı","SANAYİ BAKANLIĞI",/BAKANL/],["cezali","Cezalı","CEZALI",/CEZA/],["kesilecek","Fatura kesilecek","FATURA KESİLECEK",/KES[İI]LECEK|KES[İI]LMED[İI]|KES[İI]LMEYECEK/],
+  ["kesildi","Fatura kesildi","FATURA KESİLDİ",/KES[İI]LD[İI]|KES[İI]D[İI]|^FATURA$|FATURALI/],["eft","EFT / havale","EFT",/EFT|HAVALE/],["nakit","Nakit","NAKİT",/NAK[İI]T/],
+  ["kart","Kredi kartı","KREDİ KARTI",/KRED[İI]|KART/],["tamir","Tamir","TAMİR",/TAM[İI]R/],["perakende","Perakende","PERAKENDE",/PAREKENDE|PERAKENDE/],["diger","Diğer not","",/./]];
+const ODEME_BY = Object.fromEntries(ODEME.map(x => [x[0], x]));
+const odemeCat = s => { const v = fatKey(s); if (!v) return ""; return ODEME.find(x => x[3].test(v))[0]; };
+const odemeLab = k => ODEME_BY[k]?.[1] || k;
 function computeSummary(){
   const tru = s => String(s||"").toLocaleUpperCase("tr-TR").trim();
   const all = DEVS, dep = all.filter(o => o.l.dep), fo = all.filter(o => !o.l.dep);
@@ -80,7 +87,7 @@ function computeSummary(){
   const topOpen = Object.values(tc).map(t => ({ n: t.n, d: t.d, l: t.locs.size, b: t.b, t: t.t, u: t.u })).sort((a,b) => b.d - a.d).slice(0, 12);
   const raw = Object.entries(cnt(all.filter(o => o.d[8] !== "tamam"), o => o.d[8] + "|" + (tru(o.d[9]) || "(boş)"))).map(([k, n]) => { const [c, v] = k.split("|"); return { c, v, n }; });
   const yrs = all.map(o => +o.d[6] || null); const yil = {}; yrs.forEach(y => { if (y >= YEAR - 11 && y <= YEAR) yil[y] = (yil[y]||0) + 1; });
-  const faturaAll = Object.entries(cnt(all, o => fatKey(o.d[10]))).sort((a,b) => b[1]-a[1]);
+  const oc = cnt(all.filter(o => !o.l.dep), o => odemeCat(o.d[10])); const faturaAll = ODEME.filter(x => oc[x[0]]).map(x => [x[0], oc[x[0]]]);
   const fatura = Object.fromEntries(faturaAll.slice(0, 8));
   const locOpen = new Set(fo.filter(o => ["bekliyor","tekrar"].includes(o.d[8])).map(o => o.l.k));
   return { total: all.length, locs: LOCS.filter(l => !l.dep).length, cust: new Set(LOCS.map(l => tru(l.n))).size,
@@ -115,18 +122,19 @@ const resultFrom = r => ({ planId: r.plan_id, k: r.business_id, st: r.st, done: 
 const eventFrom = r => ({ id: r.id, devId: r.device_id, code: DEVID[r.device_id]?.d[11], type: r.type, year: r.year, e: r.e, reason: r.reason, note: r.note || "", by: r.by, at: r.at });
 const staffFrom = r => ({ id: r.id, name: r.ad || r.email || "İsimsiz", phone: r.tel || "", email: r.email || "", rol: r.rol, bolge: r.bolge_id, aktif: r.aktif });
 async function loadDynamic(){
-  const [plans, results, events, staff, regions, invites] = await Promise.all([
+  const [plans, results, events, staff, regions, invites, reqs] = await Promise.all([
     q(sb.from("plans").select("*").order("date", { ascending: false }).limit(1000)),
     q(sb.from("results").select("*").limit(5000)),
     q(sb.from("events").select("*").order("at", { ascending: false }).limit(5000)),
     q(sb.from("profiles").select("*").order("ad")),
     q(sb.from("regions").select("*").order("ad")),
-    st.isAdmin ? q(sb.from("invites").select("*").order("ad")).catch(() => []) : Promise.resolve([])]);
+    st.isAdmin ? q(sb.from("invites").select("*").order("ad")).catch(() => []) : Promise.resolve([]),
+    q(sb.from("device_requests").select("*").order("created_at", { ascending: false }).limit(500)).catch(() => [])]);
   st.plans = plans.map(planFrom).filter(p => !p.donem || p.donem === YEAR);
   st.results = Object.fromEntries(results.map(r => [r.id, resultFrom(r)]));
   st.events = Object.fromEntries(events.map(r => [r.id, eventFrom(r)]));
   st.staff = staff.filter(s => s.aktif !== false).map(staffFrom); st.staffAll = staff.map(staffFrom);
-  st.regions = regions; st.invites = invites || [];
+  st.regions = regions; st.invites = invites || []; st.reqs = reqs || [];
 }
 async function loadItems(){
   try { const it = await fetchAll("period_items", "*", "id", ["donem", YEAR]); st.noPeriod = false; return it; }
@@ -172,10 +180,15 @@ function downloadFile(name, data, type = "text/csv;charset=utf-8"){
 
 /* ---------------- Google Maps (isteğe bağlı) ---------------- */
 let gmapsP = null;
+function gmapsHelp(){ return `<b>Google Haritalar yüklenemedi: anahtar bu adrese izin vermiyor.</b><br>Google Cloud Console → APIs & Services → Credentials → ilgili API anahtarı:<br>
+  1) <b>Website restrictions</b> listesinde <code>${esc(location.origin)}/*</code> ve <code>https://www.yahyasogut.com/*</code> olsun (yalnızca /damga/* yeterli değil, alt sayfalar için /* önerilir).<br>
+  2) <b>API restrictions</b>: Maps JavaScript API, Geocoding API, Routes API seçili olsun.<br>3) Projede <b>faturalandırma (Billing)</b> açık olsun. Değişiklikten sonra 5 dakika bekleyip sayfayı yenileyin.`; }
 function loadGoogle(){
   if (!CFG.GOOGLE_MAPS_KEY) return Promise.reject(new Error("Google anahtarı tanımlı değil"));
   if (window.google?.maps) return Promise.resolve(window.google.maps);
   if (gmapsP) return gmapsP;
+  window.gm_authFailure = () => { st.gmErr = true; const box = document.getElementById("gmap"); const msg = gmapsHelp();
+    if (box) box.outerHTML = `<div class="warnbox" style="margin:16px">${msg}</div>`; toast("Google Maps anahtarı bu sayfaya izin vermiyor"); };
   gmapsP = new Promise((res, rej) => { window.__gmapsReady = () => res(window.google.maps);
     const s = document.createElement("script"); s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(CFG.GOOGLE_MAPS_KEY)}&v=weekly&language=tr&region=TR&callback=__gmapsReady`;
     s.async = true; s.onerror = () => { gmapsP = null; rej(new Error("Google Maps yüklenemedi")); }; document.head.appendChild(s); });
@@ -246,11 +259,12 @@ function softRender(){ const a = document.activeElement; if (a && (a.tagName ===
 function render(){
   if (!st.ready) return;
   const tabs = st.isAdmin && st.role === "admin"
-    ? [["ozet","Yönetici özeti"],["planla","Rota planla"],["planlar","Planlar & ekip"],["cihazlar","Cihazlar & QR"],["musteriler","Müşteriler & gruplar"],["raporlar","Raporlar"],["veri","Veri & ayarlar"]]
+    ? [["ozet","Yönetici özeti"],["planla","Rota planla"],["planlar","Planlar & ekip"],["musteriler","Müşteriler & cihazlar"],["raporlar","Raporlar"],["veri","Veri & ayarlar"]]
     : [["saha","Bugünkü rotam"],["cihazlar","Cihaz bul"]];
+  if (st.view === "cihazlar" && tabs.some(t => t[0] === "musteriler")) st.view = "musteriler";
   if (st.view !== "cihaz" && !(st.view === "fatura" && st.isAdmin) && !tabs.some(t => t[0] === st.view)) st.view = tabs[0][0];
   syncPath();
-  const cur = st.view === "cihaz" ? "cihazlar" : st.view === "fatura" ? "ozet" : st.view;
+  const cur = st.view === "cihaz" ? (tabs.some(t => t[0] === "musteriler") ? "musteriler" : "cihazlar") : st.view === "fatura" ? "ozet" : st.view;
   $("#tabs").innerHTML = tabs.map(t => `<a class="tab" href="${BASE_PATH}${SLUG[t[0]]}/" data-act="view" data-v="${t[0]}" aria-current="${cur===t[0]}">${t[1]}</a>`).join("");
   const nm = st.profile?.ad || st.profile?.email || "";
   $("#who").innerHTML = `${periodPicker()}${groupPicker()}${st.isAdmin ? `<button class="btn sm" data-act="role" title="Görünümü değiştir">${st.role==="admin"?"Saha görünümü":"Yönetici görünümü"}</button>` : ""}
@@ -262,7 +276,7 @@ function render(){
       : `<div class="card empty" style="max-width:640px;margin:40px auto">${YEAR} döneminde henüz veri yok. Yöneticiniz dönem listesini yüklediğinde burada görünecek.</div>`;
     return;
   }
-  $("#main").innerHTML = v();
+  $("#main").innerHTML = (st.view === "ozet" ? reqBanner() : "") + v();
   if (st.view === "planla") hydratePlanner();
 }
 /* ---- sayfa adresleri: /damga/ozet/, /damga/rota-planla/ … (her sekmenin kendi adresi; geri/ileri tuşları çalışır) ---- */
@@ -279,7 +293,7 @@ function syncPath(){
 }
 function routeFromPath(){
   const v = viewFromPath(); if (!v) return;
-  if (st.isAdmin || ["saha","cihazlar"].includes(v)){ st.view = v; if (st.isAdmin && v === "saha") st.role = "saha"; }
+  if (st.isAdmin || ["saha","cihazlar"].includes(v)){ st.view = st.isAdmin && v === "cihazlar" ? "musteriler" : v; if (st.isAdmin && v === "saha") st.role = "saha"; }
   if (v === "fatura"){ st.fk = new URLSearchParams(location.search).get("not") || ""; }
 }
 window.addEventListener("popstate", () => { if (!st.ready) return; st._pop = true; routeFromPath(); if (!viewFromPath()) st.view = st.isAdmin && st.role === "admin" ? "ozet" : "saha"; render(); st._pop = false; });
@@ -308,6 +322,8 @@ function viewEmptyPeriod(){
     <button class="btn" data-act="view" data-v="veri">Excel'den içe aktar</button></div>`}
   </div>`;
 }
+
+document.addEventListener("click", e => { if (!e.target.closest(".logo") || !st.ready) return; st.view = st.isAdmin && st.role === "admin" ? "ozet" : "saha"; clearHash(); render(); window.scrollTo(0, 0); });
 function viewSummary(){
   const C = S.cat, tot = S.total, depN = S.dep.n;
   const fieldTot = tot - depN, fieldDone = C.tamam - (S.dep.cats.tamam || 0);
@@ -325,7 +341,7 @@ function viewSummary(){
     <td>${t.b?`<span class="st bekliyor">${t.b}</span> `:""}${t.t?`<span class="st tekrar">${t.t}</span> `:""}${t.u?`<span class="st tutanak">${t.u}</span>`:""}</td></tr>`).join("");
   const yrs = Object.entries(S.yil); const ymax = Math.max(S.yilOld, ...yrs.map(y => y[1]));
   const vb = [[`<${YEAR-11}`, S.yilOld], ...yrs].map(([y,n]) => `<div><small>${n}</small><i style="height:${n/ymax*100}%"></i><em>${y}</em></div>`).join("");
-  const fat = S.faturaAll.slice(0, 10).map(([k,n]) => `<tr><td><button class="link rowlink" data-act="fatpage" data-k="${esc(k)}">${esc(titleTR(k))}</button></td><td class="r"><button class="link" data-act="fatpage" data-k="${esc(k)}">${fmt(n)}</button></td></tr>`).join("")
+  const fat = S.faturaAll.slice(0, 10).map(([k,n]) => `<tr><td><button class="link rowlink" data-act="fatpage" data-k="${esc(k)}">${esc(odemeLab(k))}</button></td><td class="r"><button class="link" data-act="fatpage" data-k="${esc(k)}">${fmt(n)}</button></td></tr>`).join("")
     + (S.faturaAll.length > 10 ? `<tr><td colspan="2"><button class="link" data-act="fatpage" data-k="">Tüm notlar (${S.faturaAll.length}) →</button></td></tr>` : "");
   const rawRows = S.raw.slice().sort((a,b)=>a.c.localeCompare(b.c)||b.n-a.n).map(r => `<tr><td><span class="st ${r.c}">${CAT[r.c].l}</span></td><td class="mono">${esc(r.v)}</td><td class="r">${r.n}</td></tr>`).join("");
   // live field results
@@ -380,7 +396,7 @@ function viewSummary(){
       </ul>
       <div class="row" style="margin-top:12px"><button class="btn primary" data-act="goeditor">Bu verileri düzenle</button><button class="btn sm" data-act="goeditor" data-mode="dupseri">Tekrar eden seri numaraları</button></div></div>
     </div>
-    <div class="card pad"><h2 style="margin-bottom:8px">Fatura / ödeme notları</h2><p class="muted" style="margin:0 0 8px;font-size:.85rem">Başlıksız Q sütunundan. ${S.fatura["FATURA KESİLECEK"]||0} cihaz için fatura henüz kesilmemiş.</p>
+    <div class="card pad"><h2 style="margin-bottom:8px">Ödeme durumu</h2><p class="muted" style="margin:0 0 8px;font-size:.85rem">Excel'deki fatura / ödeme notlarından (Q sütunu) sınıflandırıldı; tıklayıp düzenleyebilirsiniz. ${fmt(S.fatura.kesilecek || 0)} cihaz için fatura henüz kesilmemiş.</p>
     <div class="tbl-wrap"><table><tbody>${fat}</tbody></table></div></div>
   </section>`;
 }
@@ -523,7 +539,8 @@ function staffOpts(sel){ const inv = (st.invites || []).filter(v => !v.used_by);
     + (inv.length ? `<optgroup label="Henüz giriş yapmadı (SMS)">${inv.map(v => `<option value="inv:${esc(v.phone)}" ${sel==="inv:"+v.phone?"selected":""}>${esc(v.ad)} · 0${esc(v.phone)}</option>`).join("")}</optgroup>` : ""); }
 function chunkInfo(n, per, ret){ const total = n + (ret ? 1 : 0); return Math.max(1, Math.ceil(total / per)); }
 
-function renderPlanPanel(){
+function renderPlanPanel(){ renderPlanPanel0(); if (st.poolView === "harita") drawRouteLines(); }
+function renderPlanPanel0(){
   const cfg = st.cfg; const routes = syncRoutes(); const multi = routes.length > 1;
   const scs = routes.map(r => schedule(r.keys.map(selObj), cfg));
   const allKm = scs.reduce((a, s) => a + s.km, 0);
@@ -637,6 +654,23 @@ async function renderPoolMap(list, sel){
     m.addListener("click", () => { pickLoc(l.k, !st.sel.find(s => s.k === l.k)); renderPool(true); renderPlanPanel(); });
     gmarkers.push(m); bounds.extend(m.getPosition()); });
   if (list.length && !gmap.__fitted){ gmap.fitBounds(bounds, 40); gmap.__fitted = true; }
+  drawRouteLines();
+}
+/* optimize edilen rotaları haritada çizer: her ekip ayrı renk, duraklar sıra numaralı */
+const ROUTE_HEX = ["#2D2A8E","#D35B22","#11807A","#B98000","#1C8A57"];
+let groutes = [];
+function drawRouteLines(){
+  if (!gmap || !window.google?.maps) return; const maps = google.maps;
+  groutes.forEach(x => x.setMap(null)); groutes = [];
+  (st.routes || []).forEach((r, ti) => { if (!r.keys?.length) return; const col = ROUTE_HEX[ti % ROUTE_HEX.length];
+    const pts = [{ lat: DEPOT.lat, lng: DEPOT.lng }, ...r.keys.map(k => BY[k]).filter(Boolean).map(l => ({ lat: l.lat, lng: l.lng }))];
+    if (st.cfg.ret) pts.push({ lat: DEPOT.lat, lng: DEPOT.lng });
+    groutes.push(new maps.Polyline({ map: gmap, path: pts, geodesic: true, strokeColor: col, strokeOpacity: .85, strokeWeight: 4,
+      icons: [{ icon: { path: maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 2.5, strokeColor: col }, offset: "50%", repeat: "120px" }] }));
+    r.keys.forEach((k, i) => { const l = BY[k]; if (!l) return;
+      groutes.push(new maps.Marker({ map: gmap, position: { lat: l.lat, lng: l.lng }, zIndex: 1000 + i, title: `${st.routes.length > 1 ? `Ekip ${ti + 1} · ` : ""}${i + 1}. ${titleTR(l.n)}`,
+        label: { text: String(i + 1), color: "#fff", fontSize: "11px", fontWeight: "700" },
+        icon: { path: maps.SymbolPath.CIRCLE, scale: 11, fillColor: col, fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 } })); }); });
 }
 async function googleRoute(t){
   const r = st.routes?.[t]; if (!r || !r.keys.length) return;
@@ -715,7 +749,7 @@ function shareCard(p){
     <div class="row" style="justify-content:space-between"><div><b>${esc(personName(p))}</b>${p.teams>1?` <span class="muted">· Ekip ${p.team}</span>`:""}<div class="muted mono" style="font-size:.8rem">${ph?esc(ph):"WhatsApp numarası yok, mesajı kişiyi seçerek gönderin"}</div></div>
       <div class="row"><a class="btn sm wa" href="${esc(waLink(p))}" target="_blank" rel="noopener">WhatsApp ile gönder ↗</a><button class="btn sm" data-act="copymsg" data-id="${p.id}">Mesajı kopyala</button></div></div>
     <div class="row" style="gap:6px">${links.map(l => `<a class="pill linkpill" href="${esc(l.url)}" target="_blank" rel="noopener">${l.label} · ${l.range} ↗</a>`).join("")}<a class="pill linkpill" href="#plan-${p.id}" data-act="field" data-id="${p.id}">Panel ↗</a></div>
-    ${(() => { const u = p.stops.filter(s => BY[s.k] && BY[s.k].p !== "ok").length; return u ? `<div class="warnbox" style="font-size:.8rem">${u}/${p.stops.length} durağın konumu doğrulanmadı; bu duraklar adresle aranıyor. Göndermeden önce rota linkini açıp kontrol edin. Google bir adresi bulamazsa tüm rota açılmaz; “Google ile konum bul” ya da planlayıcıdaki “Konumu sabitle” ile düzeltin.</div>` : `<div class="savings" style="font-size:.8rem">Tüm durakların konumu doğrulandı; rota linkleri koordinatla gidiyor.</div>`; })()}
+    ${(() => { const u = p.stops.filter(s => BY[s.k] && BY[s.k].p !== "ok").length; return u ? `<div class="warnbox" style="font-size:.8rem">${u}/${p.stops.length} durağın konumu doğrulanmadı; bu duraklar adresle aranıyor. Göndermeden önce rota linkini açıp kontrol edin. Google bir adresi bulamazsa tüm rota açılmaz; aşağıdan doğrulayın ya da planlayıcıdaki “Konumu sabitle” ile düzeltin. <button class="link" data-act="geoverify" data-p="${esc(p.id)}" style="font-size:.8rem">Bu durakların adresini şimdi doğrula</button></div>` : `<div class="savings" style="font-size:.8rem">Tüm durakların konumu doğrulandı; rota linkleri koordinatla gidiyor.</div>`; })()}
     ${st.showMsg === p.id ? `<textarea id="msg-${p.id}" readonly rows="8" style="font-family:var(--f-mono);font-size:.78rem">${esc(planMsg(p))}</textarea>` : ""}
   </div>`;
 }
@@ -891,7 +925,7 @@ function viewDevice(){
     { at: "0000", t: `İlk kayıt (Excel): ${d[9] || "durum boş"}`, n: "", c: CAT[d[8]] ? d[8] : "kapsamdisi", xl: 1 }
   ].sort((a, b) => b.at.localeCompare(a.at));
   return `<div class="field stack devcard">
-    ${st.isAdmin ? `<div class="row" style="justify-content:space-between"><button class="btn sm" data-act="view" data-v="cihazlar">‹ Cihazlar</button>
+    ${st.isAdmin ? `<div class="row" style="justify-content:space-between"><button class="btn sm" data-act="view" data-v="${st.role === "admin" ? "musteriler" : "cihazlar"}">‹ ${st.role === "admin" ? "Müşteriler & cihazlar" : "Cihazlar"}</button>
       <div class="chips" role="group" aria-label="Görünüm">${[["musteri","Müşteri / denetçi"],["saha","Saha"],["admin","Yönetici"]].map(([k,lab])=>`<button class="chip" data-act="cardas" data-v="${k}" aria-pressed="${role===k}">${lab}</button>`).join("")}</div></div>` : ""}
     <article class="card">
       <div class="dc-head"><div class="mk"></div><div style="min-width:0"><div class="eyebrow">Periyodik muayene kartı · ${esc(d[11])}</div><h2>${esc(titleTR(l.n))}</h2><div class="muted" style="font-size:.88rem">${esc(titleTR(l.i))} · ${esc(titleTR(d[7]||""))}</div></div></div>
@@ -976,8 +1010,13 @@ function stopCard(p, s, i){
         <div class="reasons">${REASONS.map(([k,lab])=>`<button class="chip" data-act="reason" data-k="${s.k}" data-v="${k}" aria-pressed="${dr.reason===k}">${lab}</button>`).join("")}</div>
         <textarea id="note-${s.k}" placeholder="Açıklama (örn. Pazartesi 10:00'da tekrar gel, yetkili Ahmet Bey)">${esc(dr.note)}</textarea>
         <div class="row"><button class="btn primary" data-act="savemiss" data-k="${s.k}" ${dr.reason?"":"disabled"}>Kaydet</button><button class="btn" data-act="cancelmiss" data-k="${s.k}">Vazgeç</button></div></div>`
-      : `<div class="big-acts"><button class="btn ok" data-act="complete" data-k="${s.k}" ${dr.done.length?"":"disabled"}>${allChecked?"✓ Tamamlandı":`✓ ${dr.done.length}/${devs.length} tamamlandı`}</button>
-        <button class="btn warn" data-act="miss" data-k="${s.k}">Eksik / yapılamadı</button></div>`}
+      : st.reqFor === s.k ? reqForm(s.k)
+      : `<div class="big-acts four"><button class="btn ok" data-act="complete" data-k="${s.k}" ${dr.done.length?"":"disabled"}>${allChecked?"✓ Tamamlandı":`✓ ${dr.done.length}/${devs.length} tamamlandı`}</button>
+        <button class="btn warn" data-act="quickmiss" data-v="ertelendi" data-k="${s.k}">Ertelendi</button>
+        <button class="btn warn" data-act="quickmiss" data-v="adresteyok" data-k="${s.k}">Adreste yok</button>
+        <button class="btn" data-act="addreq" data-k="${s.k}">+ Cihaz ekle</button></div>
+        <div class="row" style="justify-content:flex-end"><button class="link" data-act="miss" data-k="${s.k}" style="font-size:.84rem">Diğer neden / kısmi eksik</button></div>`}
+      ${reqListFor(s.k)}
       ${r?`<div class="row" style="justify-content:space-between;font-size:.82rem"><span class="muted">Kaydedildi ${new Date(r.at).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}${r.note?` · ${esc(r.note)}`:""}</span><button class="link" data-act="undo" data-k="${s.k}">Geri al</button></div>`:""}
       <details><summary style="font-size:.85rem">Konum yanlış mı?</summary><div class="row" style="margin-top:6px"><input id="geo-${s.k}" type="text" placeholder="36.8841, 30.7056 (Google Haritalar'dan kopyalayın)" style="flex:1 1 200px"><button class="btn sm" data-act="savegeo" data-k="${s.k}">Konumu kaydet</button></div></details>
     </div>` : ""}
@@ -1001,7 +1040,7 @@ function resetPlanner(){ st.editing = null; st.editIds = null; st.editGid = null
 document.addEventListener("click", async e => {
   if (st.dd && !e.target.closest(".dd")){ st.dd = null; if (st.view === "planla") renderPool(); }
   const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
-  if (["impfile","gf","cusel","cuall","cugrp","donem","pick","devchk","ddpick","rstaff","mv","dpick","pf","impmap","pasel","duptgt","dupkeep"].includes(a)) return; // change handlers
+  if (["impfile","gf","cusel","cuall","cudall","cugrp","donem","pick","devchk","ddpick","rstaff","mv","dpick","pf","impmap","pasel","duptgt","dupkeep"].includes(a)) return; // change handlers
   if (["optimize","saveplan","up","down","rm","add","newplan"].includes(a)) readCfg();
   switch (a){
     case "view": if (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return; e.preventDefault(); st.view = b.dataset.v; clearHash(); render(); window.scrollTo(0,0); break;
@@ -1135,7 +1174,7 @@ document.addEventListener("change", e => {
   if (a === "devchk"){ const d = st.draft[t.dataset.k]; const r = +t.dataset.r; d.done = t.checked ? [...new Set([...d.done, r])] : d.done.filter(x => x !== r); render(); return; }
   if (a === "rstaff"){ const i = +t.dataset.t; syncRoutes(); if (st.routes) st.routes[i].staffId = t.value; else st.cfg.staff0 = t.value; return; }
   if (a === "mv"){ syncRoutes(); if (!st.routes) return; const from = +t.dataset.t, to = +t.value, k = t.dataset.k; st.routes[from].keys = st.routes[from].keys.filter(x => x !== k); insertCheapest(st.routes[to].keys, k); st.routes[from].g = st.routes[to].g = null; renderPlanPanel(); return; }
-  if (a === "dpick"){ t.checked ? st.dsel.add(t.dataset.c) : st.dsel.delete(t.dataset.c); const s = document.querySelector('[data-act="labels"]'); if (s){ s.disabled = !st.dsel.size; s.textContent = `QR etiketlerini indir (${st.dsel.size})`; } return; }
+  if (a === "dpick"){ t.checked ? st.dsel.add(t.dataset.c) : st.dsel.delete(t.dataset.c); if (st.view === "musteriler"){ render(); return; } const s = document.querySelector('[data-act="labels"]'); if (s){ s.disabled = !st.dsel.size; s.textContent = `QR etiketlerini indir (${st.dsel.size})`; } return; }
   if (t.id === "dilce"){ st.df.ilce = t.value; st.df.page = 0; render(); return; }
   if (t.id === "dnext"){ st.df.next = t.value; st.df.page = 0; render(); return; }
   if (t.id === "fregion"){ st.f.region = t.value; const r = st.regions.find(x => String(x.id) === t.value); st.f.ilce = r ? (r.ilceler || []).slice() : []; if (gmap) gmap.__fitted = false; renderPool(); return; }
@@ -1550,30 +1589,81 @@ async function runImport(){
   } catch(e){ step("Hata: " + (e.message || e)); toast("İçe aktarma durdu: " + (e.message || e)); }
   P.busy = false; render();
 }
+/* ---- toplu adres doğrulama (Google Geocoding) + bulunamayanların düzeltilmesi ---- */
+async function geocodeOne(gc, l, addr){
+  const qs = addr ? [addr] : [`${l.a}, ${titleTR(l.i)}, ${titleTR(l.il || "ANTALYA")}, Türkiye`, normAddr(l.a, l.i)];
+  let last = "Adres bulunamadı";
+  for (const address of qs){
+    for (let tries = 0; tries < 3; tries++){
+      try { const out = await gc.geocode({ address, region: "tr", componentRestrictions: { country: "TR" } }); const res = out.results?.[0]; if (!res){ last = "Adres bulunamadı"; break; }
+        const loc = res.geometry.location, lat = loc.lat(), lng = loc.lng(), type = res.geometry.location_type;
+        const inTR = lat > 35.7 && lat < 42.2 && lng > 25.6 && lng < 44.9;
+        const admin = (res.address_components || []).find(c => c.types.includes("administrative_area_level_1"))?.long_name || "";
+        const ilOk = !l.il || !admin || FOLD(admin).includes(FOLD(l.il)) || FOLD(l.il).includes(FOLD(admin));
+        if (!inTR || !ilOk){ last = `Bulunan yer ${admin || "il dışı"}`; break; }
+        if (type === "APPROXIMATE" && !res.types?.some(x => ["establishment","premise","street_address","route"].includes(x))){ last = "Yalnızca yaklaşık (mahalle/ilçe) bulundu"; break; }
+        return { lat: +lat.toFixed(6), lng: +lng.toFixed(6), fa: res.formatted_address };
+      } catch(e){ const c = String(e.code || e.message || e); if (c.includes("OVER_QUERY_LIMIT")){ await new Promise(r => setTimeout(r, 2000)); continue; }
+        if (c.includes("REQUEST_DENIED")) throw new Error("REQUEST_DENIED"); last = c; break; }
+    }
+  }
+  return { err: last };
+}
 async function runGeocode(){
   if (st.geoRun?.busy) { st.geoRun.stop = true; return; }
   let maps; try { maps = await loadGoogle(); } catch(e){ toast(e.message); return; }
   const gc = new maps.Geocoder(); const todo = LOCS_P.filter(l => !l.dep && l.p !== "ok");
-  st.geoRun = { busy: true, stop: false, done: 0, ok: 0, miss: 0, total: todo.length }; render();
+  st.geoRun = { busy: true, stop: false, done: 0, ok: 0, miss: 0, total: todo.length }; st.geoFail = {}; render();
   const upd = () => { const el = $("#geoprog"); if (el) el.textContent = `${st.geoRun.done} / ${st.geoRun.total} · bulunan ${st.geoRun.ok} · bulunamayan ${st.geoRun.miss}`; };
   for (const l of todo){
-    if (st.geoRun.stop) break;
-    const address = `${l.a}, ${titleTR(l.i)}, Antalya, Türkiye`;
-    let tries = 0, res = null;
-    while (tries++ < 3){
-      try { const out = await gc.geocode({ address, region: "tr", componentRestrictions: { country: "TR" } }); res = out.results?.[0]; break; }
-      catch(e){ if (String(e.code || e.message).includes("OVER_QUERY_LIMIT")) await new Promise(r => setTimeout(r, 2000)); else break; }
-    }
+    if (st.geoRun.stop || st.gmErr) break;
+    let r; try { r = await geocodeOne(gc, l); } catch(e){ st.geoRun.denied = true; break; }
     st.geoRun.done++;
-    if (res){ const loc = res.geometry.location; const lat = loc.lat(), lng = loc.lng(); const type = res.geometry.location_type;
-      const inArea = lat > 35.8 && lat < 37.8 && lng > 29.1 && lng < 32.8;
-      if (inArea && type !== "APPROXIMATE"){ try { await saveGeo(l.k, +lat.toFixed(6), +lng.toFixed(6), "google"); st.geoRun.ok++; } catch(e){ st.geoRun.miss++; } }
-      else st.geoRun.miss++; }
-    else st.geoRun.miss++;
+    if (r.lat){ try { await saveGeo(l.k, r.lat, r.lng, "google"); st.geoRun.ok++; } catch(e){ st.geoRun.miss++; st.geoFail[l.k] = "Kaydedilemedi: " + e.message; } }
+    else { st.geoRun.miss++; st.geoFail[l.k] = r.err; }
     upd(); await new Promise(r => setTimeout(r, 120));
   }
-  st.geoRun.busy = false; S = computeSummary(); render(); toast(`Konum bulma bitti: ${st.geoRun.ok} lokasyon doğrulandı`);
+  st.geoRun.busy = false; S = computeSummary(); render();
+  toast(st.geoRun.denied || st.gmErr ? "Google anahtarı adres aramaya izin vermiyor (ayrıntı Konumlar kartında)" : `Konum bulma bitti: ${st.geoRun.ok} doğrulandı, ${st.geoRun.miss} düzeltme bekliyor`);
 }
+function viewGeoFix(){
+  const all = LOCS_P.filter(l => !l.dep && l.p !== "ok"), F = st.geoFail || {}, E = st.geoEditQ || "";
+  const list = all.filter(l => !E || TRU(l.n + " " + l.a + " " + l.i).includes(TRU(E))).sort((a, b) => (F[b.k] ? 1 : 0) - (F[a.k] ? 1 : 0) || a.i.localeCompare(b.i, "tr") || a.n.localeCompare(b.n, "tr"));
+  const pg = st.geoPage || 0, N = 25, pages = Math.max(1, Math.ceil(list.length / N)), rows = list.slice(pg * N, pg * N + N);
+  if (!all.length) return `<div class="muted" style="font-size:.88rem">Tüm lokasyonların konumu doğrulanmış.</div>`;
+  return `<details ${Object.keys(F).length ? "open" : ""}><summary><b>Doğrulanmamış konumlar (${fmt(all.length)})</b>${Object.keys(F).length ? ` · ${fmt(Object.keys(F).length)} tanesi bulunamadı` : ""} · adresi düzeltip tekrar arayın ya da koordinatı yapıştırın</summary>
+    <div class="row" style="margin:8px 0"><input id="geo-q" type="search" placeholder="Firma, adres, ilçe ara" value="${esc(E)}" style="flex:1 1 240px"></div>
+    <div class="tbl-wrap"><table class="rptbl" style="font-size:.84rem"><thead><tr><th class="num">Lok.</th><th>Firma / ilçe</th><th>Adres (düzenlenebilir)</th><th>Koordinat ya da Google Maps linki</th><th></th></tr></thead><tbody>
+      ${rows.map(l => `<tr><td class="mono num">${lno(l)}</td><td style="white-space:normal;min-width:160px"><b>${esc(titleTR(l.n))}</b><div class="muted">${esc(titleTR(l.i))} / ${esc(titleTR(l.il))}${F[l.k] ? ` · <span style="color:var(--retry)">${esc(F[l.k])}</span>` : ` · ${l.p === "mah" ? "≈ mahalle" : "≈ ilçe"}`}</div></td>
+        <td><input id="ga-${esc(l.k)}" value="${esc(l.a)}" style="min-width:260px;width:100%"></td>
+        <td><input id="gc-${esc(l.k)}" placeholder="36.88, 30.70 veya maps linki" style="width:200px"></td>
+        <td style="white-space:nowrap"><button class="btn sm" data-act="georetry" data-k="${esc(l.k)}">Adresi ara</button> <button class="btn sm primary" data-act="geopin" data-k="${esc(l.k)}">Koordinatı kaydet</button>
+          <a class="link" style="font-size:.8rem" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.a + ", " + titleTR(l.i) + ", " + titleTR(l.il))}">Haritada aç ↗</a></td></tr>`).join("")}
+    </tbody></table></div>
+    ${pages > 1 ? `<div class="row"><button class="btn sm" data-act="geopage" data-p="${pg - 1}" ${pg ? "" : "disabled"}>‹ Önceki</button><span class="muted">${pg + 1} / ${pages}</span><button class="btn sm" data-act="geopage" data-p="${pg + 1}" ${pg + 1 < pages ? "" : "disabled"}>Sonraki ›</button></div>` : ""}
+  </details>`;
+}
+function parseCoord(s){ s = String(s || "").trim(); let m = s.match(/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || s.match(/[?&](?:q|query|ll)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || s.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || s.match(/^(-?\d+[.,]\d+)\s*[,; ]\s*(-?\d+[.,]\d+)$/);
+  if (!m) return null; const la = +String(m[1]).replace(",", "."), lo = +String(m[2]).replace(",", "."); return la > 35.7 && la < 42.2 && lo > 25.6 && lo < 44.9 ? [la, lo] : null; }
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
+  if (a === "geoverify"){ // paylaşım kartındaki doğrulanmamış durakları arar
+    const p = st.plans.find(x => x.id === b.dataset.p); if (!p) return;
+    let maps; try { maps = await loadGoogle(); } catch(err){ toast(err.message); return; } const gc = new maps.Geocoder(); let ok = 0, miss = 0; b.disabled = true; b.textContent = "Doğrulanıyor…";
+    for (const s of p.stops){ const l = BY[s.k]; if (!l || l.p === "ok") continue; let r; try { r = await geocodeOne(gc, l); } catch(err){ toast("Google anahtarı adres aramaya izin vermiyor"); break; }
+      if (r.lat){ try { await saveGeo(l.k, r.lat, r.lng, "google"); ok++; } catch(_){ miss++; } } else { miss++; st.geoFail = st.geoFail || {}; st.geoFail[l.k] = r.err; } }
+    S = computeSummary(); render(); toast(`${ok} durak doğrulandı${miss ? `, ${miss} bulunamadı (Veri & ayarlar → Konumlar'dan düzeltin)` : ""}`); }
+  if (a === "geopage"){ st.geoPage = +b.dataset.p; render(); }
+  if (a === "geopin"){ const k = b.dataset.k, c = parseCoord($("#gc-" + CSS.escape(k))?.value); if (!c){ toast("Koordinat ya da Google Maps linki tanınamadı"); return; }
+    try { await saveGeo(k, c[0], c[1], "elle"); if (st.geoFail) delete st.geoFail[k]; S = computeSummary(); render(); toast("Konum kaydedildi"); } catch(err){ toast("Kaydedilemedi: " + err.message); } }
+  if (a === "georetry"){ const k = b.dataset.k, l = BY[k], na = ($("#ga-" + CSS.escape(k))?.value || "").trim(); if (!l || !na) return; b.disabled = true;
+    try { if (na !== l.a){ await q(sb.from("businesses").update({ adres: na }).eq("id", k)); l.a = na; const rb = RAW.biz.find(x => x.id === k); if (rb) rb.adres = na; }
+      const maps = await loadGoogle(); const r = await geocodeOne(new maps.Geocoder(), l, `${na}, ${titleTR(l.i)}, ${titleTR(l.il)}, Türkiye`);
+      if (r.lat){ await saveGeo(k, r.lat, r.lng, "google"); if (st.geoFail) delete st.geoFail[k]; S = computeSummary(); render(); toast("Bulundu: " + (r.fa || "")); }
+      else { st.geoFail = st.geoFail || {}; st.geoFail[k] = r.err; render(); toast("Bulunamadı: " + r.err); } }
+    catch(err){ b.disabled = false; toast(err.message === "REQUEST_DENIED" ? "Google anahtarı adres aramaya izin vermiyor" : "Aranamadı: " + err.message); } }
+});
+document.addEventListener("input", e => { if (e.target.id !== "geo-q") return; st.geoEditQ = e.target.value; st.geoPage = 0; clearTimeout(cfgT); cfgT = setTimeout(() => { const pos = e.target.selectionStart; render(); const n = $("#geo-q"); if (n){ n.focus(); try { n.setSelectionRange(pos, pos); } catch(_){} } }, 300); });
 function impCard(kind){
   const P = st.imp && st.imp.kind === kind ? st.imp : {}; const d = P.data;
   return `  <div class="card pad stack" style="gap:10px" id="imp-${kind}">${kind === "donem" ? `<h3>${YEAR} dönem listesini içe aktar</h3>
@@ -1633,13 +1723,15 @@ function viewData(){
   <div class="card pad stack" style="gap:10px"><h3>Konumlar</h3>
     <div class="metrics"><div><b>${fmt(prec.ok||0)}</b><span>doğrulanmış (Google / elle)</span></div><div><b>${fmt(prec.mah||0)}</b><span>≈ mahalle merkezi</span></div><div><b>${fmt(prec.ilce||0)}</b><span>≈ ilçe merkezi</span></div></div>
     <p class="muted" style="margin:0;font-size:.9rem">Google Geocoding ile adresler koordinata çevrilir. Bulunamayan adresler (“DEPO”, “KAŞ” gibi) sahadan “Konumu kaydet” ile düzeltilir. Google, ayda belirli bir sorguya kadar ücretsiz; ${fmt((prec.mah||0)+(prec.ilce||0))} sorgu bu sınırın çok altında.</p>
-    <div class="row"><button class="btn ${G?.busy?"warn":"primary"}" data-act="geocode" ${CFG.GOOGLE_MAPS_KEY?"":"disabled"}>${G?.busy ? "Durdur" : `Google ile konum bul (${fmt((prec.mah||0)+(prec.ilce||0))})`}</button>
+    <div class="row"><button class="btn ${G?.busy?"warn":"primary"}" data-act="geocode" ${CFG.GOOGLE_MAPS_KEY?"":"disabled"}>${G?.busy ? "Durdur" : `Tüm adresleri doğrula (${fmt((prec.mah||0)+(prec.ilce||0))})`}</button>
       <span class="mono muted" id="geoprog">${G ? `${G.done} / ${G.total} · bulunan ${G.ok} · bulunamayan ${G.miss}` : ""}</span></div>
     ${CFG.GOOGLE_MAPS_KEY ? "" : `<div class="warnbox">config.js dosyasında GOOGLE_MAPS_KEY boş. Kurulum rehberinin 4. adımına bakın.</div>`}
+    ${st.gmErr || st.geoRun?.denied ? `<div class="warnbox">${gmapsHelp()}</div>` : ""}
+    ${viewGeoFix()}
   </div>
   <div class="card pad stack" style="gap:10px"><h3>QR numaraları</h3>
     <p class="muted" style="margin:0;font-size:.9rem">Her cihazın kalıcı bir QR numarası (EL-000123) ve tahmin edilemeyen bir anahtarı var. Herkese açık kart adresi: <span class="mono">${esc(PUBLIC_QR_URL)}?k=EL-000123-xxxxx</span></p>
-    <div class="row"><button class="btn" data-act="assignqr" ${noQR?"":"disabled"}>${noQR ? `${fmt(noQR)} cihaza QR numarası ver` : "Tüm cihazların QR numarası var"}</button><button class="btn" data-act="view" data-v="cihazlar">Etiket basmak için Cihazlar & QR</button></div>
+    <div class="row"><button class="btn" data-act="assignqr" ${noQR?"":"disabled"}>${noQR ? `${fmt(noQR)} cihaza QR numarası ver` : "Tüm cihazların QR numarası var"}</button><button class="btn" data-act="view" data-v="musteriler">Etiket basmak için Cihazlar & QR</button></div>
   </div>
   <div class="card pad stack" style="gap:6px"><h3>Kurulum durumu</h3>
     <div class="row" style="gap:16px;font-size:.9rem"><span class="st tamam">Supabase bağlı</span><span class="st ${CFG.GOOGLE_MAPS_KEY?"tamam":"tekrar"}">Google Maps ${CFG.GOOGLE_MAPS_KEY?"tanımlı":"tanımlı değil"}</span><span class="st ${window.qrcode?"tamam":"tekrar"}">QR kütüphanesi ${window.qrcode?"yüklü":"yüklenemedi"}</span></div>
@@ -1832,62 +1924,105 @@ document.addEventListener("click", e => {
   f.sort = f.sort && f.sort.v === f.view && f.sort.k === k ? (f.sort.dir > 0 ? { v: f.view, k, dir: -1 } : null) : { v: f.view, k, dir: 1 }; f.page = 0; render();
 });
 /* ---------------- müşteri grupları · dönem seçimi · dönem dışa aktarma ---------------- */
-function cuRows(){
-  const c = st.cu, qq = TRU(c.q);
-  const base = c.scope === "tum" ? Object.values(BY).filter(l => !l.dep && l.nAll) : LOCS_P.filter(l => !l.dep);
-  return base.filter(l => (!c.il || l.il === c.il) && (!c.ilce || l.i === c.ilce)
-    && (!c.g || (c.g === NOGRP ? !l.g : l.g === c.g))
-    && (!qq || TRU(l.n + " " + l.a + " " + l.i).includes(qq)))
-    .sort((a, b) => a.n.localeCompare(b.n, "tr"));
+/* ---- Müşteriler & cihazlar: müşteri listesi, açılır cihaz satırları, zincirleme filtreler ---- */
+const CU_STAMP = [["gecerli","Damga geçerli"],["buyil",""],["gecikmis","Periyodu aşılmış"],["bilinmiyor","Bilgi yok"],["pasif","Kapsam dışı"],["flag","Seri no sorunlu"]];
+function cuBase(){ return st.cu.scope === "tum" ? Object.values(BY).filter(l => !l.dep && l.nAll && (!(st.gf || []).length || LOCS.includes(l))) : LOCS.filter(l => !l.dep); }
+function cuDevsOf(l){ return st.cu.scope === "tum" ? Object.values(DEVID).filter(o => o.l === l) : l.d.map(d => DEVID[d[0]]).filter(Boolean); }
+let CU_GEN = 0;
+const cuStamp = o => { if (!o._si || o._si.g !== CU_GEN) o._si = { g: CU_GEN, v: stampInfo(o) }; return o._si.v; };
+// skip: bu filtre hariç tutulur (seçenek listesini zincirleme daraltmak için)
+function cuFilter(skip){
+  const c = st.cu, qq = TRU(c.q), out = [];
+  const devOk = o => (skip === "marka" || !c.marka || TRU(o.d[2]) === c.marka) && (skip === "model" || !c.model || TRU(o.d[3]) === c.model)
+    && (skip === "ds" || !c.ds || (c.ds === "flag" ? !!o.d[15] : cuStamp(o).s === c.ds)) && (skip === "next" || !c.next || String(cuStamp(o).next) === c.next);
+  const devFilt = (skip !== "marka" && c.marka) || (skip !== "model" && c.model) || (skip !== "ds" && c.ds) || (skip !== "next" && c.next);
+  cuBase().forEach(l => {
+    if ((skip !== "il" && c.il && l.il !== c.il) || (skip !== "ilce" && c.ilce && l.i !== c.ilce) || (skip !== "g" && c.g && (c.g === NOGRP ? !!l.g : l.g !== c.g))) return;
+    let devs = cuDevsOf(l); const custHit = !qq || TRU(l.n + " " + l.a + " " + l.i + " " + lno(l)).includes(qq);
+    if (devFilt) devs = devs.filter(devOk);
+    if (qq && !custHit) devs = devs.filter(o => TRU([o.d[2], o.d[3], o.d[4], o.d[11], cno(o.d)].join(" ")).includes(qq));
+    if ((devFilt || (qq && !custHit)) && !devs.length) return;
+    out.push({ l, devs, all: cuDevsOf(l).length, part: !!(devFilt || (qq && !custHit)) });
+  });
+  return out.sort((a, b) => a.l.n.localeCompare(b.l.n, "tr"));
 }
+function cuRows(){ return cuFilter(null).map(r => r.l); }
+function cuOpts(skip, get){ const m = new Map(); cuFilter(skip).forEach(r => (skip === "il" || skip === "ilce" || skip === "g" ? [r.l] : r.devs).forEach(x => { const v = get(x); if (v) m.set(v, (m.get(v) || 0) + 1); })); return [...m].sort((a, b) => String(a[0]).localeCompare(String(b[0]), "tr", { numeric: true })); }
 function grpCounts(){
   const m = {}; Object.values(BY).forEach(l => { if (l.dep || !l.nAll) return; const k = l.g || NOGRP; const x = m[k] = m[k] || { c: 0, d: 0 }; x.c++; x.d += l.d.length; });
   return m;
 }
+function cuDevRow(o){ const d = o.d, si = cuStamp(o), e = precOf(o);
+  return `<tr class="cudev"><td></td><td><input type="checkbox" data-act="dpick" data-c="${d[11]}" ${st.dsel.has(d[11]) ? "checked" : ""} aria-label="Cihazı seç"></td>
+    <td class="mono num">${cno(d)}</td><td class="mono"><button class="link" data-act="dev" data-c="${d[11]}">${esc(d[11])}</button></td>
+    <td>${esc(d[2] || "—")} ${esc(d[3])}<div class="muted" style="font-size:.74rem">${esc(titleTR(d[1]))}</div></td>
+    <td class="mono">${esc(d[4] || "—")}${d[15] ? ` <span class="st tekrar">${d[15] === "seri-yok" ? "yok" : "tekrar"}</span>` : ""}${d[25] ? ` <span class="dupflag">M</span>` : ""}</td>
+    <td class="mono">${esc(d[12] || "?")} / ${e ? esc(e) : "e ?"} / ${esc(d[16])}</td><td class="mono num">${si.last || "—"}</td><td class="mono num">${si.next || "—"}</td>
+    <td><span class="st ${SCLS[si.s]}">${esc(si.s === "buyil" ? `${YEAR} bekliyor` : si.s === "gecikmis" ? `${YEAR} · gecikmiş` : si.label)}</span>${o.inP ? "" : ` <span class="muted" style="font-size:.74rem">dönem dışı</span>`}</td></tr>`; }
 function viewCustomers(){
-  const c = st.cu, rows = cuRows(), N = 100, pages = Math.max(1, Math.ceil(rows.length / N)); if (c.page >= pages) c.page = 0;
-  const pg = rows.slice(c.page * N, c.page * N + N), gc = grpCounts();
-  const src = c.scope === "tum" ? Object.values(BY).filter(l => !l.dep && l.nAll) : LOCS_P.filter(l => !l.dep);
-  const ils = [...new Set(src.map(l => l.il))].sort((a, b) => a.localeCompare(b, "tr"));
-  const ilces = [...new Set(src.filter(l => !c.il || l.il === c.il).map(l => l.i).filter(Boolean))].sort((a, b) => a.localeCompare(b, "tr"));
+  CU_GEN++; const c = st.cu; c.open = c.open || new Set();
+  const rows = cuFilter(null), N = 50, pages = Math.max(1, Math.ceil(rows.length / N)); if (c.page >= pages) c.page = 0;
+  const pg = rows.slice(c.page * N, c.page * N + N), gc = grpCounts(), nDev = rows.reduce((s, r) => s + r.devs.length, 0);
+  const sel = (id, cur, blank, opts) => `<select id="${id}"><option value="">${blank}</option>${opts.map(([v, n, lab]) => `<option value="${esc(v)}" ${String(cur) === String(v) ? "selected" : ""}>${esc(lab || titleTR(v))} · ${fmt(n)}</option>`).join("")}</select>`;
   const gOpts = (cur, blank) => `${blank ? `<option value="">${blank}</option>` : ""}${GROUPS.map(g => `<option value="${esc(g.ad)}" ${cur === g.ad ? "selected" : ""}>${esc(g.ad)}</option>`).join("")}`;
-  const allSel = rows.length && rows.every(l => c.sel.has(l.k));
-  return `<div class="stack" style="max-width:1180px;margin:0 auto">
-  <div><div class="eyebrow">Yönetici · ${YEAR} dönemi</div><h2>Müşteriler ve gruplar</h2>
-    <p class="muted" style="margin:4px 0 0;font-size:.9rem">Müşterileri gruplara ayırın (örn. Migros, zincir market, kamu, bayi). Gruplar sağ üstteki <b>Grup</b> filtresiyle özet, rota, cihaz ve rapor ekranlarının hepsini süzer.</p></div>
+  const allSel = rows.length && rows.every(r => c.sel.has(r.l.k));
+  const anyF = c.q || c.il || c.ilce || c.g || c.marka || c.model || c.ds || c.next;
+  const all = cuBase().flatMap(l => cuDevsOf(l)), cnt = k => all.filter(o => k === "flag" ? o.d[15] : cuStamp(o).s === k).length, nx1 = all.filter(o => cuStamp(o).next === YEAR + 1 && cuStamp(o).s !== "pasif").length;
+  const stampLab = k => k === "buyil" ? `${YEAR} bekliyor` : CU_STAMP.find(x => x[0] === k)[1];
+  return `<div class="stack" style="max-width:1240px;margin:0 auto">
+  <div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Yönetici · ${YEAR} dönemi</div><h2>Müşteriler ve cihazlar</h2>
+    <p class="muted" style="margin:4px 0 0;font-size:.9rem">Müşteriye tıklayınca cihazları açılır. Müşteri kutusu müşteriyi ve cihazlarını seçer; cihaz kutuları QR etiketi için tek tek seçilir.</p></div>
+    <span class="muted" style="font-size:.82rem">Damga 2 yılda bir · başvuru Ocak–Şubat · damgalama yıl sonuna kadar</span></div>
   ${st.noPeriod ? `<div class="warnbox">Gruplar ve dönemler için Supabase'de <b>supabase/damga-donem.sql</b> çalıştırılmalı.</div>` : ""}
-  <div class="card pad stack" style="gap:10px"><h3>Gruplar</h3>
-    <div class="tbl-wrap"><table><thead><tr><th>Grup</th><th class="num">Müşteri</th><th class="num">${YEAR} cihaz</th><th></th></tr></thead><tbody>
+  ${viewDevRequests()}
+  <section class="kpis">
+    ${[["gecerli","var(--ok)",`sonraki muayene ${YEAR + 1}+`],["buyil","var(--wait)","31 Aralık'a kadar"],["gecikmis","var(--retry)",`son damga ${YEAR - 2} öncesi`],["flag","var(--off)","boş ya da tekrar eden"]].map(([k, col, sm]) => `<button class="card kpi kpib" style="--c:${col}" data-act="cuds" data-v="${k}" aria-pressed="${c.ds === k}"><span>${stampLab(k)}</span><b>${fmt(cnt(k))}</b><small>${sm}</small></button>`).join("")}
+    <button class="card kpi kpib" style="--c:var(--brand)" data-act="cunext" data-v="${YEAR + 1}" aria-pressed="${c.next === String(YEAR + 1)}"><span>Ocak–Şubat ${YEAR + 1} başvurusu</span><b>${fmt(nx1)}</b><small>son damgası ${YEAR - 1}</small></button>
+  </section>
+  <details class="card pad" ${c.gOpen ? "open" : ""} id="cu-groups"><summary><b>Gruplar</b> <span class="muted">(${GROUPS.length}) · ekle, yeniden adlandır, sil</span></summary>
+    <div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Grup</th><th class="num">Müşteri</th><th class="num">${YEAR} cihaz</th><th></th></tr></thead><tbody>
       ${GROUPS.map(g => `<tr><td><span class="gtag">${esc(g.ad)}</span></td><td class="num">${fmt(gc[g.ad]?.c || 0)}</td><td class="num">${fmt(gc[g.ad]?.d || 0)}</td>
         <td style="text-align:right"><button class="link" data-act="cufilter" data-g="${esc(g.ad)}">Müşterileri göster</button> · <button class="link" data-act="grename" data-g="${esc(g.ad)}">Yeniden adlandır</button> · <button class="link" data-act="gdel" data-g="${esc(g.ad)}" style="color:var(--bad)">Sil</button></td></tr>`).join("")}
       <tr><td class="muted">${NOGRP}</td><td class="num">${fmt(gc[NOGRP]?.c || 0)}</td><td class="num">${fmt(gc[NOGRP]?.d || 0)}</td><td style="text-align:right"><button class="link" data-act="cufilter" data-g="${NOGRP}">Müşterileri göster</button></td></tr>
     </tbody></table></div>
-    <form id="groupForm" class="row"><input id="gf-ad" required maxlength="60" placeholder="Yeni grup adı (örn. MİGROS)" style="min-width:240px"><button class="btn primary">Grup ekle</button></form>
-  </div>
+    <form id="groupForm" class="row" style="margin-top:8px"><input id="gf-ad" required maxlength="60" placeholder="Yeni grup adı (örn. MİGROS)" style="min-width:240px"><button class="btn primary">Grup ekle</button></form>
+  </details>
   ${viewSmsComposer()}
   <div class="card pad stack" style="gap:10px">
-    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Müşteri listesi</h3>
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Liste</h3>
       <div class="seg"><button class="segb" data-act="cuscope" data-v="donem" aria-pressed="${c.scope !== "tum"}">${YEAR} dönemindekiler</button><button class="segb" data-act="cuscope" data-v="tum" aria-pressed="${c.scope === "tum"}">Tüm müşteriler</button></div></div>
-    <div class="row">
-      <input id="cu-q" type="search" placeholder="Firma, adres ara" value="${esc(c.q)}" style="min-width:220px">
-      <select id="cu-il"><option value="">Tüm iller</option>${ils.map(x => `<option ${x === c.il ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
-      <select id="cu-ilce"><option value="">Tüm ilçeler</option>${ilces.map(x => `<option ${x === c.ilce ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
-      <select id="cu-g"><option value="">Tüm gruplar</option><option value="${NOGRP}" ${c.g === NOGRP ? "selected" : ""}>${NOGRP}</option>${gOpts(c.g)}</select>
-      <span class="muted" style="font-size:.86rem">${fmt(rows.length)} müşteri</span>
+    <div class="row cufilters">
+      <input id="cu-q" type="search" placeholder="Firma, adres, seri no, QR, marka ara" value="${esc(c.q)}" style="flex:2 1 240px">
+      ${sel("cu-il", c.il, "Tüm iller", cuOpts("il", l => l.il))}
+      ${sel("cu-ilce", c.ilce, "Tüm ilçeler", cuOpts("ilce", l => l.i))}
+      ${sel("cu-g", c.g, "Tüm gruplar", cuOpts("g", l => l.g || NOGRP).map(([v, n]) => [v, n, v]))}
+      ${sel("cu-marka", c.marka, "Tüm markalar", cuOpts("marka", o => TRU(o.d[2])).map(([v, n]) => [v, n, v]))}
+      ${sel("cu-model", c.model, "Tüm modeller", cuOpts("model", o => TRU(o.d[3])).map(([v, n]) => [v, n, v]))}
+      ${sel("cu-ds", c.ds, "Damga durumu", cuOpts("ds", o => cuStamp(o).s).map(([v, n]) => [v, n, stampLab(v)]))}
+      ${sel("cu-next", c.next, "Sonraki damga", cuOpts("next", o => cuStamp(o).s !== "pasif" ? cuStamp(o).next : null).map(([v, n]) => [v, n, "Sonraki " + v]))}
+      ${anyF ? `<button class="link" data-act="cufclear">Filtreleri temizle</button>` : ""}
     </div>
-    <div class="tbl-wrap"><table class="cutbl"><thead><tr><th><input type="checkbox" data-act="cuall" ${allSel ? "checked" : ""} title="Filtredeki tümünü seç"></th><th>Firma</th><th>İl / ilçe</th><th>Adres</th><th class="num">${YEAR} cihaz</th><th class="num">Toplam</th><th>Grup</th></tr></thead><tbody>
-      ${pg.map(l => `<tr><td><input type="checkbox" data-act="cusel" data-k="${esc(l.k)}" ${c.sel.has(l.k) ? "checked" : ""}></td>
-        <td class="wrap"><b>${esc(titleTR(l.n))}</b> <button class="link" data-act="mfopen1" data-k="${esc(l.k)}" style="font-size:.8rem">Düzenle</button></td><td>${esc(titleTR(l.il))} / ${esc(titleTR(l.i))}</td><td class="wrap muted" style="font-size:.84rem">${esc(l.a)}</td>
-        <td class="num">${fmt(l.d.length)}</td><td class="num">${fmt(l.nAll)}</td>
-        <td><select data-act="cugrp" data-k="${esc(l.k)}" aria-label="Grup"><option value="">—</option>${gOpts(l.g)}</select></td></tr>`).join("") || `<tr><td colspan="7" class="muted">Filtreye uyan müşteri yok.</td></tr>`}
+    <div class="row" style="justify-content:space-between;font-size:.86rem"><span class="muted">${fmt(rows.length)} müşteri · ${fmt(nDev)} cihaz${st.dsel.size ? ` · <b>${fmt(st.dsel.size)} cihaz seçili</b>` : ""}</span>
+      <span class="row" style="gap:10px"><button class="link" data-act="cuopenall">${pg.every(r => c.open.has(r.l.k)) ? "Tümünü kapat" : "Bu sayfadakileri aç"}</button><button class="btn sm" data-act="applist">Başvuru listesi CSV</button></span></div>
+    <div class="tbl-wrap"><table class="cutbl"><thead><tr><th><input type="checkbox" data-act="cuall" ${allSel ? "checked" : ""} title="Filtredeki tüm müşterileri ve cihazlarını seç"></th><th></th><th class="num">Lok.</th><th>Firma</th><th>İl / ilçe</th><th>Adres</th><th class="num">Cihaz</th><th>Durum</th><th>Grup</th></tr></thead><tbody>
+      ${pg.map(r => { const l = r.l, op = c.open.has(l.k), sc = {}; r.devs.forEach(o => { const s = cuStamp(o).s; sc[s] = (sc[s] || 0) + 1; });
+        return `<tr class="cucust${op ? " open" : ""}"><td><input type="checkbox" data-act="cusel" data-k="${esc(l.k)}" ${c.sel.has(l.k) ? "checked" : ""} aria-label="Müşteriyi seç"></td>
+        <td><button class="cutog" data-act="cutog" data-k="${esc(l.k)}" aria-expanded="${op}" aria-label="Cihazları ${op ? "kapat" : "aç"}">${op ? "▾" : "▸"}</button></td><td class="mono num">${lno(l)}</td>
+        <td class="wrap"><button class="link rowlink" data-act="cutog" data-k="${esc(l.k)}"><b>${esc(titleTR(l.n))}</b></button> <button class="link" data-act="mfopen1" data-k="${esc(l.k)}" style="font-size:.8rem">Düzenle</button></td>
+        <td>${esc(titleTR(l.il))} / ${esc(titleTR(l.i))}</td><td class="wrap muted" style="font-size:.82rem">${esc(l.a)}</td>
+        <td class="num">${r.part ? `${fmt(r.devs.length)}<span class="muted">/${fmt(r.all)}</span>` : fmt(r.all)}</td>
+        <td style="white-space:nowrap">${Object.entries(sc).map(([s, n]) => `<span class="st ${SCLS[s]}" title="${esc(s === "buyil" ? YEAR + " bekliyor" : (CU_STAMP.find(x => x[0] === s) || [])[1] || s)}">${n}</span>`).join(" ")}</td>
+        <td><select data-act="cugrp" data-k="${esc(l.k)}" aria-label="Grup"><option value="">—</option>${gOpts(l.g)}</select></td></tr>
+        ${op ? `<tr class="cudevs"><td colspan="9"><table class="cudevtbl"><thead><tr><th></th><th><input type="checkbox" data-act="cudall" data-k="${esc(l.k)}" ${r.devs.length && r.devs.every(o => st.dsel.has(o.d[11])) ? "checked" : ""} title="Bu müşterinin cihazları"></th><th class="num">Cihaz</th><th>QR</th><th>Marka / model</th><th>Seri no</th><th>Max / e / sınıf</th><th class="num">Son</th><th class="num">Sonraki</th><th>Durum</th></tr></thead><tbody>
+          ${r.devs.map(cuDevRow).join("") || `<tr><td colspan="10" class="muted">Cihaz yok.</td></tr>`}</tbody></table></td></tr>` : ""}`; }).join("") || `<tr><td colspan="9" class="muted">Filtreye uyan kayıt yok.</td></tr>`}
     </tbody></table></div>
     ${pages > 1 ? `<div class="row"><button class="btn sm" data-act="cupage" data-p="${c.page - 1}" ${c.page ? "" : "disabled"}>‹ Önceki</button><span class="muted">${c.page + 1} / ${pages}</span><button class="btn sm" data-act="cupage" data-p="${c.page + 1}" ${c.page + 1 < pages ? "" : "disabled"}>Sonraki ›</button></div>` : ""}
-    ${c.sel.size ? `<div class="bulkbar"><b>${fmt(c.sel.size)} müşteri seçili</b>
-      <select id="cu-bulkg">${GROUPS.length ? gOpts("", "Grup seçin") : `<option value="">Önce grup ekleyin</option>`}</select>
-      <button class="btn primary sm" data-act="cuassign" ${GROUPS.length ? "" : "disabled"}>Gruba ata</button>
-      <button class="btn sm" data-act="cuunassign">Gruptan çıkar</button>
+    ${c.sel.size || st.dsel.size ? `<div class="bulkbar"><b>${fmt(c.sel.size)} müşteri · ${fmt(st.dsel.size)} cihaz</b>
+      ${c.sel.size ? `<select id="cu-bulkg">${GROUPS.length ? gOpts("", "Grup seçin") : `<option value="">Önce grup ekleyin</option>`}</select>
+      <button class="btn sm" data-act="cuassign" ${GROUPS.length ? "" : "disabled"}>Gruba ata</button><button class="btn sm" data-act="cuunassign">Gruptan çıkar</button>
       <button class="btn sm" data-act="smsopen">SMS gönder</button>
-      <button class="btn sm primary" data-act="mfopen">${c.sel.size > 1 ? `Seçili ${fmt(c.sel.size)} kaydı düzenle` : "Kaydı düzenle"}</button>
+      <button class="btn sm primary" data-act="mfopen">${c.sel.size > 1 ? `Seçili ${fmt(c.sel.size)} kaydı düzenle` : "Kaydı düzenle"}</button>` : ""}
+      ${st.dsel.size ? `<button class="btn sm primary" data-act="labels">QR etiketi (${fmt(st.dsel.size)})</button>` : ""}
       <button class="link" data-act="cuclear">Seçimi temizle</button></div>` : ""}
   </div>${viewCustForm()}</div>`;
 }
@@ -1943,10 +2078,15 @@ document.addEventListener("click", async e => {
   switch (a){
     case "gfopen": st.gfOpen = !st.gfOpen; render(); break;
     case "gfclear": st.gf = []; lsSet("damga.grup", []); st.gfOpen = false; applyGroupFilter(); render(); break;
-    case "cuscope": c.scope = b.dataset.v; c.page = 0; c.il = c.ilce = ""; render(); break;
+    case "cuscope": c.scope = b.dataset.v; c.page = 0; render(); break;
+    case "cufclear": Object.assign(c, { q: "", il: "", ilce: "", g: "", marka: "", model: "", ds: "", next: "", page: 0 }); render(); break;
+    case "cuds": c.ds = c.ds === b.dataset.v ? "" : b.dataset.v; c.page = 0; render(); break;
+    case "cunext": c.next = c.next === b.dataset.v ? "" : b.dataset.v; c.page = 0; render(); break;
+    case "cutog": { c.open = c.open || new Set(); const k = b.dataset.k; c.open.has(k) ? c.open.delete(k) : c.open.add(k); render(); break; }
+    case "cuopenall": { c.open = c.open || new Set(); const rows = cuFilter(null).slice(c.page * 50, c.page * 50 + 50); const allOpen = rows.every(r => c.open.has(r.l.k)); rows.forEach(r => allOpen ? c.open.delete(r.l.k) : c.open.add(r.l.k)); render(); break; }
     case "cupage": c.page = +b.dataset.p; render(); window.scrollTo(0, 0); break;
     case "cufilter": c.g = b.dataset.g; c.page = 0; render(); break;
-    case "cuclear": c.sel.clear(); render(); break;
+    case "cuclear": c.sel.clear(); st.dsel.clear(); render(); break;
     case "cuassign": case "cuunassign": {
       const g = a === "cuassign" ? $("#cu-bulkg")?.value : ""; if (a === "cuassign" && !g){ toast("Grup seçin"); break; }
       const n = c.sel.size; b.disabled = true;
@@ -1972,12 +2112,16 @@ document.addEventListener("change", async e => {
   const t = e.target, a = t.dataset.act, c = st.cu;
   if (a === "donem"){ switchPeriod(t.value); return; }
   if (a === "gf"){ const v = t.value; st.gf = t.checked ? [...new Set([...(st.gf || []), v])] : (st.gf || []).filter(x => x !== v); lsSet("damga.grup", st.gf); applyGroupFilter(); render(); return; }
-  if (a === "cusel"){ t.checked ? c.sel.add(t.dataset.k) : c.sel.delete(t.dataset.k); render(); return; }
-  if (a === "cuall"){ const rows = cuRows(); rows.forEach(l => t.checked ? c.sel.add(l.k) : c.sel.delete(l.k)); render(); return; }
+  if (a === "cusel"){ const k = t.dataset.k, r = cuFilter(null).find(x => x.l.k === k); c.open = c.open || new Set();
+    if (t.checked){ c.sel.add(k); c.open.add(k); (r ? r.devs : []).forEach(o => st.dsel.add(o.d[11])); } else { c.sel.delete(k); (r ? r.devs : []).forEach(o => st.dsel.delete(o.d[11])); }
+    render(); return; }
+  if (a === "cuall"){ cuFilter(null).forEach(r => { if (t.checked){ c.sel.add(r.l.k); r.devs.forEach(o => st.dsel.add(o.d[11])); } else { c.sel.delete(r.l.k); r.devs.forEach(o => st.dsel.delete(o.d[11])); } }); render(); return; }
+  if (a === "cudall"){ const r = cuFilter(null).find(x => x.l.k === t.dataset.k); (r ? r.devs : []).forEach(o => t.checked ? st.dsel.add(o.d[11]) : st.dsel.delete(o.d[11])); render(); return; }
   if (a === "cugrp"){ try { await setGroup([t.dataset.k], t.value); toast(t.value ? `Grup: ${t.value}` : "Gruptan çıkarıldı"); } catch(err){ toast("Kaydedilemedi: " + err.message); } return; }
   if (t.id === "cu-il"){ c.il = t.value; c.ilce = ""; c.page = 0; render(); return; }
   if (t.id === "cu-ilce"){ c.ilce = t.value; c.page = 0; render(); return; }
   if (t.id === "cu-g"){ c.g = t.value; c.page = 0; render(); return; }
+  if (["cu-marka","cu-model","cu-ds","cu-next"].includes(t.id)){ c[t.id.slice(3)] = t.value; c.page = 0; render(); return; }
 });
 document.addEventListener("input", e => {
   if (e.target.id !== "cu-q") return;
@@ -2215,21 +2359,22 @@ document.addEventListener("click", e => {
 });
 /* ---------------- fatura / ödeme notu sayfaları ---------------- */
 function fatRows(k){
-  const devs = DEVS.filter(o => !o.l.dep && fatKey(o.d[10]) && (!k || fatKey(o.d[10]) === k));
+  const devs = DEVS.filter(o => !o.l.dep && odemeCat(o.d[10]) && (!k || odemeCat(o.d[10]) === k));
   const by = new Map(); devs.forEach(o => { (by.get(o.l.k) || by.set(o.l.k, []).get(o.l.k)).push(o); });
   return [...by.values()].map(arr => ({ l: arr[0].l, devs: arr.sort((a, b) => (a.d[26] || 0) - (b.d[26] || 0)) }))
     .sort((a, b) => b.devs.length - a.devs.length || a.l.n.localeCompare(b.l.n, "tr"));
 }
-function fatOptions(cur){ const keys = new Set(S.faturaAll.map(x => x[0]).concat(["FATURA KESİLECEK","FATURA KESİLDİ","EFT","NAKİT","KREDİ KARTI","CEZALI"]));
-  return [...keys].map(x => `<option value="${esc(x)}" ${cur === x ? "selected" : ""}>${esc(titleTR(x))}</option>`).join("") + `<option value="__new">+ Yeni not yaz…</option><option value="__clear">Notu kaldır</option>`; }
-function fatSelect(d){ return `<select class="edin" data-act="fatone" data-id="${d[0]}" aria-label="Fatura notu">${fatOptions(fatKey(d[10]))}</select>`; }
+function fatOptions(cur){ return ODEME.filter(x => x[0] !== "diger").map(x => `<option value="${x[0]}" ${cur === x[0] ? "selected" : ""}>${esc(x[1])}</option>`).join("")
+  + (cur === "diger" ? `<option value="diger" selected>Diğer not</option>` : "") + `<option value="__new">+ Serbest not yaz…</option><option value="__clear">Notu kaldır</option>`; }
+function fatSelect(d){ const c = odemeCat(d[10]); return `<select class="edin" data-act="fatone" data-id="${d[0]}" aria-label="Ödeme durumu">${fatOptions(c)}</select>${c === "diger" || (c && fatKey(d[10]) !== ODEME_BY[c][2]) ? `<div class="muted" style="font-size:.74rem">${esc(d[10])}</div>` : ""}`; }
 async function fatSave(ids, val){
-  if (val === "__clear") val = ""; else if (val === "__new"){ val = (prompt("Yeni fatura / ödeme notu") || "").trim(); if (!val) return false; }
+  if (val === "diger") return false;
+  if (val === "__clear") val = ""; else if (val === "__new"){ val = (prompt("Serbest fatura / ödeme notu") || "").trim(); if (!val) return false; } else val = ODEME_BY[val]?.[2] || val;
   val = fatKey(val);
   const dirty = new Map(ids.filter(id => DEVID[id] && fatKey(DEVID[id].d[10]) !== val).map(id => [id, { fatura_notu: val }]));
   if (!dirty.size){ toast("Değişiklik yok"); return false; }
   try { const r = await saveEdits(dirty); await reloadDevices(); st.fsel.clear(); render();
-    toast(`${fmt(dirty.size)} cihazın notu “${val ? titleTR(val) : "boş"}” yapıldı${r.fail ? ` · ${r.fail} hata` : ""}`); return true; }
+    toast(`${fmt(dirty.size)} cihazın ödeme durumu “${val ? odemeLab(odemeCat(val)) : "boş"}” yapıldı${r.fail ? ` · ${r.fail} hata` : ""}`); return true; }
   catch(e){ toast("Kaydedilemedi: " + e.message); render(); return false; }
 }
 function viewFatura(){
@@ -2240,12 +2385,12 @@ function viewFatura(){
   return `<div class="stack">
   <div class="row" style="justify-content:space-between;align-items:flex-end">
     <div><button class="btn sm" data-act="view" data-v="ozet">‹ Yönetici özeti</button>
-      <div class="eyebrow" style="margin-top:10px">Fatura / ödeme notları · ${YEAR} dönemi${(st.gf||[]).length ? " · grup: " + esc(st.gf.join(", ")) : ""}</div>
-      <h2>${k ? esc(titleTR(k)) : "Tüm fatura / ödeme notları"}</h2></div>
+      <div class="eyebrow" style="margin-top:10px">Ödeme durumu · ${YEAR} dönemi${(st.gf||[]).length ? " · grup: " + esc(st.gf.join(", ")) : ""}</div>
+      <h2>${k ? esc(odemeLab(k)) : "Tüm ödeme durumları"}</h2></div>
     <button class="btn primary" data-act="fatcsv" ${nDev ? "" : "disabled"}>CSV indir (${fmt(nDev)} cihaz)</button></div>
   <div class="chips" role="group" aria-label="Not">
     <button class="chip" data-act="fatpage" data-k="" aria-pressed="${!k}">Tümü · ${fmt(all.reduce((s, x) => s + x[1], 0))}</button>
-    ${all.map(([key, n]) => `<button class="chip" data-act="fatpage" data-k="${esc(key)}" aria-pressed="${k === key}">${esc(titleTR(key))} · ${fmt(n)}</button>`).join("")}</div>
+    ${all.map(([key, n]) => `<button class="chip" data-act="fatpage" data-k="${esc(key)}" aria-pressed="${k === key}">${esc(odemeLab(key))} · ${fmt(n)}</button>`).join("")}</div>
   <div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))">
     <div class="card kpi" style="--c:var(--brand)"><span>Cihaz</span><b>${fmt(nDev)}</b><small>bu notla kayıtlı</small></div>
     <div class="card kpi" style="--c:var(--tut)"><span>Müşteri / lokasyon</span><b>${fmt(rows.length)}</b><small>${fmt(new Set(rows.map(r => TRU(r.l.n))).size)} farklı ünvan</small></div>
@@ -2259,18 +2404,18 @@ function viewFatura(){
           <div style="font-size:.86rem">${l.t ? `Tel: <a href="tel:${esc(String(l.t).replace(/\s/g, ""))}">${esc(l.t)}</a>` : `<span class="muted">Telefon yok</span>`} · ${fmt(l.d.length)} cihaz (bu dönem) · konum ${l.p === "ok" ? "doğrulandı" : "yaklaşık"}</div></div>
         <div class="row" style="gap:6px"><span class="pill admin">${fmt(r.devs.length)} cihaz</span>
           <select data-act="fatcust" data-k="${esc(l.k)}" aria-label="Bu müşterinin tüm cihazları" style="font-size:.82rem"><option value="">Tümünü değiştir…</option>${fatOptions("")}</select></div></div>
-      <div class="tbl-wrap"><table class="rptbl"><thead><tr><th><input type="checkbox" data-act="fatall" data-k="${esc(l.k)}" ${r.devs.every(o => st.fsel.has(o.d[0])) ? "checked" : ""} title="Bu müşterinin tüm cihazları"></th><th class="r">Cihaz no</th><th>QR</th><th>Marka / model</th><th>Seri no</th><th>Max</th><th>Durum</th><th>Son damga</th><th>Fatura / ödeme notu</th><th>Durum açıklaması</th></tr></thead><tbody>
+      <div class="tbl-wrap"><table class="rptbl"><thead><tr><th><input type="checkbox" data-act="fatall" data-k="${esc(l.k)}" ${r.devs.every(o => st.fsel.has(o.d[0])) ? "checked" : ""} title="Bu müşterinin tüm cihazları"></th><th class="r">Cihaz no</th><th>QR</th><th>Marka / model</th><th>Seri no</th><th>Max</th><th>Durum</th><th>Son damga</th><th>Ödeme durumu</th><th>Durum açıklaması</th></tr></thead><tbody>
         ${r.devs.map(o => { const d = o.d, si = stampInfo(o); return `<tr><td><input type="checkbox" data-act="fatsel" data-id="${d[0]}" ${st.fsel.has(d[0]) ? "checked" : ""}></td><td class="r mono">${cno(d)}</td><td class="mono"><button class="link" data-act="dev" data-c="${d[11]}">${esc(d[11])}</button></td><td>${esc(d[2])} ${esc(d[3])}</td><td class="mono">${esc(d[4] || "—")}</td><td class="mono">${esc(d[12] || "")}</td>
           <td><span class="st ${RP_OUT.includes(d[8]) ? "kapsamdisi" : d[8]}">${esc(CAT[d[8]]?.l || d[8])}</span></td><td class="mono">${si.last || "—"}</td><td>${fatSelect(d)}</td><td class="muted">${esc(d[9])}</td></tr>`; }).join("")}
       </tbody></table></div></div>`; }).join("") || `<div class="empty">Kayıt yok.</div>`}
     ${shown.length > 300 ? `<div class="muted">İlk 300 müşteri gösteriliyor; tamamı için CSV indirin.</div>` : ""}
-    ${st.fsel.size ? `<div class="bulkbar"><b>${fmt(st.fsel.size)} cihaz seçili</b><span>Fatura / ödeme notunu değiştir:</span>
+    ${st.fsel.size ? `<div class="bulkbar"><b>${fmt(st.fsel.size)} cihaz seçili</b><span>Ödeme durumunu değiştir:</span>
       <select id="fat-bulk">${fatOptions("")}</select><button class="btn primary sm" data-act="fatbulk">Uygula</button><button class="link" data-act="fatclear">Seçimi temizle</button></div>` : ""}
   </div></div>`;
 }
 function fatCSV(){
-  const k = st.fk || "", rows = [["Fatura notu","Lok. no","Cihaz no","Grup","Müşteri","İl","İlçe","Adres","Telefon","QR no","Cinsi","Marka","Model","Seri no","Max","Sınıf","Durum","Durum açıklaması","Son damga","Konum"]];
-  fatRows(k).forEach(r => r.devs.forEach(o => { const d = o.d, l = r.l; rows.push([titleTR(fatKey(d[10])), l.no || "", d[26] || "", l.g || "", l.n, l.il, l.i, l.a, l.t, d[11], d[1], d[2], d[3], d[4], d[12], d[16], CAT[d[8]]?.l || d[8], d[9], stampInfo(o).last || "", l.p === "ok" ? "Doğrulandı" : "Yaklaşık"]); }));
+  const k = st.fk || "", rows = [["Ödeme durumu","Fatura / ödeme notu","Lok. no","Cihaz no","Grup","Müşteri","İl","İlçe","Adres","Telefon","QR no","Cinsi","Marka","Model","Seri no","Max","Sınıf","Durum","Durum açıklaması","Son damga","Konum"]];
+  fatRows(k).forEach(r => r.devs.forEach(o => { const d = o.d, l = r.l; rows.push([odemeLab(odemeCat(d[10])), d[10], l.no || "", d[26] || "", l.g || "", l.n, l.il, l.i, l.a, l.t, d[11], d[1], d[2], d[3], d[4], d[12], d[16], CAT[d[8]]?.l || d[8], d[9], stampInfo(o).last || "", l.p === "ok" ? "Doğrulandı" : "Yaklaşık"]); }));
   const tag = k ? "-" + k.toLocaleLowerCase("tr-TR").replace(/[^0-9a-zçğıöşü]+/g, "-") : "";
   downloadFile(`damga-${YEAR}-fatura${tag}-${todayISO()}.csv`, "﻿" + rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n"));
   toast(`${fmt(rows.length - 1)} satır CSV olarak indirildi`);
@@ -2296,7 +2441,7 @@ document.addEventListener("change", async e => {
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-act]"); if (!b) return;
   if (b.dataset.act === "fatclear"){ st.fsel.clear(); render(); }
-  if (b.dataset.act === "fatbulk"){ const v = $("#fat-bulk").value, ids = [...st.fsel]; if (!confirm(`${ids.length} cihazın fatura / ödeme notu değiştirilsin mi?`)) return; await fatSave(ids, v); }
+  if (b.dataset.act === "fatbulk"){ const v = $("#fat-bulk").value, ids = [...st.fsel]; if (!confirm(`${ids.length} cihazın ödeme durumu değiştirilsin mi?`)) return; await fatSave(ids, v); }
 });
 /* ---------------- SMS (Sanal Santral, Supabase Edge Function "sms-gonder") ---------------- */
 const SMS_TPL = "Sayın {firma}, {donem} yılı periyodik damga (muayene) çalışması kapsamında ekibimiz {ilce} bölgesinde olacaktır. {cihaz} cihazınız için bilgilendirme. Elmaslar Elektronik Tartı";
@@ -2451,6 +2596,75 @@ document.addEventListener("input", e => { const t = e.target, M = st.mf; if (!M)
 });
 document.addEventListener("change", e => { const t = e.target; if (st.mf && t.tagName === "SELECT" && (t.dataset.mfb || t.dataset.mfd)) t.dispatchEvent(new Event("input", { bubbles: true })); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && st.mf) mfClose(false); });
+/* ---------------- sahadan yeni cihaz talebi + yönetici onayı ---------------- */
+const reqPending = () => (st.reqs || []).filter(r => r.durum === "bekliyor");
+function reqForm(k){
+  const D = st.reqDraft || {};
+  return `<form class="stack reqform" data-k="${esc(k)}" style="gap:8px"><div class="eyebrow">Yeni cihaz ekle · yönetici onayına gider</div>
+    <div class="mfgrid">
+      <label class="f">Marka *<input name="marka" required value="${esc(D.marka || "")}" autocomplete="off"></label>
+      <label class="f">Model<input name="model" value="${esc(D.model || "")}" autocomplete="off"></label>
+      <label class="f">Seri no<input name="seri_no" value="${esc(D.seri_no || "")}" autocomplete="off" placeholder="Etiket okunmuyorsa boş bırakın"></label>
+      <label class="f">Cinsi<input name="cins" value="${esc(D.cins || "Terazi")}"></label>
+      <label class="f">Kapasite (Max)<input name="max_cap" value="${esc(D.max_cap || "")}" placeholder="örn. 30 kg"></label>
+      <label class="f">e<input name="e" value="${esc(D.e || "")}" placeholder="örn. 5 g"></label>
+      <label class="f">Sınıf<select name="sinif">${["III","II","I","IIII"].map(s => `<option ${D.sinif === s ? "selected" : ""}>${s}</option>`).join("")}</select></label>
+      <label class="f">Kullanım yeri<input name="kullanim_yeri" value="${esc(D.kullanim_yeri || "")}" placeholder="örn. şarküteri"></label>
+      <label class="f wide">Not<input name="notlar" value="${esc(D.notlar || "")}"></label>
+    </div>
+    <label class="row" style="gap:8px;font-size:.9rem"><input type="checkbox" name="damgalandi" ${D.damgalandi ? "checked" : ""}> Bu cihazın damgası şimdi yapıldı</label>
+    <div class="row"><button class="btn primary">Onaya gönder</button><button class="btn" type="button" data-act="reqcancel">Vazgeç</button></div></form>`;
+}
+function reqListFor(k){ const rs = (st.reqs || []).filter(r => r.business_id === k && r.durum !== "onaylandi").slice(0, 10); if (!rs.length) return "";
+  return `<div class="stack" style="gap:4px">${rs.map(r => `<div class="share" style="gap:2px;font-size:.84rem"><b>Yeni cihaz: ${esc(r.marka)} ${esc(r.model || "")}</b>
+    <span class="muted mono">S/N ${esc(r.seri_no || "—")} · ${esc(r.max_cap || "")}</span><span class="st ${r.durum === "reddedildi" ? "tekrar" : "bekliyor"}">${r.durum === "reddedildi" ? "Reddedildi" + (r.red_nedeni ? " · " + esc(r.red_nedeni) : "") : "Yönetici onayı bekliyor"}</span></div>`).join("")}</div>`; }
+function reqBanner(){ const n = reqPending().length; if (!n || !(st.isAdmin && st.role === "admin")) return "";
+  return `<div class="warnbox row" style="justify-content:space-between;margin-bottom:16px"><span><b>${n}</b> yeni cihaz sahadan eklendi, onay bekliyor.</span><button class="btn sm primary" data-act="view" data-v="musteriler">İncele</button></div>`; }
+function viewDevRequests(){
+  const rs = reqPending(); if (!rs.length) return "";
+  const ex = allDevKeys(), who = id => st.staffAll?.find(s => s.id === id)?.name || "Saha";
+  return `<div class="card pad stack" style="gap:10px;border-color:var(--wait)"><h3 style="margin:0">Onay bekleyen yeni cihazlar (${rs.length})</h3>
+    <p class="muted" style="margin:0;font-size:.86rem">Saha ekibinin müşteri adresinde bulup eklediği cihazlar. Onaylanınca o müşteriye eklenir, QR numarası alır ve ${YEAR} listesine girer.</p>
+    ${rs.map(r => { const l = BY[r.business_id], dup = devKey(r.marka, r.seri_no) && ex.get(devKey(r.marka, r.seri_no)); return `<div class="share" style="gap:6px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><b>${esc(r.marka)} ${esc(r.model || "")}</b> <span class="mono muted">S/N ${esc(r.seri_no || "—")}</span>
+        <div style="font-size:.86rem">${l ? `${esc(titleTR(l.n))} · Lok. ${lno(l)} · ${esc(titleTR(l.i))}` : "Müşteri bulunamadı"}</div>
+        <div class="muted" style="font-size:.8rem">${esc(r.cins || "")} · Max ${esc(r.max_cap || "?")} · e ${esc(r.e || "?")} · Sınıf ${esc(r.sinif || "III")}${r.kullanim_yeri ? " · " + esc(r.kullanim_yeri) : ""} · ${esc(who(r.created_by))}, ${esc(String(r.created_at || "").slice(0, 16).replace("T", " "))}${r.damgalandi ? ` · <b style="color:var(--ok)">damgası yapıldı</b>` : ""}${r.notlar ? " · " + esc(r.notlar) : ""}</div>
+        ${dup ? `<div class="warnbox" style="margin-top:6px;font-size:.82rem">Aynı marka + seri sistemde kayıtlı: ${esc(dup.d[11])} · ${esc(titleTR(dup.l.n))}</div>` : ""}</div>
+        <div class="row" style="gap:6px"><button class="btn sm ok" data-act="reqok" data-id="${r.id}">Onayla</button><button class="btn sm warn" data-act="reqno" data-id="${r.id}">Reddet</button></div></div></div>`; }).join("")}
+  </div>`;
+}
+async function reqApprove(id){
+  const r = (st.reqs || []).find(x => x.id === id); if (!r) return;
+  const ik = "REQ|" + r.id, dev = { business_id: r.business_id, import_key: ik, tip: "Otomatik olmayan tartı aleti", cins: r.cins || "Terazi", marka: r.marka, model: r.model || "", seri_no: r.seri_no || "",
+    seri_flag: realSeri(r.seri_no) ? "" : "seri-yok", sinif: r.sinif || "III", max_cap: r.max_cap || "", e: r.e || "", kullanim_yeri: r.kullanim_yeri || "",
+    son_damga_yili: r.damgalandi ? YEAR : null, durum_grup: r.damgalandi ? "tamam" : "bekliyor", durum_ham: "Sahadan eklendi" + (r.damgalandi ? " · damgalandı" : ""), bilgi: r.notlar || "" };
+  await q(sb.from("devices").upsert(dev, { onConflict: "import_key", ignoreDuplicates: true }));
+  const row = (await q(sb.from("devices").select("id,import_key").in("import_key", [ik])))[0]; if (!row) throw new Error("cihaz kaydı oluşturulamadı");
+  if (!st.noPeriod) await q(sb.from("period_items").upsert({ donem: YEAR, device_id: row.id, durum_grup: dev.durum_grup, durum_ham: dev.durum_ham, bilgi: dev.bilgi, kaynak: "saha talebi" }, { onConflict: "donem,device_id" }));
+  await q(sb.from("device_requests").update({ durum: "onaylandi", device_id: row.id, karar_veren: st.me, karar_zamani: new Date().toISOString() }).eq("id", id));
+  try { await q(sb.rpc("assign_qr_numbers")); } catch(_){}
+  await reloadDevices(); await loadDynamic();
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
+  if (a === "quickmiss"){ const k = b.dataset.k, d = st.draft[k]; if (!d) return; d.reason = b.dataset.v; st.reasonFor = k; st.reqFor = null; render(); setTimeout(() => $("#note-" + k)?.focus(), 30); }
+  if (a === "addreq"){ st.reqFor = b.dataset.k; st.reasonFor = null; st.reqDraft = {}; render(); setTimeout(() => document.querySelector('.reqform [name="marka"]')?.focus(), 30); }
+  if (a === "reqcancel"){ st.reqFor = null; render(); }
+  if (a === "reqok"){ b.disabled = true; try { await reqApprove(+b.dataset.id); render(); toast("Cihaz onaylandı ve müşteriye eklendi"); } catch(err){ b.disabled = false; toast("Onaylanamadı: " + err.message); } }
+  if (a === "reqno"){ const why = prompt("Reddetme nedeni (saha ekibi görür)", "") ; if (why === null) return;
+    try { await q(sb.from("device_requests").update({ durum: "reddedildi", red_nedeni: why, karar_veren: st.me, karar_zamani: new Date().toISOString() }).eq("id", +b.dataset.id)); await loadDynamic(); render(); toast("Talep reddedildi"); } catch(err){ toast("İşlem yapılamadı: " + err.message); } }
+});
+document.addEventListener("input", e => { const f = e.target.closest?.(".reqform"); if (!f) return; st.reqDraft = Object.fromEntries(new FormData(f)); st.reqDraft.damgalandi = f.damgalandi.checked; });
+document.addEventListener("submit", async e => {
+  const f = e.target; if (!f.classList?.contains("reqform")) return; e.preventDefault();
+  const v = Object.fromEntries(new FormData(f)); const k = f.dataset.k;
+  if (!String(v.marka || "").trim()){ toast("Marka zorunlu"); return; }
+  const row = { business_id: k, plan_id: st.fieldPlan || null, donem: YEAR, marka: v.marka.trim().toLocaleUpperCase("tr-TR"), model: (v.model || "").trim().toLocaleUpperCase("tr-TR"), seri_no: (v.seri_no || "").trim(),
+    cins: (v.cins || "").trim(), max_cap: normCap(v.max_cap || ""), e: (v.e || "").trim(), sinif: v.sinif || "III", kullanim_yeri: (v.kullanim_yeri || "").trim(), notlar: (v.notlar || "").trim(), damgalandi: f.damgalandi.checked, created_by: st.me };
+  const btn = f.querySelector("button.primary"); btn.disabled = true;
+  try { await q(sb.from("device_requests").insert(row)); await loadDynamic(); st.reqFor = null; st.reqDraft = null; render(); toast("Yeni cihaz yöneticinin onayına gönderildi"); }
+  catch(err){ btn.disabled = false; toast("Gönderilemedi: " + (/device_requests/.test(err.message) ? "cihaz talebi tablosu kurulu değil (damga-cihaz-talep.sql)" : err.message)); }
+});
 /* ---------------- boot & giriş ---------------- */
 function showScreen(id){ ["setup","login","loading","app"].forEach(s => { const el = document.getElementById("scr-" + s); if (el) el.hidden = s !== id; }); }
 function loginMsg(m, ok){ const el = $("#lmsg"); if (el){ el.textContent = m || ""; el.className = "lmsg" + (ok ? " ok" : ""); } }
