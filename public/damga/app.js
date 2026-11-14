@@ -903,7 +903,7 @@ function resetPlanner(){ st.editing = null; st.editIds = null; st.editGid = null
 document.addEventListener("click", async e => {
   if (st.dd && !e.target.closest(".dd")){ st.dd = null; if (st.view === "planla") renderPool(); }
   const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
-  if (["pick","devchk","ddpick","rstaff","mv","dpick","pf","impmap"].includes(a)) return; // change handlers
+  if (["pick","devchk","ddpick","rstaff","mv","dpick","pf","impmap","pasel","duptgt","dupkeep"].includes(a)) return; // change handlers
   if (["optimize","saveplan","up","down","rm","add","newplan"].includes(a)) readCfg();
   switch (a){
     case "view": st.view = b.dataset.v; clearHash(); render(); window.scrollTo(0,0); break;
@@ -951,6 +951,15 @@ document.addEventListener("click", async e => {
     case "poolview": st.poolView = b.dataset.v; gmap = null; hydratePlanner(); renderPlannerHead(); break;
     case "logout": await sb.auth.signOut(); location.reload(); break;
     case "impgo": runImport(); break;
+    case "pacheck": { const r = placeAudit(); st.pa = { ...r, sel: new Set(r.sug.map(x => x.l.k)), busy: false }; render(); break; }
+    case "paall": st.pa.sel = new Set(st.pa.sug.map(x => x.l.k)); render(); break;
+    case "panone": st.pa.sel = new Set(); render(); break;
+    case "paapply": placeApply(); break;
+    case "dupcheck": st.dup = { ...dupAudit(), target: {}, keep: {} }; initDupDefaults(); render(); break;
+    case "dupmerge": dupMerge(+b.dataset.g); break;
+    case "dupdev": dupDev(+b.dataset.g); break;
+    case "dupskip": dupHide("c", +b.dataset.g); break;
+    case "dupdskip": dupHide("d", +b.dataset.g); break;
     case "rpview": st.rp.view = b.dataset.v; st.rp.page = 0; render(); break;
     case "rppage": st.rp.page = Math.max(0, +b.dataset.p); render(); window.scrollTo(0, 0); break;
     case "rpcsv": rpCSV(); break;
@@ -1040,6 +1049,9 @@ document.addEventListener("change", e => {
   if (t.id === "rp-ilce"){ st.rp.ilce = t.value; st.rp.page = 0; render(); return; }
   if (t.id === "rp-durum"){ st.rp.durum = t.value; st.rp.page = 0; render(); return; }
   if (t.id === "impnosn"){ if (st.imp) st.imp.includeNoSerial = t.checked; return; }
+  if (a === "duptgt"){ st.dup.target[+t.dataset.g] = t.value; return; }
+  if (a === "dupkeep"){ st.dup.keep[+t.dataset.g] = +t.value; return; }
+  if (a === "pasel"){ t.checked ? st.pa.sel.add(t.dataset.k) : st.pa.sel.delete(t.dataset.k); const b = document.querySelector('[data-act="paapply"]'); if (b) b.textContent = `Düzeltmeleri uygula (${fmt(st.pa.fix.length + st.pa.sel.size)} kayıt)`; return; }
   if (t.id === "impother"){ if (st.imp) st.imp.includeOther = t.checked; return; }
   if (t.id === "impfile" && t.files[0]){ const year = +($("#impyear")?.value) || YEAR; st.imp = { name: t.files[0].name, year };
     readImportFile(t.files[0], year).then(d => { st.imp.data = d; render(); }).catch(err => { st.imp.err = "Dosya okunamadı: " + err.message; render(); }); return; }
@@ -1095,6 +1107,47 @@ async function exportCSV(){
   downloadFile(`damga-saha-sonuclari-${todayISO()}.csv`, csv); toast("CSV indirildi");
 }
 
+/* ---- Türkiye il / ilçe düzeltme (81 il, 973 ilçe; Antalya ve Burdur için mahalle → ilçe) ---- */
+const YER = window.TR_YER || { iller: {}, mah: {} };
+const FOLD = s => String(s ?? "").toLocaleUpperCase("tr-TR").replace(/[ÇĞİÖŞÜÂÎÛ]/g, ch => ({ Ç:"C", Ğ:"G", İ:"I", Ö:"O", Ş:"S", Ü:"U", Â:"A", Î:"I", Û:"U" }[ch])).replace(/[^A-Z0-9]/g, "");
+const IL_F = {}; const ILCE_F = {};
+Object.entries(YER.iller).forEach(([il, ds]) => { IL_F[FOLD(il)] = il; ds.forEach(d => (ILCE_F[FOLD(d)] = ILCE_F[FOLD(d)] || []).push({ il, ilce: d })); });
+function lev(a, b){ if (Math.abs(a.length - b.length) > 2) return 9; const m = []; for (let i = 0; i <= a.length; i++){ m[i] = [i]; for (let j = 1; j <= b.length; j++) m[i][j] = i ? Math.min(m[i-1][j] + 1, m[i][j-1] + 1, m[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)) : j; } return m[a.length][b.length]; }
+function nearest(f, cands){ let best = null, bd = 9; cands.forEach(c => { const d = lev(f, FOLD(c)); if (d < bd){ bd = d; best = c; } }); return bd <= (f.length >= 7 ? 2 : 1) ? best : null; }
+function findIl(raw){ const f = FOLD(raw); if (!f || /^\d/.test(f)) return null; return IL_F[f] || nearest(f, Object.keys(YER.iller)); }
+function findIlce(il, raw){
+  const list = YER.iller[il] || []; const f = FOLD(raw); if (!f) return null;
+  const ex = list.find(d => FOLD(d) === f); if (ex) return ex;
+  const inc = list.filter(d => FOLD(d).length >= 4 && f.includes(FOLD(d))).sort((a, b) => FOLD(b).length - FOLD(a).length)[0]; if (inc) return inc;
+  return nearest(f, list);
+}
+const MAH_RE = /([A-ZÇĞİÖŞÜ0-9.]+(?:\s[A-ZÇĞİÖŞÜ0-9.]+)?)\s*(MAHALLESİ|MAHALLESI|MAH|MH)(?![A-ZÇĞİÖŞÜ])/;
+/* Adresteki mahallenin bağlı olduğu ilçeler. strict: yalnızca tam mahalle adı */
+function mahCands(il, text, strict){
+  const m = YER.mah[il]; if (!m) return [];
+  const mh = TRU(text).match(MAH_RE); const keys = [];
+  if (mh){ keys.push(FOLD(mh[1])); const w = mh[1].split(/\s+/); if (!strict && w.length > 1){ keys.push(FOLD(w[w.length - 1]), FOLD(w[0])); } }
+  else if (!strict) keys.push(FOLD(text));
+  for (const k of keys){ if (m[k]) return [...new Set(m[k])]; } return [];
+}
+function mahIlce(il, text){ const c = mahCands(il, text, false); return c.length === 1 ? c[0] : null; }
+/* il/ilçe ham değerlerinden resmi adları bulur. suggest: ilçe geçerli ama adresteki mahalle başka ilçede. */
+function placeFix(ilRaw, ilceRaw, adres){
+  let il = findIl(ilRaw), how = [];
+  if (!il){ const g = ILCE_F[FOLD(ilceRaw)]; il = g && g.length === 1 ? g[0].il : "ANTALYA"; if (cellStr(ilRaw)) how.push("il tanınmadı"); }
+  let ilce = findIlce(il, ilceRaw);
+  if (!ilce){ ilce = mahIlce(il, ilceRaw) || mahIlce(il, adres) || (YER.iller[il] || []).find(d => FOLD(d).length >= 4 && FOLD(adres).includes(FOLD(d))) || null; if (ilce) how.push("ilçe adresten bulundu"); }
+  let suggest = null;
+  if (ilce){ const loose = mahCands(il, adres, false), strict = mahCands(il, adres, true);
+    if (strict.length === 1 && strict[0] !== ilce && !loose.includes(ilce) && !FOLD(adres).includes(FOLD(ilce))) suggest = { ilce: strict[0], reason: `Adresteki mahalle (${titleTR((TRU(adres).match(MAH_RE) || [])[1] || "")}) ${titleTR(strict[0])} ilçesinde` }; }
+  return { il, ilce: ilce || TRU(ilceRaw), ok: !!ilce, how, suggest };
+}
+function placeAudit(){
+  const fix = [], sug = [], bad = [];
+  LOCS.filter(l => !l.dep).forEach(l => { const r = placeFix(l.il, l.i, l.a);
+    if (!r.ok) bad.push({ l, r }); else if (r.il !== l.il || r.ilce !== l.i) fix.push({ l, r }); if (r.suggest) sug.push({ l, r }); });
+  return { fix, sug, bad };
+}
 /* ---- Veri & ayarlar: Excel içe aktarma, Google konum, kurulum durumu ---- */
 const MAHC = window.DAMGA_MAH || {};
 const TRU = s => String(s ?? "").toLocaleUpperCase("tr-TR").replace(/ /g, " ").trim();
@@ -1134,10 +1187,10 @@ function parseWorkbook(wb, listYear){
   const recs = rows.slice(1).map((r, i) => ({ r, row: i + 2 })).filter(x => cellStr(x.r[C.ad]));
   recs.forEach(({ r }) => { const k = TRU(r[C.marka]).replace(/İ/g, "I") + "|" + TRU(r[C.seri]).replace(/\s/g, ""); if (TRU(r[C.seri])) pairCount[k] = (pairCount[k] || 0) + 1; });
   recs.forEach(({ r, row }) => {
-    const ad = cellStr(r[C.ad]), adres = cellStr(r[C.adres]), ilce = normIlce(r[C.ilce]);
-    const bk = TRU(ad) + "|" + TRU(adres) + "|" + ilce, bid = "b" + hkey(bk);
+    const ad = cellStr(r[C.ad]), adres = cellStr(r[C.adres]), ilceKey = normIlce(r[C.ilce]), pf = placeFix(r[C.il], r[C.ilce], adres), ilce = pf.ilce;
+    const bk = TRU(ad) + "|" + TRU(adres) + "|" + ilceKey, bid = "b" + hkey(bk);
     if (!biz.has(bid)){ const c = approxCoord(ilce, mahOf(adres), bid);
-      biz.set(bid, { id: bid, unvan: ad, adres, mahalle: mahOf(adres), ilce, il: /^0\d/.test(cellStr(r[C.il])) ? "ANTALYA" : (TRU(r[C.il]) || "ANTALYA"), tel: cellStr(r[C.tel]), lat: c.lat, lng: c.lng, geo_src: c.src, is_depot: TRU(ad).startsWith("ELMASLAR") }); }
+      biz.set(bid, { id: bid, unvan: ad, adres, mahalle: mahOf(adres), ilce, il: pf.il, tel: cellStr(r[C.tel]), lat: c.lat, lng: c.lng, geo_src: c.src, is_depot: TRU(ad).startsWith("ELMASLAR") }); }
     else if (!biz.get(bid).tel && cellStr(r[C.tel])) biz.get(bid).tel = cellStr(r[C.tel]);
     const durum = cellStr(r[C.durum]), cat = statusCat(durum), seri = cellStr(r[C.seri]), marka = cellStr(r[C.marka]);
     const yRaw = cellStr(r[C.yil]); let son = /^(19|20)\d\d$/.test(yRaw) ? +yRaw : null;
@@ -1176,11 +1229,11 @@ function parseMigros(wb, listYear){
   const addRow = (s, r, row, fromNotes) => {
     const g = n => { const i = ci(s, n); return i >= 0 ? r[i] : ""; };
     const mag = cellStr(g("MAĞAZA ADI")); if (!mag) return;
-    const unvan = cellStr(g("ÜNVAN")), adres = cellStr(g("ADRES")), ilce = normIlce(g("İLÇE")), seri = seriOf(g("SERİ")), marka = cellStr(g("MARKA"));
+    const unvan = cellStr(g("ÜNVAN")), adres = cellStr(g("ADRES")), ilceKey = normIlce(g("İLÇE")), pf = placeFix(g("İL"), g("İLÇE"), adres), ilce = pf.ilce, seri = seriOf(g("SERİ")), marka = cellStr(g("MARKA"));
     const k = jk(mag, seri); if (fromNotes && seen.has(k)) return; seen.add(k);
     const code = unvan.replace(/\D/g, ""); const name = mag + (code ? ` · ${code}` : "");
-    const bid = "b" + hkey(TRU(mag) + "|" + TRU(adres) + "|" + ilce);
-    if (!biz.has(bid)){ const c = approxCoord(ilce, mahOf(adres), bid); biz.set(bid, { id: bid, unvan: name, adres, mahalle: mahOf(adres), ilce, il: "ANTALYA", tel: fmtTel(g("TELEFON NO")) || fmtTel(g("CEP TELEFONU")), lat: c.lat, lng: c.lng, geo_src: c.src, is_depot: false }); }
+    const bid = "b" + hkey(TRU(mag) + "|" + TRU(adres) + "|" + ilceKey);
+    if (!biz.has(bid)){ const c = approxCoord(ilce, mahOf(adres), bid); biz.set(bid, { id: bid, unvan: name, adres, mahalle: mahOf(adres), ilce, il: pf.il, tel: fmtTel(g("TELEFON NO")) || fmtTel(g("CEP TELEFONU")), lat: c.lat, lng: c.lng, geo_src: c.src, is_depot: false }); }
     const durum = TRU(g("DURUM")) || "AÇIK", y = note.get(k) || (fromNotes ? cellStr(g("YORUM")) : "");
     const cat = durum === "TAMAMLANDI" ? "tamam" : durum === "İPTAL" ? "kapsamdisi" : (noteCat(y) || "bekliyor");
     const it = g("İŞLEM TARİHİ"); const itd = typeof it === "number" ? new Date(Math.round((it - 25569) * 864e5)) : (it ? new Date(it) : null); const itOk = itd && !isNaN(itd);
@@ -1288,10 +1341,10 @@ function parseGeneric(G, listYear){
     if (exTriple.has(tk)){ skipped.push({ row, unvan, marka, seri, reason: "Sistemde kayıtlı (" + (exTriple.get(tk).d[11] || "") + ")" }); return; }
     if (inFile.has(tk)){ skipped.push({ row, unvan, marka, seri, reason: "Dosyada tekrar eden satır" }); return; }
     inFile.add(tk);
-    const ilce = normIlce(v(r, "ilce")), adres = v(r, "adres"), kod = v(r, "kod"), sube = v(r, "sube");
+    const adres = v(r, "adres"), pf = placeFix(v(r, "il"), v(r, "ilce"), adres), ilce = pf.ilce, ilceKey = normIlce(v(r, "ilce")), kod = v(r, "kod"), sube = v(r, "sube");
     const name = unvan + (kod ? " · " + kod : "") + (sube && TRU(sube) !== TRU(unvan) ? " · " + sube : "");
     const reuse = locBy.get(cn + "#" + normAddr(adres, ilce));
-    const bid = reuse || ("b" + hkey(TRU(name) + "|" + TRU(adres) + "|" + ilce));
+    const bid = reuse || ("b" + hkey(TRU(name) + "|" + TRU(adres) + "|" + ilceKey));
     const sonY = +v(r, "son"); const son = sonY >= 1990 && sonY <= YEAR + 1 ? sonY : null; const valid = son && son + 2 > YEAR;
     const sin = TRU(v(r, "sinif")).replace(/[^IV3]/g, "").replace(/^3$/, "III");
     const dev = { import_key: hkey("G|" + tk), business_id: bid, tip: v(r, "tip") || "Otomatik olmayan tartı aleti", cins: v(r, "cins") === "NAWI" ? "Otomatik olmayan tartı aleti" : (v(r, "cins") || "Terazi"),
@@ -1302,7 +1355,7 @@ function parseGeneric(G, listYear){
     else if (exPair.has(pk)){ const o = exPair.get(pk); other.push({ row, unvan, marka, seri, reason: `Aynı marka + seri “${titleTR(o.l.n)}” firmasında kayıtlı (devir olabilir)`, dev, bid, b: { name, adres, ilce, r } }); }
     else devs.push(dev);
     if (!reuse && !biz.has(bid)){ const c = approxCoord(ilce, mahOf(adres), bid);
-      biz.set(bid, { id: bid, unvan: name, sube, adres, mahalle: mahOf(adres), ilce, il: TRU(v(r, "il")) || "ANTALYA", tel: fmtTel(v(r, "tel")), vkn: v(r, "vkn"), lat: c.lat, lng: c.lng, geo_src: c.src, is_depot: false });
+      biz.set(bid, { id: bid, unvan: name, sube, adres, mahalle: mahOf(adres), ilce, il: pf.il, tel: fmtTel(v(r, "tel")), vkn: v(r, "vkn"), lat: c.lat, lng: c.lng, geo_src: c.src, is_depot: false });
       if (v(r, "yetkili") || v(r, "ycep")) contacts.push({ business_id: bid, ad: v(r, "yetkili"), tel: fmtTel(v(r, "ycep")) }); }
   });
   const cats = devs.reduce((m, d) => (m[d.durum_grup] = (m[d.durum_grup] || 0) + 1, m), {});
@@ -1392,6 +1445,8 @@ function viewData(){
     ${P.err ? `<div class="warnbox">${esc(P.err)}</div>` : ""}
     <pre id="implog" class="log" ${P.log?.length ? "" : "hidden"}>${esc((P.log||[]).join("\n"))}</pre>
   </div>
+  ${viewPlaceAudit()}
+  ${viewDupes()}
   <div class="card pad stack" style="gap:10px"><h3>Konumlar</h3>
     <div class="metrics"><div><b>${fmt(prec.ok||0)}</b><span>doğrulanmış (Google / elle)</span></div><div><b>${fmt(prec.mah||0)}</b><span>≈ mahalle merkezi</span></div><div><b>${fmt(prec.ilce||0)}</b><span>≈ ilçe merkezi</span></div></div>
     <p class="muted" style="margin:0;font-size:.9rem">Google Geocoding ile adresler koordinata çevrilir. Bulunamayan adresler (“DEPO”, “KAŞ” gibi) sahadan “Konumu kaydet” ile düzeltilir. Google, ayda belirli bir sorguya kadar ücretsiz; ${fmt((prec.mah||0)+(prec.ilce||0))} sorgu bu sınırın çok altında.</p>
@@ -1408,6 +1463,100 @@ function viewData(){
     <div class="muted" style="font-size:.84rem">Panel: <span class="mono">${esc(APP_URL)}</span> · Atölye: ${esc(DEPOT.a)}</div>
   </div></div>`;
 }
+
+function viewPlaceAudit(){
+  const A = st.pa;
+  if (!A) return `<div class="card pad stack" style="gap:10px"><h3>İl / ilçe düzeltme</h3>
+    <p class="muted" style="margin:0;font-size:.9rem">Kayıtlardaki il ve ilçeleri Türkiye'nin resmi listesiyle (81 il, 973 ilçe) karşılaştırır. Yazım farklarını düzeltir (KONYAALTİ, konyaalti → KONYAALTI). Adresteki mahalle başka bir ilçedeyse bunu öneri olarak gösterir. Excel'den yeni gelen kayıtlar içe aktarılırken zaten otomatik düzeltiliyor.</p>
+    <div><button class="btn primary" data-act="pacheck">Kayıtları kontrol et</button></div></div>`;
+  const row = (x, kind) => `<tr><td>${kind === "sug" ? `<input type="checkbox" data-act="pasel" data-k="${x.l.k}" ${A.sel.has(x.l.k)?"checked":""} aria-label="Uygula">` : ""}</td><td>${esc(titleTR(x.l.n))}</td><td class="muted">${esc(titleTR(x.l.a))}</td>
+    <td class="mono">${esc(x.l.il)} / ${esc(x.l.i || "—")}</td><td>→</td><td class="mono"><b>${esc(x.r.il)} / ${esc(kind === "sug" ? x.r.suggest.ilce : x.r.ilce)}</b></td><td class="muted">${esc(kind === "sug" ? x.r.suggest.reason : kind === "bad" ? "Tanınamadı; elle düzeltin" : (x.r.how.join(", ") || "Yazım düzeltmesi"))}</td></tr>`;
+  const grp = (title, list, kind, open) => list.length ? `<details ${open ? "open" : ""}><summary>${title}</summary><div class="tbl-wrap" style="margin-top:6px"><table class="rptbl"><tbody>${list.slice(0, 300).map(x => row(x, kind)).join("")}</tbody></table>${list.length > 300 ? `<p class="muted" style="font-size:.8rem">İlk 300 kayıt gösteriliyor; uygulama tümünü kapsar.</p>` : ""}</div></details>` : "";
+  const byPair = {}; A.fix.forEach(x => { const k = `${x.l.i || "(boş)"} → ${x.r.ilce}`; byPair[k] = (byPair[k] || 0) + 1; });
+  return `<div class="card pad stack" style="gap:10px"><div class="row" style="justify-content:space-between"><h3>İl / ilçe düzeltme</h3><button class="link" data-act="pacheck">Yeniden kontrol et</button></div>
+    <div class="metrics"><div><b>${fmt(A.fix.length)}</b><span>yazım düzeltmesi</span></div><div><b>${fmt(A.sug.length)}</b><span>adresle uyuşmayan ilçe</span></div><div><b>${fmt(A.bad.length)}</b><span>tanınamayan</span></div></div>
+    ${A.fix.length ? `<div class="muted" style="font-size:.84rem">${Object.entries(byPair).sort((a,b)=>b[1]-a[1]).slice(0, 12).map(([k,n]) => `${esc(k)} (${n})`).join(" · ")}</div>` : ""}
+    ${grp(`${fmt(A.fix.length)} kayıtta yazım düzeltmesi (otomatik uygulanır)`, A.fix, "fix", false)}
+    ${grp(`${fmt(A.sug.length)} kayıtta ilçe adresle uyuşmuyor (seçtikleriniz uygulanır)`, A.sug, "sug", true)}
+    ${grp(`${fmt(A.bad.length)} kayıt tanınamadı`, A.bad, "bad", false)}
+    ${A.sug.length ? `<div class="row" style="font-size:.85rem"><button class="link" data-act="paall">Tümünü seç</button><button class="link" data-act="panone">Hiçbirini seçme</button></div>` : ""}
+    <div class="row"><button class="btn primary" data-act="paapply" ${A.busy || !(A.fix.length || A.sel.size) ? "disabled" : ""}>${A.busy ? "Uygulanıyor…" : `Düzeltmeleri uygula (${fmt(A.fix.length + A.sel.size)} kayıt)`}</button><span class="mono muted" id="paprog"></span></div>
+    <p class="muted" style="font-size:.8rem;margin:0">Konumu doğrulanmamış kayıtların yaklaşık haritadaki yeri de yeni ilçeye taşınır. Google ile doğrulanmış konumlara dokunulmaz.</p></div>`;
+}
+async function placeApply(){
+  const A = st.pa; if (!A || A.busy) return; A.busy = true; render();
+  const ch = new Map();
+  A.fix.forEach(x => ch.set(x.l.k, { l: x.l, il: x.r.il, ilce: x.r.ilce }));
+  A.sug.forEach(x => { if (A.sel.has(x.l.k)) ch.set(x.l.k, { l: x.l, il: x.r.il, ilce: x.r.suggest.ilce }); });
+  const items = [...ch.values()]; let done = 0, fail = 0;
+  for (let i = 0; i < items.length; i += 8){
+    await Promise.all(items.slice(i, i + 8).map(async x => { const patch = { il: x.il, ilce: x.ilce };
+      if (x.l.p !== "ok"){ const c = approxCoord(x.ilce, mahOf(x.l.a), x.l.k); Object.assign(patch, { lat: c.lat, lng: c.lng, geo_src: c.src }); }
+      try { await q(sb.from("businesses").update(patch).eq("id", x.l.k)); done++; } catch(e){ fail++; } }));
+    const el = $("#paprog"); if (el) el.textContent = `${done + fail} / ${items.length}`;
+  }
+  await reloadDevices(); st.pa = null; render(); toast(`${fmt(done)} kayıt düzeltildi${fail ? `, ${fail} kayıt güncellenemedi` : ""}`);
+}
+
+/* ---- Mükerrer müşteri ve cihaz düzenleme ---- */
+function dupAudit(){
+  // Müşteri: aynı normalize adres ya da aynı firma adı + ilçe
+  const locs = LOCS.filter(l => !l.dep && l.d.length);
+  const parent = new Map(locs.map(l => [l.k, l.k])); const find = k => { while (parent.get(k) !== k) k = parent.get(k); return k; }; const join = (a, b) => parent.set(find(a), find(b));
+  const by = (keyf) => { const m = new Map(); locs.forEach(l => { const k = keyf(l); if (!k) return; if (m.has(k)) join(l.k, m.get(k)); else m.set(k, l.k); }); };
+  by(l => normAddr(l.a, l.i).length > 30 ? normAddr(l.a, l.i) : null);
+  by(l => { const c = custNorm(l.n); return c.length > 3 ? c + "#" + l.i : null; });
+  const g = new Map(); locs.forEach(l => { const r = find(l.k); (g.get(r) || g.set(r, []).get(r)).push(l); });
+  const cust = [...g.values()].filter(x => x.length > 1).map(x => x.sort((a, b) => b.d.length - a.d.length)).sort((a, b) => b.length - a.length);
+  // Cihaz: aynı marka + seri no (aktif kayıtlar)
+  const dm = new Map(); DEVS.forEach(o => { if (o.d[23] === false || o.l.dep) return; const k = devKey(o.d[2], o.d[4]); if (!k) return; (dm.get(k) || dm.set(k, []).get(k)).push(o); });
+  const dev = [...dm.values()].filter(x => x.length > 1);
+  return { cust, dev };
+}
+function viewDupes(){
+  const D = st.dup;
+  if (!D) return `<div class="card pad stack" style="gap:10px"><h3>Mükerrer müşteri ve cihazlar</h3>
+    <p class="muted" style="margin:0;font-size:.9rem">Aynı adresteki ya da aynı adla aynı ilçede geçen müşterileri ve aynı marka + seri numarasıyla birden fazla kaydı olan cihazları bulur. Müşterileri tek kayıtta birleştirebilir, mükerrer cihazlardan birini tutup diğerlerini pasife alabilirsiniz.</p>
+    <div><button class="btn primary" data-act="dupcheck">Mükerrerleri bul</button></div></div>`;
+  const cust = D.cust.slice(0, 60).map((grp, gi) => `<div class="share" style="gap:6px"><div class="muted" style="font-size:.8rem">Grup ${gi + 1} · ${grp.length} kayıt · ana kaydı seçin</div>
+    ${grp.map(l => `<label class="row" style="gap:8px;font-size:.86rem;align-items:flex-start"><input type="radio" name="dupc-${gi}" value="${l.k}" ${D.target[gi] === l.k ? "checked" : ""} data-act="duptgt" data-g="${gi}">
+      <span style="flex:1;min-width:0"><b>${esc(titleTR(l.n))}</b> <span class="muted">· ${esc(titleTR(l.i))} · ${l.d.length} cihaz</span><br><span class="muted">${esc(titleTR(l.a))}</span></span></label>`).join("")}
+    <div class="row"><button class="btn sm" data-act="dupmerge" data-g="${gi}">Seçili kayıtta birleştir</button><button class="link" data-act="dupskip" data-g="${gi}" style="font-size:.82rem">Mükerrer değil, gizle</button></div></div>`).join("");
+  const dev = D.dev.slice(0, 80).map((grp, gi) => `<div class="share" style="gap:6px"><div class="muted" style="font-size:.8rem">${esc(grp[0].d[2])} · seri <span class="mono">${esc(grp[0].d[4])}</span> · ${grp.length} kayıt · tutulacak kaydı seçin</div>
+    ${grp.map(o => { const si = stampInfo(o); return `<label class="row" style="gap:8px;font-size:.86rem;align-items:flex-start"><input type="radio" name="dupd-${gi}" value="${o.d[0]}" ${D.keep[gi] === o.d[0] ? "checked" : ""} data-act="dupkeep" data-g="${gi}">
+      <span style="flex:1;min-width:0"><b>${esc(titleTR(o.l.n))}</b> <span class="muted">· ${esc(titleTR(o.l.i))}</span><br><span class="muted">${esc(o.d[3])} · Max ${esc(o.d[12]||"?")} · ${esc(CAT[o.d[8]]?.l || o.d[8])} · son damga ${si.last || "—"} · QR ${esc(o.d[11])}</span></span></label>`; }).join("")}
+    <div class="row"><button class="btn sm" data-act="dupdev" data-g="${gi}">Seçiliyi tut, diğerlerini pasife al</button><button class="link" data-act="dupdskip" data-g="${gi}" style="font-size:.82rem">Mükerrer değil, gizle</button></div></div>`).join("");
+  return `<div class="card pad stack" style="gap:10px"><div class="row" style="justify-content:space-between"><h3>Mükerrer müşteri ve cihazlar</h3><button class="link" data-act="dupcheck">Yeniden tara</button></div>
+    <div class="metrics"><div><b>${fmt(D.cust.length)}</b><span>mükerrer müşteri grubu</span></div><div><b>${fmt(D.dev.length)}</b><span>mükerrer cihaz grubu</span></div></div>
+    ${D.cust.length ? `<details open><summary>Müşteriler (${fmt(D.cust.length)} grup)</summary><p class="muted" style="font-size:.82rem;margin:6px 0">Birleştirince diğer kayıtların cihazları ana kayda taşınır. Eski kayıtlar silinmez, cihazsız kaldıkları için listelerde görünmez.</p><div class="stack" style="gap:8px">${cust}</div>${D.cust.length > 60 ? `<p class="muted">İlk 60 grup gösteriliyor.</p>` : ""}</details>` : `<p class="muted" style="margin:0">Mükerrer müşteri bulunmadı.</p>`}
+    ${D.dev.length ? `<details ${D.cust.length ? "" : "open"}><summary>Cihazlar (${fmt(D.dev.length)} grup)</summary><p class="muted" style="font-size:.82rem;margin:6px 0">Tutulan kayda gruptaki en yeni damga yılı ve en iyi durum aktarılır. Diğerleri “mükerrer kayıt” nedeniyle pasife alınır; QR ve geçmişleri silinmez.</p><div class="stack" style="gap:8px">${dev}</div>${D.dev.length > 80 ? `<p class="muted">İlk 80 grup gösteriliyor.</p>` : ""}</details>` : `<p class="muted" style="margin:0">Mükerrer cihaz bulunmadı.</p>`}
+  </div>`;
+}
+async function dupMerge(gi){
+  const D = st.dup, grp = D.cust[gi], tgt = D.target[gi]; if (!grp || !tgt) return;
+  const others = grp.filter(l => l.k !== tgt).map(l => l.k);
+  try { for (const k of others) await q(sb.from("devices").update({ business_id: tgt }).eq("business_id", k));
+    await reloadDevices(); toast(`${others.length} kayıt birleştirildi`); } catch(e){ toast("Birleştirilemedi: " + e.message); }
+  st.dup = { ...dupAudit(), target: {}, keep: {} }; initDupDefaults(); render();
+}
+async function dupDev(gi){
+  const D = st.dup, grp = D.dev[gi], keep = D.keep[gi]; if (!grp || !keep) return;
+  const kept = grp.find(o => o.d[0] === keep), rest = grp.filter(o => o.d[0] !== keep);
+  const maxSon = Math.max(...grp.map(o => +o.d[6] || 0)) || null; const best = grp.map(o => o.d[8]).sort((a, b) => (RANK[b] ?? 0) - (RANK[a] ?? 0))[0];
+  try {
+    const patch = {}; if (maxSon && maxSon > (+kept.d[6] || 0)) patch.son_damga_yili = maxSon; if ((RANK[best] ?? 0) > (RANK[kept.d[8]] ?? 0)) patch.durum_grup = best;
+    if (Object.keys(patch).length) await q(sb.from("devices").update(patch).eq("id", keep));
+    for (const o of rest) await q(sb.from("devices").update({ aktif: false, cikis_nedeni: `Mükerrer kayıt · tutulan ${kept.d[11]}` }).eq("id", o.d[0]));
+    await reloadDevices(); toast(`${rest.length} mükerrer cihaz pasife alındı`);
+  } catch(e){ toast("İşlem yapılamadı: " + e.message); }
+  st.dup = { ...dupAudit(), target: {}, keep: {} }; initDupDefaults(); render();
+}
+function initDupDefaults(){ const D = st.dup; const hide = lsGet("damga.dupHide", []);
+  D.cust = D.cust.filter(g => !hide.includes("c:" + g.map(l => l.k).sort().join(","))); D.dev = D.dev.filter(g => !hide.includes("d:" + g.map(o => o.d[0]).sort().join(",")));
+  D.cust.forEach((g, i) => D.target[i] = g[0].k);
+  D.dev.forEach((g, i) => D.keep[i] = g.slice().sort((a, b) => ((RANK[b.d[8]] ?? 0) - (RANK[a.d[8]] ?? 0)) || ((+b.d[6] || 0) - (+a.d[6] || 0)))[0].d[0]); }
+function dupHide(kind, gi){ const D = st.dup; const key = kind === "c" ? "c:" + D.cust[gi].map(l => l.k).sort().join(",") : "d:" + D.dev[gi].map(o => o.d[0]).sort().join(",");
+  const h = lsGet("damga.dupHide", []); h.push(key); lsSet("damga.dupHide", h); st.dup = { ...dupAudit(), target: {}, keep: {} }; initDupDefaults(); render(); }
 /* ---- Raporlar: müşteri bazlı durum ve cihaz detayı (çarşaf), CSV ---- */
 const RP_OUT = ["cihazyok","kapsamdisi","baskasi"];
 function rpLocRow(l){

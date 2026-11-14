@@ -1,4 +1,4 @@
-# Elmaslar Damga Takip — teknik not (v7 · 14 Kasım 2026)
+# Elmaslar Damga Takip — teknik not (v8 · 14 Kasım 2026)
 
 Ayrı proje olarak yahyasogut.com reposunun içinde, kendi klasörlerinde yaşar. Next.js sitesinden bağımsızdır; `public/damga/` statik olarak `/damga/` adresine kopyalanır.
 
@@ -54,6 +54,14 @@ docs/DAMGA-KURULUM.md   adım adım kurulum
 
 ## Sürüm geçmişi
 
+- **v8 · 14.11.2026:**
+  - **Türkiye il/ilçe listesi** (81 il, 973 ilçe) ve Antalya + Burdur mahalle → ilçe eşlemesi: `public/damga/tr-yer.js` (kaynak turkey-neighbourhoods 4.0.3, MIT).
+  - İçe aktarmada il ve ilçe resmi adlara çevriliyor. Yazım farkları birleşiyor (KONYAALTİ/konyaalti → KONYAALTI); en yakın ad bulunuyor; ilçe boş ya da mahalle yazılmışsa adresten bulunuyor. Mevcut lokasyon anahtarları değişmediği için yeniden içe aktarmada çift kayıt oluşmuyor.
+  - Veri & ayarlar → **İl / ilçe düzeltme**: kayıtlı verideki yazım düzeltmeleri otomatik uygulanıyor. Adresteki mahalle başka ilçedeyse öneri olarak listeleniyor ve seçilenler uygulanıyor. Tanınamayanlar ayrı listeleniyor. Yaklaşık konumlar yeni ilçeye taşınıyor.
+  - Veri & ayarlar → **Mükerrer müşteri ve cihazlar**:
+    - Aynı adresli ya da aynı ad + ilçedeki müşteriler tek kayıtta birleştirilebiliyor (cihazlar ana kayda taşınıyor).
+    - Aynı marka + seri numaralı cihazlardan biri tutulup diğerleri "mükerrer kayıt" olarak pasife alınıyor; en yeni damga yılı ve en iyi durum tutulan kayda aktarılıyor.
+    - "Mükerrer değil" denilen gruplar gizleniyor.
 - **v7 · 14.11.2026:**
   - **Esnek içe aktarma.** Tanınmayan Excel biçimlerinde başlık satırı (ilk 15 satır içinde) ve sayfa otomatik bulunuyor. Sütunlar eş anlamlılarla sistem alanlarına eşleniyor (örn. "Mağaza İsmi" → firma, "Serial No" → seri no, "Kapasite" → max, "KOD" → mağaza kodu). Önizlemede "Sütun eşleştirme" ile elle düzeltilebiliyor.
   - Kural tüm yeni müşteri aktarımlarında geçerli: aynı firma + marka + seri no varsa satır eklenmiyor.
