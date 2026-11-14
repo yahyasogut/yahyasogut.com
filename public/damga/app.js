@@ -1,4 +1,4 @@
-/* Elmaslar Damga Takip · yahyasogut.com/damga · v18 */
+/* Elmaslar Damga Takip · yahyasogut.com/damga · v19 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -46,7 +46,7 @@ let LOCS_P = [], DEVS_P = [], RAW = { biz: [], devs: [], items: null }, GROUPS =
 const NOGRP = "(Grupsuz)";
 // device tuple (24 itemId, 25 mukerrer, 26 sira): [0 id,1 cins,2 marka,3 model,4 seri,5 maxHam,6 sonDamga,7 yer,8 grup,9 durumHam,10 fatura,11 qrNo,12 max,13 kimeAit,14 bilgi,15 seriFlag,16 sinif,17 excelRow,18 e,19 qrKey,20 tip,21 min,22 d,23 aktif]
 function devTuple(r){ return [r.id, r.cins||"", r.marka||"", r.model||"", r.seri_no||"", r.max_cap||"", r.son_damga_yili ? String(r.son_damga_yili) : "", r.kullanim_yeri||"", r.aktif === false ? "kapsamdisi" : (r.durum_grup||"bekliyor"), r.durum_ham||"", r.fatura_notu||"", r.qr_no||("ID"+r.id), r.max_cap||"", r.kime_ait||"", r.bilgi||"", r.seri_flag||"", r.sinif||"III", r.excel_row||"", r.e||"", r.qr_key||"", r.tip||"", r.min_cap||"", r.d||"", r.aktif !== false, null, false, r.sira || null]; }
-const PREC = { google: "ok", elle: "ok", "yaklasik-mah": "mah" };
+const PREC = { google: "ok", elle: "ok", saha: "ok", "yaklasik-mah": "mah" };
 function buildData(biz, devs, items){
   RAW = { biz, devs, items };
   BY = {}; const all = biz.map(b => { const l = { k: b.id, n: b.unvan || "", a: b.adres || "", i: b.ilce || "", il: b.il || "ANTALYA", t: b.tel || b.gsm || "", lat: b.lat ?? ILCE_C[b.ilce]?.[0] ?? DEPOT.lat, lng: b.lng ?? ILCE_C[b.ilce]?.[1] ?? DEPOT.lng, p: PREC[b.geo_src] || "ilce", src: b.geo_src, dep: !!b.is_depot, g: b.grup || "", no: b.sira || null, d: [], nAll: 0 }; BY[l.k] = l; return l; });
@@ -276,7 +276,7 @@ function render(){
       : `<div class="card empty" style="max-width:640px;margin:40px auto">${YEAR} döneminde henüz veri yok. Yöneticiniz dönem listesini yüklediğinde burada görünecek.</div>`;
     return;
   }
-  $("#main").innerHTML = (st.view === "ozet" ? reqBanner() : "") + v();
+  $("#main").innerHTML = (st.view === "ozet" ? reqBanner() : "") + v() + viewHtf();
   if (st.view === "planla") hydratePlanner();
 }
 /* ---- sayfa adresleri: /damga/ozet/, /damga/rota-planla/ … (her sekmenin kendi adresi; geri/ileri tuşları çalışır) ---- */
@@ -641,7 +641,7 @@ const MCOL = { bekliyor: "#B98000", tekrar: "#D35B22", tutanak: "#11807A", sel: 
 async function renderPoolMap(list, sel){
   const box = $("#pool");
   if (!CFG.GOOGLE_MAPS_KEY){ box.innerHTML = `<div class="empty">Harita için config.js dosyasına Google Maps anahtarı eklenmeli.</div>`; return; }
-  if (!box.querySelector("#gmap")) box.innerHTML = `<div id="gmap" class="gmap"></div><div class="legend" style="padding:8px 16px 12px"><span style="--c:${MCOL.bekliyor}">Bekliyor</span><span style="--c:${MCOL.tekrar}">Tekrar ziyaret</span><span style="--c:${MCOL.tutanak}">Tutanak</span><span style="--c:${MCOL.sel}">Rotada</span><span class="muted">≈ konumlar yaklaşık</span></div>`;
+  if (!box.querySelector("#gmap")) box.innerHTML = `<div id="gmap" class="gmap"></div><div class="legend" style="padding:8px 16px 12px"><span style="--c:${MCOL.bekliyor}">Bekliyor</span><span style="--c:${MCOL.tekrar}">Tekrar ziyaret</span><span style="--c:${MCOL.tutanak}">Tutanak</span><span style="--c:${MCOL.sel}">Rotada</span><span class="muted">≈ soluk nokta = yaklaşık konum</span><button class="btn sm" data-act="mapfull" style="margin-left:auto">⤢ Büyük haritada aç</button></div>`;
   let maps; try { maps = await loadGoogle(); } catch(e){ box.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
   const el = $("#gmap"); if (!el) return;
   if (!gmap || gmap.getDiv() !== el) gmap = new maps.Map(el, { center: { lat: DEPOT.lat, lng: DEPOT.lng }, zoom: 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: false });
@@ -650,7 +650,7 @@ async function renderPoolMap(list, sel){
   gmarkers.push(new maps.Marker({ map: gmap, position: { lat: DEPOT.lat, lng: DEPOT.lng }, title: "Atölye", label: { text: "◆", color: "#fff" } }));
   list.forEach(l => { const od = openDevs(l); const c = od.some(d => d[8]==="tekrar") ? "tekrar" : od.some(d => d[8]==="bekliyor") ? "bekliyor" : "tutanak"; const on = sel.has(l.k);
     const m = new maps.Marker({ map: gmap, position: { lat: l.lat, lng: l.lng }, title: `${titleTR(l.n)} · ${od.length} cihaz${l.p!=="ok"?" (yaklaşık konum)":""}`,
-      icon: { path: maps.SymbolPath.CIRCLE, scale: on ? 9 : 6, fillColor: on ? MCOL.sel : MCOL[c], fillOpacity: l.p === "ok" ? 1 : .55, strokeColor: "#fff", strokeWeight: 2 } });
+      icon: { path: maps.SymbolPath.CIRCLE, scale: on ? 12 : 9, fillColor: on ? MCOL.sel : MCOL[c], fillOpacity: l.p === "ok" ? 1 : .75, strokeColor: on ? "#fff" : "#1b1b2f", strokeWeight: on ? 3 : 1.5 }, zIndex: on ? 500 : 100 });
     m.addListener("click", () => { pickLoc(l.k, !st.sel.find(s => s.k === l.k)); renderPool(true); renderPlanPanel(); });
     gmarkers.push(m); bounds.extend(m.getPosition()); });
   if (list.length && !gmap.__fitted){ gmap.fitBounds(bounds, 40); gmap.__fitted = true; }
@@ -693,6 +693,11 @@ async function googleRoute(t){
     r.g = { km, min, reordered: newKeys.join() !== keys.join() }; r.keys = newKeys; renderPlanPanel(); toast(`Google: ${km.toFixed(1)} km, ${hm(min)} sürüş`);
   } catch(e){ toast("Google rotası alınamadı: " + (e.message || e.code || "bilinmeyen hata") + ". Routes API açık mı?"); }
 }
+
+document.addEventListener("click", e => { const b = e.target.closest('[data-act="mapfull"]'); if (!b) return; const p = $("#pool"); if (!p) return;
+  const on = !p.classList.contains("mapfull"); p.classList.toggle("mapfull", on); document.body.classList.toggle("noscroll", on); b.textContent = on ? "✕ Haritayı kapat" : "⤢ Büyük haritada aç";
+  if (gmap && window.google?.maps) setTimeout(() => google.maps.event.trigger(gmap, "resize"), 50); });
+document.addEventListener("keydown", e => { if (e.key !== "Escape") return; const p = $("#pool"); if (p?.classList.contains("mapfull")) document.querySelector('[data-act="mapfull"]')?.click(); });
 /* ---- Plans & share ---- */
 function planProgress(p){ let done = 0, miss = 0; p.stops.forEach(s => { const r = st.results[p.id+"__"+s.k]; if (r) r.st === "tamam" ? done++ : miss++; }); return { done, miss, n: p.stops.length }; }
 function personName(p){ const s = staffBy(p.staffId); return (s && s.name) || p.staffName || "Atanmadı"; }
@@ -1015,10 +1020,11 @@ function stopCard(p, s, i){
         <button class="btn warn" data-act="quickmiss" data-v="ertelendi" data-k="${s.k}">Ertelendi</button>
         <button class="btn warn" data-act="quickmiss" data-v="adresteyok" data-k="${s.k}">Adreste yok</button>
         <button class="btn" data-act="addreq" data-k="${s.k}">+ Cihaz ekle</button></div>
-        <div class="row" style="justify-content:flex-end"><button class="link" data-act="miss" data-k="${s.k}" style="font-size:.84rem">Diğer neden / kısmi eksik</button></div>`}
+        <div class="row" style="justify-content:space-between"><button class="btn sm" data-act="htf" data-k="${s.k}">🖨 Hizmet talep formu oluştur / yazdır</button><button class="link" data-act="miss" data-k="${s.k}" style="font-size:.84rem">Diğer neden / kısmi eksik</button></div>`}
       ${reqListFor(s.k)}
       ${r?`<div class="row" style="justify-content:space-between;font-size:.82rem"><span class="muted">Kaydedildi ${new Date(r.at).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}${r.note?` · ${esc(r.note)}`:""}</span><button class="link" data-act="undo" data-k="${s.k}">Geri al</button></div>`:""}
-      <details><summary style="font-size:.85rem">Konum yanlış mı?</summary><div class="row" style="margin-top:6px"><input id="geo-${s.k}" type="text" placeholder="36.8841, 30.7056 (Google Haritalar'dan kopyalayın)" style="flex:1 1 200px"><button class="btn sm" data-act="savegeo" data-k="${s.k}">Konumu kaydet</button></div></details>
+      <div class="row" style="gap:8px"><button class="btn sm" data-act="gpsgeo" data-k="${s.k}">📍 Konumu güncelle</button><span class="muted" style="font-size:.78rem">${l.p === "ok" ? "Konum doğrulanmış" : "Konum yaklaşık"} · müşterinin yanındayken telefon konumunu kaydeder</span></div>
+      <details><summary style="font-size:.85rem">Koordinatı elle gir</summary><div class="row" style="margin-top:6px"><input id="geo-${s.k}" type="text" placeholder="36.8841, 30.7056 (Google Haritalar'dan kopyalayın)" style="flex:1 1 200px"><button class="btn sm" data-act="savegeo" data-k="${s.k}">Konumu kaydet</button></div></details>
     </div>` : ""}
   </article>`;
 }
@@ -1944,8 +1950,15 @@ function cuFilter(skip){
     if ((devFilt || (qq && !custHit)) && !devs.length) return;
     out.push({ l, devs, all: cuDevsOf(l).length, part: !!(devFilt || (qq && !custHit)) });
   });
-  return out.sort((a, b) => a.l.n.localeCompare(b.l.n, "tr"));
+  const s = st.cu.sort, g = s && CU_SORT[s.k];
+  return out.sort((a, b) => { if (g){ const x = g(a), y = g(b); const c = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "tr", { numeric: true }); if (c) return c * s.dir; } return a.l.n.localeCompare(b.l.n, "tr"); });
 }
+// seçili müşteriler + seçili cihazların müşterileri (tek cihaz seçiminde de tüm işlemler çalışsın)
+function cuEff(){ return new Set([...st.cu.sel, ...[...st.dsel].map(code => DEVBY[code]?.l?.k).filter(Boolean)]); }
+const CU_SORT = { lok: r => r.l.no || 1e12, firma: r => r.l.n, ilce: r => r.l.il + " " + r.l.i, adres: r => r.l.a, cihaz: r => r.devs.length,
+  durum: r => r.devs.filter(o => ["buyil","gecikmis"].includes(cuStamp(o).s)).length * 1000 + r.devs.filter(o => cuStamp(o).s === "bilinmiyor").length, grup: r => r.l.g || "" };
+function cuSortHead(k, lab, num){ const s = st.cu.sort, on = s && s.k === k;
+  return `<th${num ? ' class="num"' : ""} aria-sort="${on ? (s.dir > 0 ? "ascending" : "descending") : "none"}"><button class="sorth${on ? " on" : ""}" data-act="cusort" data-k="${k}">${lab}<span>${on ? (s.dir > 0 ? "▲" : "▼") : "↕"}</span></button></th>`; }
 function cuRows(){ return cuFilter(null).map(r => r.l); }
 function cuOpts(skip, get){ const m = new Map(); cuFilter(skip).forEach(r => (skip === "il" || skip === "ilce" || skip === "g" ? [r.l] : r.devs).forEach(x => { const v = get(x); if (v) m.set(v, (m.get(v) || 0) + 1); })); return [...m].sort((a, b) => String(a[0]).localeCompare(String(b[0]), "tr", { numeric: true })); }
 function grpCounts(){
@@ -2004,7 +2017,7 @@ function viewCustomers(){
     </div>
     <div class="row" style="justify-content:space-between;font-size:.86rem"><span class="muted">${fmt(rows.length)} müşteri · ${fmt(nDev)} cihaz${st.dsel.size ? ` · <b>${fmt(st.dsel.size)} cihaz seçili</b>` : ""}</span>
       <span class="row" style="gap:10px"><button class="link" data-act="cuopenall">${pg.every(r => c.open.has(r.l.k)) ? "Tümünü kapat" : "Bu sayfadakileri aç"}</button><button class="btn sm" data-act="applist">Başvuru listesi CSV</button></span></div>
-    <div class="tbl-wrap"><table class="cutbl"><thead><tr><th><input type="checkbox" data-act="cuall" ${allSel ? "checked" : ""} title="Filtredeki tüm müşterileri ve cihazlarını seç"></th><th></th><th class="num">Lok.</th><th>Firma</th><th>İl / ilçe</th><th>Adres</th><th class="num">Cihaz</th><th>Durum</th><th>Grup</th></tr></thead><tbody>
+    <div class="tbl-wrap"><table class="cutbl"><thead><tr><th><input type="checkbox" data-act="cuall" ${allSel ? "checked" : ""} title="Filtredeki tüm müşterileri ve cihazlarını seç"></th><th></th>${cuSortHead("lok", "Lok.", true)}${cuSortHead("firma", "Firma")}${cuSortHead("ilce", "İl / ilçe")}${cuSortHead("adres", "Adres")}${cuSortHead("cihaz", "Cihaz", true)}${cuSortHead("durum", "Durum")}${cuSortHead("grup", "Grup")}</tr></thead><tbody>
       ${pg.map(r => { const l = r.l, op = c.open.has(l.k), sc = {}; r.devs.forEach(o => { const s = cuStamp(o).s; sc[s] = (sc[s] || 0) + 1; });
         return `<tr class="cucust${op ? " open" : ""}"><td><input type="checkbox" data-act="cusel" data-k="${esc(l.k)}" ${c.sel.has(l.k) ? "checked" : ""} aria-label="Müşteriyi seç"></td>
         <td><button class="cutog" data-act="cutog" data-k="${esc(l.k)}" aria-expanded="${op}" aria-label="Cihazları ${op ? "kapat" : "aç"}">${op ? "▾" : "▸"}</button></td><td class="mono num">${lno(l)}</td>
@@ -2017,13 +2030,14 @@ function viewCustomers(){
           ${r.devs.map(cuDevRow).join("") || `<tr><td colspan="10" class="muted">Cihaz yok.</td></tr>`}</tbody></table></td></tr>` : ""}`; }).join("") || `<tr><td colspan="9" class="muted">Filtreye uyan kayıt yok.</td></tr>`}
     </tbody></table></div>
     ${pages > 1 ? `<div class="row"><button class="btn sm" data-act="cupage" data-p="${c.page - 1}" ${c.page ? "" : "disabled"}>‹ Önceki</button><span class="muted">${c.page + 1} / ${pages}</span><button class="btn sm" data-act="cupage" data-p="${c.page + 1}" ${c.page + 1 < pages ? "" : "disabled"}>Sonraki ›</button></div>` : ""}
-    ${c.sel.size || st.dsel.size ? `<div class="bulkbar"><b>${fmt(c.sel.size)} müşteri · ${fmt(st.dsel.size)} cihaz</b>
-      ${c.sel.size ? `<select id="cu-bulkg">${GROUPS.length ? gOpts("", "Grup seçin") : `<option value="">Önce grup ekleyin</option>`}</select>
+    ${(() => { const eff = cuEff(); return eff.size || st.dsel.size ? `<div class="bulkbar"><b>${fmt(eff.size)} müşteri · ${fmt(st.dsel.size)} cihaz</b>
+      ${eff.size ? `<select id="cu-bulkg">${GROUPS.length ? gOpts("", "Grup seçin") : `<option value="">Önce grup ekleyin</option>`}</select>
       <button class="btn sm" data-act="cuassign" ${GROUPS.length ? "" : "disabled"}>Gruba ata</button><button class="btn sm" data-act="cuunassign">Gruptan çıkar</button>
       <button class="btn sm" data-act="smsopen">SMS gönder</button>
-      <button class="btn sm primary" data-act="mfopen">${c.sel.size > 1 ? `Seçili ${fmt(c.sel.size)} kaydı düzenle` : "Kaydı düzenle"}</button>` : ""}
+      ${eff.size === 1 ? `<button class="btn sm" data-act="htfbulk">Hizmet talep formu</button>` : ""}
+      <button class="btn sm primary" data-act="mfopen">${eff.size > 1 ? `Seçili ${fmt(eff.size)} kaydı düzenle` : "Kaydı düzenle"}</button>` : ""}
       ${st.dsel.size ? `<button class="btn sm primary" data-act="labels">QR etiketi (${fmt(st.dsel.size)})</button>` : ""}
-      <button class="link" data-act="cuclear">Seçimi temizle</button></div>` : ""}
+      <button class="link" data-act="cuclear">Seçimi temizle</button></div>` : ""; })()}
   </div>${viewCustForm()}</div>`;
 }
 async function setGroup(keys, grup){
@@ -2087,10 +2101,11 @@ document.addEventListener("click", async e => {
     case "cupage": c.page = +b.dataset.p; render(); window.scrollTo(0, 0); break;
     case "cufilter": c.g = b.dataset.g; c.page = 0; render(); break;
     case "cuclear": c.sel.clear(); st.dsel.clear(); render(); break;
+    case "cusort": { const k = b.dataset.k, s = c.sort; c.sort = s && s.k === k ? (s.dir > 0 ? { k, dir: -1 } : null) : { k, dir: 1 }; c.page = 0; render(); break; }
     case "cuassign": case "cuunassign": {
       const g = a === "cuassign" ? $("#cu-bulkg")?.value : ""; if (a === "cuassign" && !g){ toast("Grup seçin"); break; }
-      const n = c.sel.size; b.disabled = true;
-      try { await setGroup(c.sel, g); c.sel.clear(); render(); toast(g ? `${fmt(n)} müşteri “${g}” grubuna atandı` : `${fmt(n)} müşteri gruptan çıkarıldı`); }
+      const eff = cuEff(), n = eff.size; b.disabled = true;
+      try { await setGroup(eff, g); render(); toast(g ? `${fmt(n)} müşteri “${g}” grubuna atandı` : `${fmt(n)} müşteri gruptan çıkarıldı`); }
       catch(err){ b.disabled = false; toast("Kaydedilemedi: " + err.message); } break; }
     case "gdel": { const g = b.dataset.g; if (!confirm(`“${g}” grubu silinsin mi? Müşteriler grupsuz kalır, kayıtlar silinmez.`)) break;
       try { await q(sb.from("businesses").update({ grup: null }).eq("grup", g)); await q(sb.from("customer_groups").delete().eq("ad", g));
@@ -2454,14 +2469,14 @@ async function smsContacts(){ if (st.smsCt) return st.smsCt; const m = {}; try {
   st.smsCt = m; return m; }
 function smsRecipients(){
   const ct = st.smsCt || {}, ok = [], bad = [];
-  [...st.cu.sel].map(k => BY[k]).filter(Boolean).forEach(l => { const p = mob90(l.t) || mob90(ct[l.k]); p ? ok.push({ l, p }) : bad.push(l); });
+  [...cuEff()].map(k => BY[k]).filter(Boolean).forEach(l => { const p = mob90(l.t) || mob90(ct[l.k]); p ? ok.push({ l, p }) : bad.push(l); });
   return { ok, bad };
 }
 function viewSmsComposer(){
   const C = st.smsc; if (!C || !C.open) return "";
   const R = smsRecipients(), ex = R.ok[0] ? smsFill(C.text, R.ok[0].l) : smsFill(C.text, { n: "Örnek Firma", i: "KEPEZ", il: "ANTALYA", d: [1, 2] }), sp = smsParts(ex);
   return `<div class="card pad stack" style="gap:10px;border-color:var(--brand)" id="smscomp">
-    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Müşterilere SMS · ${fmt(st.cu.sel.size)} müşteri seçili</h3><button class="btn sm" data-act="smsclose">Kapat</button></div>
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Müşterilere SMS · ${fmt(cuEff().size)} müşteri seçili</h3><button class="btn sm" data-act="smsclose">Kapat</button></div>
     <div class="row" style="gap:16px;font-size:.9rem"><span><b>${fmt(R.ok.length)}</b> geçerli cep numarası</span>${R.bad.length ? `<span class="muted">${fmt(R.bad.length)} müşteride cep numarası yok (sabit hat ya da boş), gönderilmeyecek</span>` : ""}</div>
     <label class="f">Mesaj <textarea id="sms-text" rows="4" maxlength="900" style="font:inherit">${esc(C.text)}</textarea></label>
     <div class="muted" style="font-size:.8rem">Değişkenler: <code>{firma}</code> <code>{ilce}</code> <code>{il}</code> <code>{donem}</code> <code>{cihaz}</code> (bu dönemdeki cihaz sayısı). Bilgilendirme amaçlı mesaj; reklam/kampanya içeriği İYS onayı gerektirir.</div>
@@ -2580,7 +2595,7 @@ function mfClose(force){ if (!force && mfChanged() && !confirm("Kaydedilmemiş d
 document.addEventListener("click", async e => {
   if (!st.mf && !e.target.closest('[data-act="mfopen"],[data-act="mfopen1"]')) return;
   const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
-  if (a === "mfopen") mfOpen(st.cu.sel);
+  if (a === "mfopen") mfOpen(cuEff());
   if (a === "mfopen1") mfOpen([b.dataset.k]);
   if (!st.mf) return;
   if (a === "mfbackdrop" && e.target === b) mfClose(false);
@@ -2664,6 +2679,103 @@ document.addEventListener("submit", async e => {
   const btn = f.querySelector("button.primary"); btn.disabled = true;
   try { await q(sb.from("device_requests").insert(row)); await loadDynamic(); st.reqFor = null; st.reqDraft = null; render(); toast("Yeni cihaz yöneticinin onayına gönderildi"); }
   catch(err){ btn.disabled = false; toast("Gönderilemedi: " + (/device_requests/.test(err.message) ? "cihaz talebi tablosu kurulu değil (damga-cihaz-talep.sql)" : err.message)); }
+});
+/* ---------------- Hizmet Talep Formu: sistemdeki cihaz verileriyle dolar, düzenlenir, yazdırılır ---------------- */
+const HTF_CHECKS = [["nawi","Otomatik olmayan tartı aleti",true],["uretici","Üretici yerinde muayene",false],["periyodik","Periyodik muayene",true],
+  ["awi","Otomatik tartı aleti",false],["yerinde","Cihazın kurulu olduğu yerde muayene",false],["tamir","Tamir sonrası/İlk muayene",false]];
+const HTF_FIRMA_DEF = { ad: "ANTKA", alt: "Muratpaşa Mah. 567 Sk. Barış Apt. 58/A Muratpaşa / ANTALYA • Tel: 0 242 244 0 967 • Gsm: 0 553 844 0 967", eposta: "info@anka.com.tr" };
+function htfAddrParts(a){ const A = TRU(a).replace(/^.*?(?:MAHALLESİ|MAHALLE|MAH\.?|MH\.?)\s+/, "");
+  const pick = re => { const m = A.match(re); return m ? titleTR(m[1].trim()) : ""; };
+  return { sokak: pick(/([0-9A-ZÇĞİÖŞÜ.]+(?:\s[0-9A-ZÇĞİÖŞÜ.]+)?\s+(?:SOKAĞI|SOKAK|SOK\.?|SK\.?))(?![A-ZÇĞİÖŞÜ])/), cadde: pick(/([0-9A-ZÇĞİÖŞÜ.]+(?:\s[0-9A-ZÇĞİÖŞÜ.]+)?\s+(?:CADDESİ|CADDE|CAD\.?|CD\.?))(?![A-ZÇĞİÖŞÜ])/),
+    dis: pick(/NO\s*:?\s*([0-9]+[A-Z]?(?:[\/-][0-9A-Z]+)?)/), ic: pick(/(?:DAİRE|D)\s*:?\s*([0-9]+)/) }; }
+function htfDevRow(o){ const d = o.d, raw = RAW.devs.find(r => r.id === d[0]) || {};
+  return { id: d[0], marka: d[2] || "", tip: d[3] || "", sinif: d[16] || "III", kap: d[12] || "", seri: d[4] || "", uretim: raw.uretim_yili ? String(raw.uretim_yili) : "", d: d[22] || "", e: d[18] || "" }; }
+function htfOpen(k, ids){
+  const l = BY[k]; if (!l) return; const raw = RAW.biz.find(b => b.id === k) || {}, ap = htfAddrParts(l.a);
+  const all = Object.values(DEVID).filter(o => o.l === l && o.d[23] !== false).sort((a, b) => (b.inP - a.inP) || (a.d[26] || 0) - (b.d[26] || 0));
+  const pick = ids && ids.length ? all.filter(o => ids.includes(o.d[0])) : all.filter(o => o.inP);
+  st.htf = { k, firma: lsGet("damga.htfFirma", HTF_FIRMA_DEF), f: {
+      tarih: new Date().toLocaleDateString("tr-TR"), no: "", ad: titleTR(String(l.n).split(" · ")[0]), tel: [raw.gsm, l.t].filter(Boolean).join(" / "), sube: raw.sube || (String(l.n).split(" · ").slice(1).join(" · ")),
+      vergi: [raw.vergi_dairesi, raw.vkn].filter(Boolean).join(" / "), yer: `${titleTR(l.a)} ${titleTR(l.i)}/${titleTR(l.il)}`.trim(), yetkili: "", tc: "",
+      mahalle: titleTR(raw.mahalle || mahOf(l.a) || ""), sokak: ap.sokak, cadde: ap.cadde, ic: ap.ic, dis: ap.dis, eposta: raw.eposta || "", yil: String(YEAR) },
+    checks: Object.fromEntries(HTF_CHECKS.map(c => [c[0], c[2]])), all: all.map(o => o.d[0]), rows: pick.map(htfDevRow) };
+  if (!st.htf.rows.length) st.htf.rows = [{ id: 0, marka: "", tip: "", sinif: "III", kap: "", seri: "", uretim: "", d: "", e: "" }];
+  render();
+}
+function viewHtf(){
+  const H = st.htf; if (!H) return ""; const f = H.f, inp = (k, lab, w) => `<label class="f${w ? " wide" : ""}">${lab}<input data-htf="${k}" value="${esc(f[k])}"></label>`;
+  const inRows = new Set(H.rows.map(r => r.id));
+  return `<div class="mfback" data-act="htfback"><div class="mfdlg card" role="dialog" aria-modal="true" aria-label="Hizmet talep formu">
+    <div class="mfhead"><div><div class="eyebrow">Sistem verileriyle dolduruldu · yazdırmadan önce düzenleyin</div><h3 style="margin:2px 0 0">Hizmet Talep Formu</h3></div><button class="btn sm" data-act="htfclose" aria-label="Kapat">✕</button></div>
+    <div class="mfbody">
+      <div class="mfgrid">${inp("tarih","Tarih")}${inp("no","Form / başvuru no")}${inp("ad","Başvuran firma adı",1)}${inp("tel","Gsm / sabit tel")}${inp("sube","Şube adı")}${inp("vergi","Vergi dairesi / no")}
+        ${inp("yer","Cihaz(lar)ın bulunduğu yer",1)}${inp("yetkili","Yetkili kişi")}${inp("tc","T.C. no")}${inp("mahalle","Mahalle")}${inp("sokak","Sokak")}${inp("cadde","Cadde")}${inp("ic","İç kapı no")}${inp("dis","Dış kapı no")}${inp("eposta","E-mail")}${inp("yil","Muayene yılı")}</div>
+      <div class="row" style="gap:14px;flex-wrap:wrap">${HTF_CHECKS.map(([k, lab]) => `<label class="row" style="gap:6px;font-size:.88rem"><input type="checkbox" data-htfc="${k}" ${H.checks[k] ? "checked" : ""}> ${lab}</label>`).join("")}</div>
+      <h4 class="mfsec">Cihazlar (${H.rows.length})</h4>
+      <div class="row" style="gap:6px;flex-wrap:wrap;font-size:.84rem">${H.all.map(id => { const o = DEVID[id]; return o ? `<label class="chip" style="cursor:pointer"><input type="checkbox" data-htfd="${id}" ${inRows.has(id) ? "checked" : ""}> ${esc(o.d[2] || "?")} ${esc(o.d[4] || "")}</label>` : ""; }).join("")}<button class="btn sm" data-act="htfadd">+ Boş satır</button></div>
+      <div class="tbl-wrap"><table class="rptbl htftbl"><thead><tr><th>S.No</th><th>Marka</th><th>Tip</th><th>Sınıf</th><th>Kapasite</th><th>Seri No</th><th>Üretim yılı</th><th>d Taksimat</th><th>e Mua. Sab.</th><th></th></tr></thead><tbody>
+        ${H.rows.map((r, i) => `<tr><td>${i + 1}</td>${["marka","tip","sinif","kap","seri","uretim","d","e"].map(c => `<td><input data-htfr="${i}" data-c="${c}" value="${esc(r[c])}" style="width:${c === "seri" ? 130 : c === "marka" || c === "tip" ? 100 : 64}px"></td>`).join("")}<td><button class="link" data-act="htfrm" data-i="${i}" style="color:var(--bad)">Sil</button></td></tr>`).join("")}
+      </tbody></table></div>
+      <details><summary style="font-size:.86rem">Form başlığı ve alt bilgi (bir kez ayarlanır)</summary><div class="mfgrid" style="margin-top:8px">
+        <label class="f">Kurum adı<input data-htff="ad" value="${esc(H.firma.ad)}"></label><label class="f wide">Alt bilgi (adres / telefon)<input data-htff="alt" value="${esc(H.firma.alt)}"></label><label class="f">E-posta<input data-htff="eposta" value="${esc(H.firma.eposta)}"></label></div></details>
+      <p class="muted" style="margin:0;font-size:.8rem">Formdaki değişiklikler yalnızca bu çıktı içindir; cihaz kaydını değiştirmek için yönetici “Kaydı düzenle”yi kullanır.</p>
+    </div>
+    <div class="mffoot"><span style="flex:1"></span><button class="btn" data-act="htfclose">İptal</button><button class="btn primary" data-act="htfprint">Formu yazdır / PDF</button></div>
+  </div></div>`;
+}
+function htfDoc(){
+  const H = st.htf, f = H.f, F = H.firma, n = Math.max(6, H.rows.length), cb = k => `<span class="cb">${H.checks[k] ? "✓" : ""}</span>`;
+  const line = (lab, v) => `<tr><td class="lb">${lab}</td><td>: ${esc(v)}</td></tr>`;
+  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Hizmet Talep Formu · ${esc(f.ad)}</title><style>
+  @page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0;font-size:12px}
+  .frm{border:1.5px solid #000;padding:10px 14px}.hd{display:grid;grid-template-columns:160px 1fr 220px;align-items:center}.logo{font:800 30px/1 Arial;letter-spacing:-1px;font-style:italic}
+  h1{text-align:center;font-size:22px;margin:0;letter-spacing:.5px}.no{color:#b00;font-size:26px;font-weight:700;text-align:right}.no small{display:block;font-size:13px;color:#b00}
+  .top{display:grid;grid-template-columns:1.3fr 1fr 1.1fr;gap:12px;margin-top:8px}.top table{width:100%;border-collapse:collapse}.top td{padding:3px 2px;vertical-align:top}.lb{white-space:nowrap;width:1%;padding-right:6px!important;background:#e9e9e9}
+  .cbs div{display:flex;justify-content:space-between;gap:8px;padding:2px 0}.cb{display:inline-block;width:16px;height:16px;border:1px solid #000;text-align:center;line-height:15px;font-weight:700}
+  .grp{margin-top:6px}table.dv{width:100%;border-collapse:collapse;margin-top:10px}table.dv th,table.dv td{border:1px solid #000;padding:5px 4px;height:24px;text-align:center}table.dv th{background:#e9e9e9}
+  .txt{margin-top:8px;line-height:1.5}.sign{display:flex;justify-content:space-between;margin-top:6px}.box{width:260px;height:70px;border-top:1px dotted #000;text-align:center;padding-top:4px}
+  .defs{font-size:10px;margin-top:6px}.ft{text-align:center;margin-top:8px;border-top:1px solid #000;padding-top:6px;font-size:12px}
+  </style></head><body><div class="frm">
+  <div class="hd"><div class="logo">${esc(F.ad)}</div><div><h1>HİZMET TALEP FORMU</h1><div style="text-align:center;margin-top:4px">Tarih: ${esc(f.tarih)}</div></div><div class="no">${esc(f.no)}<small>Başvuru</small></div></div>
+  <div class="top"><table>${line("Başvuran Firma Adı", f.ad)}${line("Gsm / Sabit Tel", f.tel)}${line("Şube Adı", f.sube)}${line("Vergi Dairesi / No", f.vergi)}${line("Cihaz(lar)ın Bulunduğu Yer", f.yer)}${line("Yetkili Kişi", f.yetkili)}${line("T.C.No", f.tc)}</table>
+    <table>${line("Mahalle", f.mahalle)}${line("Sokak", f.sokak)}${line("Cadde", f.cadde)}${line("İç Kapı No", f.ic)}${line("Dış Kapı No", f.dis)}${line("E-mail Adresi", f.eposta)}</table>
+    <div class="cbs">${HTF_CHECKS.slice(0, 3).map(([k, lab]) => `<div><span>${lab}</span>${cb(k)}</div>`).join("")}<div class="grp"></div>${HTF_CHECKS.slice(3).map(([k, lab]) => `<div><span>${lab}</span>${cb(k)}</div>`).join("")}</div></div>
+  <table class="dv"><thead><tr><th style="width:40px">S.No</th><th>Marka</th><th>Tip</th><th>Sınıf</th><th>Kapasite</th><th>Seri No</th><th>Üretim Yılı</th><th>d Taksimat</th><th>e Mua Sab.</th></tr></thead><tbody>
+    ${Array.from({ length: n }, (_, i) => { const r = H.rows[i] || {}; return `<tr><td>${i + 1}</td><td>${esc(r.marka || "")}</td><td>${esc(r.tip || "")}</td><td>${esc(r.sinif || "")}</td><td>${esc(r.kap || "")}</td><td>${esc(r.seri || "")}</td><td>${esc(r.uretim || "")}</td><td>${esc(r.d || "")}</td><td>${esc(r.e || "")}</td></tr>`; }).join("")}</tbody></table>
+  <div class="sign"><div class="txt">Listede nitelikleri yazılı firmamızda kullanılmakta olan *(AWI / NAWI) tartı aletlerinin, <b>${esc(f.yil)}</b> yılı (Periyodik / Tamir Sonrası) muayenelerinin yapılması,<br>mühürleme işlemlerinin gerçekleşmesi ve muayene raporlarının düzenlenerek tarafımıza iletilmesi hususunda gereğini rica ederiz.</div><div class="box">Kaşe / İmza</div></div>
+  <div class="defs">*AWI: Otomatik Tartı Aletleri: Kütle belirleme, Gravimetrik Dolum, kesintili toplayıcı, Sürekli Toplayıcı, Ray Kantarı.<br>NAWI: Otomatik Olmayan Tartı Aletleri: I. ve II. Sınıf Elektronik ve mekanik hassas teraziler, III. ve IV. Sınıf çıktı verebilme veya başka elektronik cihazlarla bağlantılı çalışabilme özelliğine sahip olan tartı aletleri.</div>
+  <div class="ft">${esc(F.alt)}<br>e-mail: ${esc(F.eposta)}</div>
+  </div><script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
+  if (a === "htf"){ const k = b.dataset.k, d = st.draft[k]; htfOpen(k, d ? d.done : null); }
+  if (a === "htfbulk"){ const eff = [...cuEff()]; if (eff.length !== 1){ toast("Form için tek müşteri seçin"); return; } const ids = [...st.dsel].map(c => DEVBY[c]?.d[0]).filter(Boolean); htfOpen(eff[0], ids); }
+  if (!st.htf) return;
+  if (a === "htfclose" || (a === "htfback" && e.target === b)){ st.htf = null; render(); }
+  if (a === "htfadd"){ st.htf.rows.push({ id: 0, marka: "", tip: "", sinif: "III", kap: "", seri: "", uretim: "", d: "", e: "" }); render(); }
+  if (a === "htfrm"){ st.htf.rows.splice(+b.dataset.i, 1); render(); }
+  if (a === "htfprint"){ lsSet("damga.htfFirma", st.htf.firma); const w = window.open("", "_blank"); if (!w){ toast("Açılır pencere engellendi; tarayıcıda izin verin"); return; } w.document.open(); w.document.write(htfDoc()); w.document.close(); }
+});
+document.addEventListener("input", e => { const t = e.target, H = st.htf; if (!H) return;
+  if (t.dataset.htf) H.f[t.dataset.htf] = t.value; else if (t.dataset.htfr) H.rows[+t.dataset.htfr][t.dataset.c] = t.value; else if (t.dataset.htff) H.firma[t.dataset.htff] = t.value; });
+document.addEventListener("change", e => { const t = e.target, H = st.htf; if (!H) return;
+  if (t.dataset.htfc){ H.checks[t.dataset.htfc] = t.checked; }
+  if (t.dataset.htfd){ const id = +t.dataset.htfd; if (t.checked){ const o = DEVID[id]; if (o && !H.rows.some(r => r.id === id)) H.rows.push(htfDevRow(o)); } else H.rows = H.rows.filter(r => r.id !== id); render(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && st.htf){ st.htf = null; render(); } });
+
+/* ---- saha: telefonun konum servisiyle müşteri adresinin konumunu güncelle ---- */
+document.addEventListener("click", e => {
+  const b = e.target.closest('[data-act="gpsgeo"]'); if (!b) return; const k = b.dataset.k, l = BY[k];
+  if (!navigator.geolocation){ toast("Bu cihazda konum servisi yok"); return; }
+  b.disabled = true; b.textContent = "Konum alınıyor…";
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: la, longitude: lo, accuracy: acc } = pos.coords;
+    if (!confirm(`${titleTR(l?.n || "")} için konum güncellensin mi?\n${la.toFixed(6)}, ${lo.toFixed(6)} · doğruluk yaklaşık ${Math.round(acc)} m${acc > 100 ? "\n\nDoğruluk düşük; açık alanda tekrar denemeniz önerilir." : ""}`)){ b.disabled = false; b.textContent = "📍 Konumu güncelle"; return; }
+    try { await saveGeo(k, +la.toFixed(6), +lo.toFixed(6), "saha"); S = computeSummary(); render(); toast("Müşteri konumu güncellendi; rota linkleri artık bu konumla gider"); }
+    catch(err){ b.disabled = false; b.textContent = "📍 Konumu güncelle"; toast("Kaydedilemedi: " + err.message); }
+  }, err => { b.disabled = false; b.textContent = "📍 Konumu güncelle"; toast(err.code === 1 ? "Konum izni verilmedi. Tarayıcı ayarlarından bu siteye konum izni verin." : "Konum alınamadı: " + err.message); },
+  { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
 });
 /* ---------------- boot & giriş ---------------- */
 function showScreen(id){ ["setup","login","loading","app"].forEach(s => { const el = document.getElementById("scr-" + s); if (el) el.hidden = s !== id; }); }

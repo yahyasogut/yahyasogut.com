@@ -309,3 +309,9 @@ details summary{cursor:pointer;font-weight:600}
 .big-acts.four{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media (max-width:640px){.big-acts.four{grid-template-columns:1fr 1fr}}
 .reqform{border:1px dashed var(--brand);border-radius:var(--r);padding:10px}
+/* v19 · büyük harita, saha formu */
+#pool.mapfull{position:fixed;inset:0;z-index:60;max-height:none!important;background:var(--surface);display:flex;flex-direction:column}
+#pool.mapfull .gmap{flex:1;height:auto!important;min-height:0}
+body.noscroll{overflow:hidden}
+.htf{font-family:Arial,Helvetica,sans-serif;color:#000}
+.mfbody .tbl-wrap{max-height:none;overflow:auto}
