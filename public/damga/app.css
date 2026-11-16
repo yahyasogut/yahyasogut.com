@@ -336,3 +336,11 @@ main h1{text-transform:none}
 .sitefoot-in{max-width:1320px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-left,0px));display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-size:.84rem;color:var(--muted)}
 .sitefoot-in b{color:var(--ink)}.sitefoot-in a{color:inherit}
 .sitefoot .wm{width:86px}
+
+/* v24 · ekranda imza, etiket okutma */
+.sigwrap{display:flex;flex-direction:column;gap:4px;min-width:0}
+.sigpad{display:block;width:100%;max-width:560px;height:auto;aspect-ratio:640/220;background:#fff;border:1.5px dashed var(--line,#bbb);border-radius:10px;touch-action:none;cursor:crosshair}
+.scanbox{position:relative;width:100%;aspect-ratio:4/3;background:#111;border-radius:12px;overflow:hidden}
+.scanbox video{width:100%;height:100%;object-fit:cover;display:block}
+.scanaim{position:absolute;inset:18% 22%;border:3px solid rgba(255,255,255,.85);border-radius:14px;box-shadow:0 0 0 999px rgba(0,0,0,.25)}
+input[aria-invalid="true"],select[aria-invalid="true"]{border-color:var(--bad)}

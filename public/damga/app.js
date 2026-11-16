@@ -1,4 +1,4 @@
-/* Antka Damga Takip · yahyasogut.com/damga · v23 */
+/* Antka Damga Takip · yahyasogut.com/damga · v24 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -45,7 +45,7 @@ let LOCS = [], BY = {}, DEVS = [], DEVBY = {}, DEVID = {}, S = null;
 let LOCS_P = [], DEVS_P = [], RAW = { biz: [], devs: [], items: null }, GROUPS = [];
 const NOGRP = "(Grupsuz)";
 // device tuple (24 itemId, 25 mukerrer, 26 sira): [0 id,1 cins,2 marka,3 model,4 seri,5 maxHam,6 sonDamga,7 yer,8 grup,9 durumHam,10 fatura,11 qrNo,12 max,13 kimeAit,14 bilgi,15 seriFlag,16 sinif,17 excelRow,18 e,19 qrKey,20 tip,21 min,22 d,23 aktif]
-function devTuple(r){ return [r.id, r.cins||"", r.marka||"", r.model||"", r.seri_no||"", r.max_cap||"", r.son_damga_yili ? String(r.son_damga_yili) : "", r.kullanim_yeri||"", r.aktif === false ? "kapsamdisi" : (r.durum_grup||"bekliyor"), r.durum_ham||"", r.fatura_notu||"", r.qr_no||("ID"+r.id), r.max_cap||"", r.kime_ait||"", r.bilgi||"", r.seri_flag||"", r.sinif||"III", r.excel_row||"", r.e||"", r.qr_key||"", r.tip||"", r.min_cap||"", r.d||"", r.aktif !== false, null, false, r.sira || null]; }
+function devTuple(r){ return [r.id, r.cins||"", r.marka||"", r.model||"", r.seri_no||"", r.max_cap||"", r.son_damga_yili ? String(r.son_damga_yili) : "", r.kullanim_yeri||"", r.aktif === false ? "kapsamdisi" : (r.durum_grup||"bekliyor"), r.durum_ham||"", r.fatura_notu||"", r.qr_no||("ID"+r.id), r.max_cap||"", r.kime_ait||"", r.bilgi||"", r.seri_flag||"", r.sinif||"III", r.excel_row||"", r.e||"", r.qr_key||"", r.tip||"", r.min_cap||"", r.d||"", r.aktif !== false, null, false, r.sira || null, r.etiket || "", r.etiket_kaynak || "", r.sinif || ""]; }
 const PREC = { google: "ok", elle: "ok", saha: "ok", "yaklasik-mah": "mah" };
 function buildData(biz, devs, items){
   RAW = { biz, devs, items };
@@ -276,7 +276,8 @@ function render(){
       : `<div class="card empty" style="max-width:640px;margin:40px auto">${YEAR} döneminde henüz veri yok. Yöneticiniz dönem listesini yüklediğinde burada görünecek.</div>`;
     return;
   }
-  $("#main").innerHTML = (st.view === "ozet" ? reqBanner() : "") + v() + viewHtf() + viewP80() + viewPurge();
+  $("#main").innerHTML = (st.view === "ozet" ? reqBanner() : "") + v() + viewHtf() + viewP80() + viewPurge() + viewScan();
+  sigRestore();
   if (st.view === "planla") hydratePlanner();
 }
 /* ---- sayfa adresleri: /damga/ozet/, /damga/rota-planla/ … (her sekmenin kendi adresi; geri/ileri tuşları çalışır) ---- */
@@ -832,7 +833,7 @@ function viewField(){
         ${plans.length>1?`<select id="fplan" aria-label="Plan seç">${plans.map(x=>`<option value="${x.id}" ${x.id===p.id?"selected":""}>${dTR(x.date)} · ${esc(personName(x))} · ${x.stops.length} durak</option>`).join("")}</select>`:""}</div>
       <div class="prog"><i style="width:${g.done/g.n*100}%;background:var(--ok)"></i><i style="width:${g.miss/g.n*100}%;background:var(--retry)"></i></div>
       <div class="muted" style="font-size:.88rem">${g.done} tamam · ${g.miss} eksik · ${g.n-g.done-g.miss} kaldı · ${p.km.toFixed(0)} km</div>
-      <div class="row" style="gap:6px">${links.map(l=>`<a class="btn sm" href="${esc(l.url)}" target="_blank" rel="noopener">${l.label} · ${l.range} ↗</a>`).join("")}</div>
+      <div class="row" style="gap:6px"><button class="btn sm" data-act="lblfind">📷 Etiket okut · cihaz bul</button>${links.map(l=>`<a class="btn sm" href="${esc(l.url)}" target="_blank" rel="noopener">${l.label} · ${l.range} ↗</a>`).join("")}</div>
     </div>
     ${p.stops.map((s,i) => stopCard(p, s, i)).join("")}
   </div>`;
@@ -880,7 +881,7 @@ function viewDevices(){
   const ilceler = [...new Set(LOCS.filter(l=>!l.dep).map(l=>l.i))].filter(Boolean).sort((a,b)=>a.localeCompare(b,"tr"));
   const flagN = DEVS.filter(o => o.d[15]).length;
   return `<div class="stack">
-  <div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Cihaz sicili · seri numarasıyla takip</div><h2>Cihazlar ve QR etiketleri</h2></div>
+  <div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Cihaz sicili · seri numarasıyla takip</div><h2>Cihazlar</h2></div>
     <span class="muted" style="font-size:.85rem">Damga 2 yılda bir · başvuru Ocak–Şubat · damgalama yıl sonuna kadar</span></div>
   <section class="kpis">
     <div class="card kpi" style="--c:var(--ok)"><span>Damga geçerli</span><b>${fmt(c("gecerli"))}</b><small>sonraki muayene ${YEAR+1} veya sonrası</small></div>
@@ -899,16 +900,16 @@ function viewDevices(){
       <div class="row" style="justify-content:space-between">
         <span class="muted mono">${fmt(list.length)} cihaz · ${st.dsel.size} seçili</span>
         <span class="row"><button class="btn sm" data-act="dselall" ${list.length?"":"disabled"}>Filtredekileri seç${list.length>600?" (ilk 600)":""}</button><button class="link" data-act="dselnone">Temizle</button>
-          <button class="btn sm primary" data-act="labels" ${st.dsel.size?"":"disabled"}>QR etiketlerini indir (${st.dsel.size})</button>
+          <button class="btn sm" data-act="lblfind">📷 Etiket okut</button>
           <button class="btn sm" data-act="applist">Başvuru listesi CSV</button></span></div>
     </div>
-    <div class="tbl-wrap"><table class="devtbl"><thead><tr><th></th><th>Firma</th><th>Cihaz</th><th>Seri no</th><th>Max / e / sınıf</th><th class="r">Son</th><th class="r">Sonraki</th><th>Durum</th></tr></thead><tbody>
+    <div class="tbl-wrap"><table class="devtbl"><thead><tr><th></th><th>Firma</th><th>Cihaz</th><th>Seri no</th><th>Etiket</th><th>Max / e / sınıf</th><th class="r">Son</th><th class="r">Sonraki</th><th>Durum</th></tr></thead><tbody>
     ${page.map(o => { const d = o.d, si = stampInfo(o), e = precOf(o);
       return `<tr><td><input type="checkbox" data-act="dpick" data-c="${d[11]}" ${st.dsel.has(d[11])?"checked":""} aria-label="Seç"></td>
         <td style="min-width:180px"><button class="link rowlink" data-act="dev" data-c="${d[11]}">${esc(titleTR(o.l.n))}</button><div class="muted" style="font-size:.76rem"><span class="mono">#${lno(o.l)}·${cno(d)}</span> ${esc(titleTR(o.l.i))}${o.l.g?` · <span class="gtag">${esc(o.l.g)}</span>`:""}</div></td>
         <td>${esc(d[2]||"—")} ${esc(d[3])}<div class="muted" style="font-size:.76rem">${esc(titleTR(d[1]))}</div></td>
         <td class="mono">${esc(d[4]||"—")}${d[15]?` <span class="st tekrar">${d[15]==="seri-yok"?"yok":"tekrar"}</span>`:""}${d[25]?` <span class="dupflag">MÜKERRER</span>`:""}</td>
-        <td class="mono">${esc(d[12]||"?")} / ${e?esc(e):"<span class=muted>e ?</span>"} / ${esc(d[16])}</td>
+        <td>${labelBadge(d)}</td><td class="mono">${esc(d[12]||"?")} / ${e?esc(e):"<span class=muted>e ?</span>"} / ${esc(d[29]||"?")}</td>
         <td class="r mono">${si.last||"—"}</td><td class="r mono">${si.next||"—"}</td>
         <td><span class="st ${SCLS[si.s]}">${esc(si.s==="buyil"?`${YEAR} bekliyor`:si.s==="gecikmis"?`${YEAR} bekliyor · gecikmiş`:si.label)}</span></td></tr>`; }).join("")}
     </tbody></table></div>
@@ -922,10 +923,10 @@ function viewDevice(){
   if (!o) return `<div class="field card empty">Bu QR koduna ait cihaz bulunamadı (${esc(st.devCode)}). Etiketteki kodu ANTKA KALİBRASYON'a iletin.</div>`;
   const d = o.d, l = o.l, si = stampInfo(o), role = cardRole(), e = precOf(o), evs = devEvents(d[11]);
   const spec = [["Lokasyon / cihaz no", `${lno(l)} / ${cno(d)}`],["Cinsi", titleTR(d[1]) || "—"],["Marka / model", `${d[2]||"—"} ${d[3]}`],["Seri no", d[4] || "Kayıtlı değil"],["Kapasite (Max)", d[12] || "—"],
-    ["Hassasiyet (e)", e || "Girilmedi"],["Doğruluk sınıfı", d[16]],["Son damga", si.last || "—"],["Sonraki damga", si.next ? `${si.next} · başvuru Oca–Şub ${si.next}` : "—"]];
+    ["e (muayene taksimatı)", e || "Girilmedi"],["d (taksimat)", d[22] || "Girilmedi"],["Doğruluk sınıfı", d[29] || "Girilmedi"],["Son damga", si.last || "—"],["Sonraki damga", si.next ? `${si.next} · başvuru Oca–Şub ${si.next}` : "—"]];
   const rr = Object.values(st.results).filter(r => r.done && (BY[r.k]?.d || []).some(x => x[0] === d[0]));
   const hist = [
-    ...evs.map(ev => ({ at: ev.at, t: ev.type === "damga" ? `Damgalandı (${ev.year})` : ev.type === "hassasiyet" ? `Hassasiyet: ${ev.e}` : ev.type === "eksik" ? (RL[ev.reason]?.[1] || "Eksik") : "Not", n: ev.note, c: ev.type === "damga" ? "tamam" : ev.type === "eksik" ? "eksik" : "kapsamdisi" })),
+    ...evs.map(ev => ({ at: ev.at, t: ev.type === "damga" ? `Damgalandı (${ev.year})` : ev.type === "hassasiyet" ? `Hassasiyet: ${ev.e}` : ev.type === "eksik" ? (RL[ev.reason]?.[1] || "Eksik") : /^Etiket: /.test(ev.note || "") ? ev.note : "Not", n: /^Etiket: /.test(ev.note || "") ? "" : ev.note, c: ev.type === "damga" ? "tamam" : ev.type === "eksik" ? "eksik" : "kapsamdisi" })),
     ...rr.map(r => ({ at: r.at, t: r.done.includes(d[0]) ? "Saha rotasında damgalandı" : (RL[r.st]?.[1] || r.st), n: r.note, c: r.done.includes(d[0]) ? "tamam" : "eksik" })),
     { at: "0000", t: `İlk kayıt (Excel): ${d[9] || "durum boş"}`, n: "", c: CAT[d[8]] ? d[8] : "kapsamdisi", xl: 1 }
   ].sort((a, b) => b.at.localeCompare(a.at));
@@ -943,20 +944,20 @@ function viewDevice(){
     </article>
     ${role !== "musteri" ? `<article class="card pad stack" style="gap:10px"><h3>Sahada işlem</h3>
       <div class="row"><button class="btn ok" data-act="evdamga" data-c="${d[11]}">✓ ${YEAR} damgası yapıldı</button></div>
-      <div class="row"><label class="f" style="flex:1 1 160px">Hassasiyet (e)<input id="ev-e" type="text" placeholder="örn. 5 g" value="${esc(e)}"></label><button class="btn" data-act="evprec" data-c="${d[11]}" style="align-self:flex-end">Hassasiyeti kaydet</button></div>
+      <div class="row" style="justify-content:space-between;align-items:center"><span style="font-size:.88rem">QR etiketi: ${labelBadge(d)}</span>${d[27] ? "" : labelActs(d)}</div>
       <div class="eyebrow">Yapılamadıysa</div>
       <div class="reasons">${REASONS.map(([k,lab])=>`<button class="chip" data-act="evreason" data-v="${k}" aria-pressed="${st.evReason===k}">${lab}</button>`).join("")}</div>
       <textarea id="ev-note" placeholder="Not (örn. cihaz arızalı, yetkili Pazartesi burada)"></textarea>
       <div class="row"><button class="btn warn" data-act="evmiss" data-c="${d[11]}" ${st.evReason?"":"disabled"}>Eksikliği kaydet</button></div>
     </article>
+    ${devInfoCard(o, role)}
     <article class="card pad stack" style="gap:8px"><h3>Geçmiş</h3>
       <ol class="hist">${hist.map(h=>`<li><span class="st ${h.c}">${h.xl?"Excel":h.at.slice(0,10).split("-").reverse().join(".")}</span><div><b>${esc(h.t)}</b>${h.n?`<div class="muted" style="font-size:.84rem">${esc(h.n)}</div>`:""}</div></li>`).join("")}</ol></article>` : ""}
     ${role === "admin" ? `<article class="card pad dc-admin">
-      <div class="qrbox">${qrSVG(qrURL(d[11]))}<div class="mono" style="font-size:.75rem;text-align:center">${esc(d[11])}</div></div>
+      <div class="qrbox">${d[28] === "antka" ? `${qrSVG(qrURL(d[11]))}<div class="mono" style="font-size:.75rem;text-align:center">${esc(d[11])}</div>` : `<div class="muted" style="font-size:.8rem;text-align:center;padding:10px">${d[27] ? "Cihazda mevcut etiket var; sistem QR'ı basılmadı." : "Etiket henüz bağlanmadı. Saha ekibi mevcut etiketi okutur ya da yeni QR basar."}</div>`}</div>
       <div class="stack" style="gap:8px;min-width:0"><h3>Yönetici bilgileri</h3>
-        <dl class="specgrid spec-sm">${[["Excel satırı", d[17]||"—"],["İlk aktarım durumu", d[9]||"boş"],["Fatura / ödeme notu", d[10]||"—"],["Kime ait", d[13]||"—"],["Bilgi", d[14]||"—"],["Telefon", l.t||"—"],["Adres", titleTR(l.a)],["QR kodu", d[11]]].map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
-        <div class="row"><button class="btn primary" data-act="label1" data-c="${d[11]}">Bu cihazın etiketini indir</button><button class="btn" data-act="labelfirm" data-c="${d[11]}">Firmanın tüm cihaz etiketleri</button></div>
-        <div class="muted" style="font-size:.8rem">QR adresi: <span class="mono" style="word-break:break-all">${esc(qrURL(d[11]))}</span></div></div>
+        <dl class="specgrid spec-sm">${[["Excel satırı", d[17]||"—"],["İlk aktarım durumu", d[9]||"boş"],["Fatura / ödeme notu", d[10]||"—"],["Kime ait", d[13]||"—"],["Bilgi", d[14]||"—"],["Telefon", l.t||"—"],["Adres", titleTR(l.a)],["Sistem kodu", d[11]]].map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+        <div class="row" style="gap:8px;align-items:center">${labelBadge(d)}${d[27] ? `<span class="muted mono" style="font-size:.78rem;word-break:break-all">${esc(d[27].slice(0, 120))}</span><button class="btn sm" data-act="lblunlink" data-id="${d[0]}">Etiket bağını kaldır</button>` : labelActs(d)}</div></div>
     </article>` : ""}
     <p class="muted" style="font-size:.8rem;text-align:center;margin:0">ANTKA KALİBRASYON · Muratpaşa Mah. 567 Sk. Barış Apt. 58/A Muratpaşa/ANTALYA · 0 242 244 0 967 · info@antka.com.tr · Bu kart tartı aletinin periyodik muayene (damga) durumunu gösterir.</p>
   </div>`;
@@ -1010,7 +1011,8 @@ function stopCard(p, s, i){
         ${l.t?`<span class="muted" style="font-size:.88rem">Tel: <a class="tel mono" href="tel:${esc(l.t.replace(/\s/g,""))}">${esc(l.t)}</a></span>`:`<span class="muted" style="font-size:.85rem">Telefon kayıtlı değil</span>`}</div>
       <div class="stack" style="gap:6px">${devs.map(d => `<label class="dev"><input type="checkbox" data-act="devchk" data-k="${s.k}" data-r="${d[0]}" ${dr.done.includes(d[0])?"checked":""}>
         <div style="min-width:0"><div style="font-weight:600;font-size:.9rem">${esc(d[2]||"Marka yok")} ${esc(d[3])} <span class="st ${d[8]}">${CAT[d[8]].l}</span> <button class="link" data-act="dev" data-c="${d[11]}" style="font-size:.8rem">Cihaz kartı</button></div>
-        <div class="spec mono">S/N ${esc(d[4]||"—")} · Max ${esc(d[12]||"?")} · e ${esc(precOf({d})||"?")} · Sınıf ${esc(d[16])} · son damga ${esc(d[6]||"—")}${d[7]?` · ${esc(titleTR(d[7]))}`:""}</div></div></label>`).join("")}</div>
+        <div class="spec mono">S/N ${esc(d[4]||"—")} · Max ${esc(d[12]||"?")} · e ${esc(precOf({d})||"?")} · Sınıf ${esc(d[16])} · son damga ${esc(d[6]||"—")}${d[7]?` · ${esc(titleTR(d[7]))}`:""}${missBadge(d)}</div>
+        <div style="margin-top:4px">${labelActs(d)}</div></div></label>`).join("")}</div>
       ${st.reasonFor === s.k ? `<div class="stack" style="gap:8px"><div class="eyebrow">${allChecked?"Neden yapılamadı?":`${devs.length-dr.done.length} cihaz için neden?`}</div>
         <div class="reasons">${REASONS.filter(r => r[0] !== "adresteyok").map(([k,lab])=>`<button class="chip" data-act="reason" data-k="${s.k}" data-v="${k}" aria-pressed="${dr.reason===k}">${lab}</button>`).join("")}</div>
         <textarea id="note-${s.k}" placeholder="Açıklama (örn. Pazartesi 10:00'da tekrar gel, yetkili Ahmet Bey)">${esc(dr.note)}</textarea>
@@ -1942,8 +1944,9 @@ const cuStamp = o => { if (!o._si || o._si.g !== CU_GEN) o._si = { g: CU_GEN, v:
 function cuFilter(skip){
   const c = st.cu, qq = TRU(c.q), out = [];
   const devOk = o => (skip === "marka" || !c.marka || TRU(o.d[2]) === c.marka) && (skip === "model" || !c.model || TRU(o.d[3]) === c.model)
-    && (skip === "ds" || !c.ds || (c.ds === "flag" ? !!o.d[15] : cuStamp(o).s === c.ds)) && (skip === "next" || !c.next || String(cuStamp(o).next) === c.next);
-  const devFilt = (skip !== "marka" && c.marka) || (skip !== "model" && c.model) || (skip !== "ds" && c.ds) || (skip !== "next" && c.next);
+    && (skip === "ds" || !c.ds || (c.ds === "flag" ? !!o.d[15] : cuStamp(o).s === c.ds)) && (skip === "next" || !c.next || String(cuStamp(o).next) === c.next)
+    && (skip === "lbl" || !c.lbl || (c.lbl === "yok" ? !o.d[27] : c.lbl === "var" ? !!o.d[27] : devMissing(o.d).length > 0));
+  const devFilt = (skip !== "marka" && c.marka) || (skip !== "model" && c.model) || (skip !== "ds" && c.ds) || (skip !== "next" && c.next) || (skip !== "lbl" && c.lbl);
   cuBase().forEach(l => {
     if ((skip !== "il" && c.il && l.il !== c.il) || (skip !== "ilce" && c.ilce && l.i !== c.ilce) || (skip !== "g" && c.g && (c.g === NOGRP ? !!l.g : l.g !== c.g))) return;
     let devs = cuDevsOf(l); const custHit = !qq || TRU(l.n + " " + l.a + " " + l.i + " " + lno(l)).includes(qq);
@@ -1969,10 +1972,10 @@ function grpCounts(){
 }
 function cuDevRow(o){ const d = o.d, si = cuStamp(o), e = precOf(o);
   return `<tr class="cudev"><td></td><td><input type="checkbox" data-act="dpick" data-c="${d[11]}" ${st.dsel.has(d[11]) ? "checked" : ""} aria-label="Cihazı seç"></td>
-    <td class="mono num">${cno(d)}</td><td class="mono"><button class="link" data-act="dev" data-c="${d[11]}">${esc(d[11])}</button></td>
+    <td class="mono num">${cno(d)}</td><td class="mono"><button class="link" data-act="dev" data-c="${d[11]}">${esc(d[11])}</button><div>${labelBadge(d)}</div></td>
     <td>${esc(d[2] || "—")} ${esc(d[3])}<div class="muted" style="font-size:.74rem">${esc(titleTR(d[1]))}</div></td>
     <td class="mono">${esc(d[4] || "—")}${d[15] ? ` <span class="st tekrar">${d[15] === "seri-yok" ? "yok" : "tekrar"}</span>` : ""}${d[25] ? ` <span class="dupflag">M</span>` : ""}</td>
-    <td class="mono">${esc(d[12] || "?")} / ${e ? esc(e) : "e ?"} / ${esc(d[16])}</td><td class="mono num">${si.last || "—"}</td><td class="mono num">${si.next || "—"}</td>
+    <td class="mono">${esc(d[12] || "?")} / ${e ? esc(e) : "e ?"} / ${esc(d[29] || "?")}${missBadge(d)}</td><td class="mono num">${si.last || "—"}</td><td class="mono num">${si.next || "—"}</td>
     <td><span class="st ${SCLS[si.s]}">${esc(si.s === "buyil" ? `${YEAR} bekliyor` : si.s === "gecikmis" ? `${YEAR} · gecikmiş` : si.label)}</span>${o.inP ? "" : ` <span class="muted" style="font-size:.74rem">dönem dışı</span>`}</td></tr>`; }
 function viewCustomers(){
   CU_GEN++; const c = st.cu; c.open = c.open || new Set();
@@ -1985,7 +1988,7 @@ function viewCustomers(){
   const sel = (id, cur, blank, opts) => `<select id="${id}"><option value="">${blank}</option>${opts.map(([v, n, lab]) => `<option value="${esc(v)}" ${String(cur) === String(v) ? "selected" : ""}>${esc(lab || titleTR(v))} · ${fmt(n)}</option>`).join("")}</select>`;
   const gOpts = (cur, blank) => `${blank ? `<option value="">${blank}</option>` : ""}${GROUPS.map(g => `<option value="${esc(g.ad)}" ${cur === g.ad ? "selected" : ""}>${esc(g.ad)}</option>`).join("")}`;
   const allSel = rows.length && rows.every(r => c.sel.has(r.l.k));
-  const anyF = c.q || c.il || c.ilce || c.g || c.marka || c.model || c.ds || c.next;
+  const anyF = c.q || c.il || c.ilce || c.g || c.marka || c.model || c.ds || c.next || c.lbl;
   const all = cuBase().flatMap(l => cuDevsOf(l)), cnt = k => all.filter(o => k === "flag" ? o.d[15] : cuStamp(o).s === k).length, nx1 = all.filter(o => cuStamp(o).next === YEAR + 1 && cuStamp(o).s !== "pasif").length;
   const stampLab = k => k === "buyil" ? `${YEAR} bekliyor` : CU_STAMP.find(x => x[0] === k)[1];
   return `<div class="stack" style="max-width:1240px;margin:0 auto">
@@ -2018,6 +2021,7 @@ function viewCustomers(){
       ${sel("cu-marka", c.marka, "Tüm markalar", cuOpts("marka", o => TRU(o.d[2])).map(([v, n]) => [v, n, v]))}
       ${sel("cu-model", c.model, "Tüm modeller", cuOpts("model", o => TRU(o.d[3])).map(([v, n]) => [v, n, v]))}
       ${sel("cu-ds", c.ds, "Damga durumu", cuOpts("ds", o => cuStamp(o).s).map(([v, n]) => [v, n, stampLab(v)]))}
+      ${sel("cu-lbl", c.lbl, "Etiket / bilgi", cuOpts("lbl", o => o.d[27] ? "var" : "yok").concat(cuOpts("lbl", o => devMissing(o.d).length ? "eksik" : "")).map(([v, n]) => [v, n, { yok: "Etiketi yok", var: "Etiket bağlı", eksik: "e / d / sınıf eksik" }[v]]))}
       ${sel("cu-next", c.next, "Sonraki damga", cuOpts("next", o => cuStamp(o).s !== "pasif" ? cuStamp(o).next : null).map(([v, n]) => [v, n, "Sonraki " + v]))}
       ${anyF ? `<button class="link" data-act="cufclear">Filtreleri temizle</button>` : ""}
     </div>
@@ -2042,7 +2046,6 @@ function viewCustomers(){
       <button class="btn sm" data-act="smsopen">SMS gönder</button>
       ${eff.size === 1 ? `<button class="btn sm" data-act="htfbulk">Hizmet talep formu</button>` : ""}
       <button class="btn sm primary" data-act="mfopen">${eff.size > 1 ? `Seçili ${fmt(eff.size)} kaydı düzenle` : "Kaydı düzenle"}</button>` : ""}
-      ${st.dsel.size ? `<button class="btn sm primary" data-act="labels">QR etiketi (${fmt(st.dsel.size)})</button>` : ""}
       <button class="link" data-act="cuclear">Seçimi temizle</button></div>` : ""; })()}
   </div>${viewCustForm()}</div>`;
 }
@@ -2100,7 +2103,7 @@ document.addEventListener("click", async e => {
     case "gfclear": st.gf = []; lsSet("damga.grup", []); st.gfOpen = false; applyGroupFilter(); render(); break;
     case "cuscope": c.scope = b.dataset.v; c.page = 0; render(); break;
     case "cumode": c.mode = b.dataset.v; render(); window.scrollTo(0, 0); break;
-    case "cufclear": Object.assign(c, { q: "", il: "", ilce: "", g: "", marka: "", model: "", ds: "", next: "", page: 0 }); render(); break;
+    case "cufclear": Object.assign(c, { q: "", il: "", ilce: "", g: "", marka: "", model: "", ds: "", next: "", lbl: "", page: 0 }); render(); break;
     case "cuds": c.ds = c.ds === b.dataset.v ? "" : b.dataset.v; c.page = 0; render(); break;
     case "cunext": c.next = c.next === b.dataset.v ? "" : b.dataset.v; c.page = 0; render(); break;
     case "cutog": { c.open = c.open || new Set(); const k = b.dataset.k; c.open.has(k) ? c.open.delete(k) : c.open.add(k); render(); break; }
@@ -2143,7 +2146,7 @@ document.addEventListener("change", async e => {
   if (t.id === "cu-il"){ c.il = t.value; c.ilce = ""; c.page = 0; render(); return; }
   if (t.id === "cu-ilce"){ c.ilce = t.value; c.page = 0; render(); return; }
   if (t.id === "cu-g"){ c.g = t.value; c.page = 0; render(); return; }
-  if (["cu-marka","cu-model","cu-ds","cu-next"].includes(t.id)){ c[t.id.slice(3)] = t.value; c.page = 0; render(); return; }
+  if (["cu-marka","cu-model","cu-ds","cu-next","cu-lbl"].includes(t.id)){ c[t.id.slice(3)] = t.value; c.page = 0; render(); return; }
 });
 document.addEventListener("input", e => {
   if (e.target.id !== "cu-q") return;
@@ -2651,6 +2654,7 @@ function reqForm(k){
       <label class="f">Cinsi<input name="cins" value="${esc(D.cins || "Terazi")}"></label>
       <label class="f">Kapasite (Max)<input name="max_cap" value="${esc(D.max_cap || "")}" placeholder="örn. 30 kg"></label>
       <label class="f">e<input name="e" value="${esc(D.e || "")}" placeholder="örn. 5 g"></label>
+      <label class="f">d<input name="d" value="${esc(D.d || "")}" placeholder="örn. 2 g"></label>
       <label class="f">Sınıf<select name="sinif">${["III","II","I","IIII"].map(s => `<option ${D.sinif === s ? "selected" : ""}>${s}</option>`).join("")}</select></label>
       <label class="f">Kullanım yeri<input name="kullanim_yeri" value="${esc(D.kullanim_yeri || "")}" placeholder="örn. şarküteri"></label>
       <label class="f wide">Not<input name="notlar" value="${esc(D.notlar || "")}"></label>
@@ -2659,19 +2663,32 @@ function reqForm(k){
     <div class="row"><button class="btn primary">Onaya gönder</button><button class="btn" type="button" data-act="reqcancel">Vazgeç</button></div></form>`;
 }
 function reqListFor(k){ const rs = (st.reqs || []).filter(r => r.business_id === k && r.durum !== "onaylandi").slice(0, 10); if (!rs.length) return "";
-  return `<div class="stack" style="gap:4px">${rs.map(r => `<div class="share" style="gap:2px;font-size:.84rem"><b>Yeni cihaz: ${esc(r.marka)} ${esc(r.model || "")}</b>
+  return `<div class="stack" style="gap:4px">${rs.map(r => `<div class="share" style="gap:2px;font-size:.84rem"><b>${r.tur === "bilgi" ? `Bilgi önerisi: ${esc(r.marka)} · e ${esc(r.e || "—")} · d ${esc(r.d || "—")} · sınıf ${esc(r.sinif || "—")}` : `Yeni cihaz: ${esc(r.marka)} ${esc(r.model || "")}`}</b>
     <span class="muted mono">S/N ${esc(r.seri_no || "—")} · ${esc(r.max_cap || "")}</span><span class="st ${r.durum === "reddedildi" ? "tekrar" : "bekliyor"}">${r.durum === "reddedildi" ? "Reddedildi" + (r.red_nedeni ? " · " + esc(r.red_nedeni) : "") : "Yönetici onayı bekliyor"}</span></div>`).join("")}</div>`; }
-function reqBanner(){ const n = reqPending().length; if (!n || !(st.isAdmin && st.role === "admin")) return "";
-  return `<div class="warnbox row" style="justify-content:space-between;margin-bottom:16px"><span><b>${n}</b> yeni cihaz sahadan eklendi, onay bekliyor.</span><button class="btn sm primary" data-act="view" data-v="musteriler">İncele</button></div>`; }
-function viewDevRequests(){
-  const rs = reqPending(); if (!rs.length) return "";
+function reqBanner(){ const rs = reqPending(), n = rs.length; if (!n || !(st.isAdmin && st.role === "admin")) return "";
+  const ni = rs.filter(r => r.tur === "bilgi").length, ny = n - ni;
+  return `<div class="warnbox row" style="justify-content:space-between;margin-bottom:16px"><span>${[ny ? `<b>${ny}</b> yeni cihaz` : "", ni ? `<b>${ni}</b> eksik bilgi önerisi` : ""].filter(Boolean).join(" ve ")} sahadan geldi, onay bekliyor.</span><button class="btn sm primary" data-act="view" data-v="musteriler">İncele</button></div>`; }
+function viewDevRequests(){ return viewInfoRequests() + viewNewDevRequests(); }
+function viewInfoRequests(){ const rs = reqPending().filter(r => r.tur === "bilgi"); if (!rs.length) return ""; const who = id => st.staffAll?.find(s => s.id === id)?.name || "Saha";
+  st.reqEdit = st.reqEdit || {};
+  return `<div class="card pad stack" style="gap:10px;border-color:var(--wait)"><h3 style="margin:0">Onay bekleyen eksik bilgi önerileri (${rs.length})</h3>
+    <p class="muted" style="margin:0;font-size:.86rem">Saha ekibi cihaz plakasından okuduğu e / d / sınıf değerlerini önerdi. Gerekirse düzeltip onaylayın; cihaz kaydı güncellenir ve hizmet talep formu açılır.</p>
+    ${rs.map(r => { const o = DEVID[r.hedef_device], E = st.reqEdit[r.id] || {}, val = k => E[k] ?? r[k] ?? ""; return `<div class="share" style="gap:6px">
+      <div style="min-width:0"><b>${o ? `${esc(o.d[2] || "")} ${esc(o.d[3] || "")}` : esc(r.marka)}</b> <span class="mono muted">S/N ${esc(o ? o.d[4] || "—" : r.seri_no || "—")}</span>
+        <div style="font-size:.86rem">${o ? `${esc(titleTR(o.l.n))} · ${esc(titleTR(o.l.i))}` : "Cihaz bulunamadı"}</div>
+        <div class="muted" style="font-size:.8rem">Kayıttaki: e ${esc(o ? o.d[18] || "—" : "—")} · d ${esc(o ? o.d[22] || "—" : "—")} · sınıf ${esc(o ? o.d[29] || "—" : "—")} · ${esc(who(r.created_by))}, ${esc(String(r.created_at || "").slice(0, 16).replace("T", " "))}</div></div>
+      <div class="row" style="gap:6px;align-items:flex-end;flex-wrap:wrap"><label class="f" style="flex:0 1 110px">e<input data-reqf="${r.id}" data-c="e" value="${esc(val("e"))}"></label><label class="f" style="flex:0 1 110px">d<input data-reqf="${r.id}" data-c="d" value="${esc(val("d"))}"></label>
+        <label class="f" style="flex:0 1 110px">Sınıf<select data-reqf="${r.id}" data-c="sinif"><option value=""></option>${["I","II","III","IIII"].map(s => `<option ${val("sinif") === s ? "selected" : ""}>${s}</option>`).join("")}</select></label>
+        <button class="btn sm ok" data-act="reqinfook" data-id="${r.id}" ${o ? "" : "disabled"}>Onayla</button><button class="btn sm warn" data-act="reqno" data-id="${r.id}">Reddet</button></div></div>`; }).join("")}</div>`; }
+function viewNewDevRequests(){
+  const rs = reqPending().filter(r => r.tur !== "bilgi"); if (!rs.length) return "";
   const ex = allDevKeys(), who = id => st.staffAll?.find(s => s.id === id)?.name || "Saha";
   return `<div class="card pad stack" style="gap:10px;border-color:var(--wait)"><h3 style="margin:0">Onay bekleyen yeni cihazlar (${rs.length})</h3>
     <p class="muted" style="margin:0;font-size:.86rem">Saha ekibinin müşteri adresinde bulup eklediği cihazlar. Onaylanınca o müşteriye eklenir, QR numarası alır ve ${YEAR} listesine girer.</p>
     ${rs.map(r => { const l = BY[r.business_id], dup = devKey(r.marka, r.seri_no) && ex.get(devKey(r.marka, r.seri_no)); return `<div class="share" style="gap:6px">
       <div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><b>${esc(r.marka)} ${esc(r.model || "")}</b> <span class="mono muted">S/N ${esc(r.seri_no || "—")}</span>
         <div style="font-size:.86rem">${l ? `${esc(titleTR(l.n))} · Lok. ${lno(l)} · ${esc(titleTR(l.i))}` : "Müşteri bulunamadı"}</div>
-        <div class="muted" style="font-size:.8rem">${esc(r.cins || "")} · Max ${esc(r.max_cap || "?")} · e ${esc(r.e || "?")} · Sınıf ${esc(r.sinif || "III")}${r.kullanim_yeri ? " · " + esc(r.kullanim_yeri) : ""} · ${esc(who(r.created_by))}, ${esc(String(r.created_at || "").slice(0, 16).replace("T", " "))}${r.damgalandi ? ` · <b style="color:var(--ok)">damgası yapıldı</b>` : ""}${r.notlar ? " · " + esc(r.notlar) : ""}</div>
+        <div class="muted" style="font-size:.8rem">${esc(r.cins || "")} · Max ${esc(r.max_cap || "?")} · e ${esc(r.e || "?")} · d ${esc(r.d || "?")} · Sınıf ${esc(r.sinif || "III")}${r.kullanim_yeri ? " · " + esc(r.kullanim_yeri) : ""} · ${esc(who(r.created_by))}, ${esc(String(r.created_at || "").slice(0, 16).replace("T", " "))}${r.damgalandi ? ` · <b style="color:var(--ok)">damgası yapıldı</b>` : ""}${r.notlar ? " · " + esc(r.notlar) : ""}</div>
         ${dup ? `<div class="warnbox" style="margin-top:6px;font-size:.82rem">Aynı marka + seri sistemde kayıtlı: ${esc(dup.d[11])} · ${esc(titleTR(dup.l.n))}</div>` : ""}</div>
         <div class="row" style="gap:6px"><button class="btn sm ok" data-act="reqok" data-id="${r.id}">Onayla</button><button class="btn sm warn" data-act="reqno" data-id="${r.id}">Reddet</button></div></div></div>`; }).join("")}
   </div>`;
@@ -2679,7 +2696,7 @@ function viewDevRequests(){
 async function reqApprove(id){
   const r = (st.reqs || []).find(x => x.id === id); if (!r) return;
   const ik = "REQ|" + r.id, dev = { business_id: r.business_id, import_key: ik, tip: "Otomatik olmayan tartı aleti", cins: r.cins || "Terazi", marka: r.marka, model: r.model || "", seri_no: r.seri_no || "",
-    seri_flag: realSeri(r.seri_no) ? "" : "seri-yok", sinif: r.sinif || "III", max_cap: r.max_cap || "", e: r.e || "", kullanim_yeri: r.kullanim_yeri || "",
+    seri_flag: realSeri(r.seri_no) ? "" : "seri-yok", sinif: r.sinif || "III", max_cap: r.max_cap || "", e: r.e || "", d: r.d || "", kullanim_yeri: r.kullanim_yeri || "",
     son_damga_yili: r.damgalandi ? YEAR : null, durum_grup: r.damgalandi ? "tamam" : "bekliyor", durum_ham: "Sahadan eklendi" + (r.damgalandi ? " · damgalandı" : ""), bilgi: r.notlar || "" };
   await q(sb.from("devices").upsert(dev, { onConflict: "import_key", ignoreDuplicates: true }));
   const row = (await q(sb.from("devices").select("id,import_key").in("import_key", [ik])))[0]; if (!row) throw new Error("cihaz kaydı oluşturulamadı");
@@ -2697,16 +2714,24 @@ document.addEventListener("click", async e => {
   if (a === "addreq"){ st.reqFor = b.dataset.k; st.reasonFor = null; st.reqDraft = {}; render(); setTimeout(() => document.querySelector('.reqform [name="marka"]')?.focus(), 30); }
   if (a === "reqcancel"){ st.reqFor = null; render(); }
   if (a === "reqok"){ b.disabled = true; try { await reqApprove(+b.dataset.id); render(); toast("Cihaz onaylandı ve müşteriye eklendi"); } catch(err){ b.disabled = false; toast("Onaylanamadı: " + err.message); } }
+  if (a === "reqinfook"){ const id = +b.dataset.id, r = (st.reqs || []).find(x => x.id === id); if (!r) return; const E = (st.reqEdit || {})[id] || {}; b.disabled = true;
+    try { const patch = {}; ["e","d","sinif"].forEach(k => { const v = String(E[k] ?? r[k] ?? "").trim(); if (v) patch[k] = v; });
+      await saveDevInfo(r.hedef_device, patch);
+      await q(sb.from("device_requests").update({ durum: "onaylandi", device_id: r.hedef_device, e: patch.e ?? r.e, d: patch.d ?? r.d, sinif: patch.sinif ?? r.sinif, karar_veren: st.me, karar_zamani: new Date().toISOString() }).eq("id", id));
+      if (st.reqEdit) delete st.reqEdit[id]; await loadDynamic(); render(); toast("Cihaz bilgileri güncellendi"); }
+    catch(err){ b.disabled = false; toast("Onaylanamadı: " + err.message); } }
   if (a === "reqno"){ const why = prompt("Reddetme nedeni (saha ekibi görür)", "") ; if (why === null) return;
     try { await q(sb.from("device_requests").update({ durum: "reddedildi", red_nedeni: why, karar_veren: st.me, karar_zamani: new Date().toISOString() }).eq("id", +b.dataset.id)); await loadDynamic(); render(); toast("Talep reddedildi"); } catch(err){ toast("İşlem yapılamadı: " + err.message); } }
 });
+const reqEditSet = e => { const t = e.target; if (!t.dataset?.reqf) return; st.reqEdit = st.reqEdit || {}; (st.reqEdit[t.dataset.reqf] = st.reqEdit[t.dataset.reqf] || {})[t.dataset.c] = t.value; };
+document.addEventListener("input", reqEditSet); document.addEventListener("change", reqEditSet);
 document.addEventListener("input", e => { const f = e.target.closest?.(".reqform"); if (!f) return; st.reqDraft = Object.fromEntries(new FormData(f)); st.reqDraft.damgalandi = f.damgalandi.checked; });
 document.addEventListener("submit", async e => {
   const f = e.target; if (!f.classList?.contains("reqform")) return; e.preventDefault();
   const v = Object.fromEntries(new FormData(f)); const k = f.dataset.k;
   if (!String(v.marka || "").trim()){ toast("Marka zorunlu"); return; }
   const row = { business_id: k, plan_id: st.fieldPlan || null, donem: YEAR, marka: v.marka.trim().toLocaleUpperCase("tr-TR"), model: (v.model || "").trim().toLocaleUpperCase("tr-TR"), seri_no: (v.seri_no || "").trim(),
-    cins: (v.cins || "").trim(), max_cap: normCap(v.max_cap || ""), e: (v.e || "").trim(), sinif: v.sinif || "III", kullanim_yeri: (v.kullanim_yeri || "").trim(), notlar: (v.notlar || "").trim(), damgalandi: f.damgalandi.checked, created_by: st.me };
+    cins: (v.cins || "").trim(), max_cap: normCap(v.max_cap || ""), e: (v.e || "").trim(), d: (v.d || "").trim(), sinif: v.sinif || "III", kullanim_yeri: (v.kullanim_yeri || "").trim(), notlar: (v.notlar || "").trim(), damgalandi: f.damgalandi.checked, created_by: st.me };
   const btn = f.querySelector("button.primary"); btn.disabled = true;
   try { await q(sb.from("device_requests").insert(row)); await loadDynamic(); st.reqFor = null; st.reqDraft = null; render(); toast("Yeni cihaz yöneticinin onayına gönderildi"); }
   catch(err){ btn.disabled = false; toast("Gönderilemedi: " + (/device_requests/.test(err.message) ? "cihaz talebi tablosu kurulu değil (damga-cihaz-talep.sql)" : err.message)); }
@@ -2720,7 +2745,7 @@ function htfAddrParts(a){ const A = TRU(a).replace(/^.*?(?:MAHALLESİ|MAHALLE|MA
   return { sokak: pick(/([0-9A-ZÇĞİÖŞÜ.]+(?:\s[0-9A-ZÇĞİÖŞÜ.]+)?\s+(?:SOKAĞI|SOKAK|SOK\.?|SK\.?))(?![A-ZÇĞİÖŞÜ])/), cadde: pick(/([0-9A-ZÇĞİÖŞÜ.]+(?:\s[0-9A-ZÇĞİÖŞÜ.]+)?\s+(?:CADDESİ|CADDE|CAD\.?|CD\.?))(?![A-ZÇĞİÖŞÜ])/),
     dis: pick(/NO\s*:?\s*([0-9]+[A-Z]?(?:[\/-][0-9A-Z]+)?)/), ic: pick(/(?:DAİRE|D)\s*:?\s*([0-9]+)/) }; }
 function htfDevRow(o){ const d = o.d, raw = RAW.devs.find(r => r.id === d[0]) || {};
-  return { id: d[0], marka: d[2] || "", tip: d[3] || "", sinif: d[16] || "III", kap: d[12] || "", seri: d[4] || "", uretim: raw.uretim_yili ? String(raw.uretim_yili) : "", d: d[22] || "", e: d[18] || "" }; }
+  return { id: d[0], marka: d[2] || "", tip: d[3] || "", sinif: d[29] || "", kap: d[12] || "", seri: d[4] || "", uretim: raw.uretim_yili ? String(raw.uretim_yili) : "", d: d[22] || "", e: d[18] || "" }; }
 function htfOpen(k, ids){
   const l = BY[k]; if (!l) return; const raw = RAW.biz.find(b => b.id === k) || {}, ap = htfAddrParts(l.a);
   const all = Object.values(DEVID).filter(o => o.l === l && o.d[23] !== false).sort((a, b) => (b.inP - a.inP) || (a.d[26] || 0) - (b.d[26] || 0));
@@ -2730,7 +2755,8 @@ function htfOpen(k, ids){
       vergi: [raw.vergi_dairesi, raw.vkn].filter(Boolean).join(" / "), yer: `${titleTR(l.a)} ${titleTR(l.i)}/${titleTR(l.il)}`.trim(), yetkili: "", dogum: "", tc: "",
       mahalle: titleTR(raw.mahalle || mahOf(l.a) || ""), sokak: ap.sokak, cadde: ap.cadde, ic: ap.ic, dis: ap.dis, eposta: raw.eposta || "", yil: String(YEAR) },
     checks: Object.fromEntries(HTF_CHECKS.map(c => [c[0], c[2]])), all: all.map(o => o.d[0]), rows: pick.map(htfDevRow) };
-  if (!st.htf.rows.length) st.htf.rows = [{ id: 0, marka: "", tip: "", sinif: "III", kap: "", seri: "", uretim: "", d: "", e: "" }];
+  delete SIG.htf; st.htf.prop = {};
+  if (!st.htf.rows.length && st.isAdmin) st.htf.rows = [{ id: 0, marka: "", tip: "", sinif: "III", kap: "", seri: "", uretim: "", d: "", e: "" }];
   render();
 }
 function viewHtf(){
@@ -2743,13 +2769,16 @@ function viewHtf(){
         ${inp("yer","Cihaz(lar)ın bulunduğu yer",1)}${inp("yetkili","Yetkili kişi *")}<label class="f">Yetkili doğum tarihi * (gg/aa/yyyy)<input data-htf="dogum" value="${esc(f.dogum)}" inputmode="numeric" maxlength="10" placeholder="gg/aa/yyyy" autocomplete="off"></label><label class="f">T.C. kimlik no *<input data-htf="tc" value="${esc(f.tc)}" inputmode="numeric" maxlength="11" autocomplete="off"></label>${inp("mahalle","Mahalle")}${inp("sokak","Sokak")}${inp("cadde","Cadde")}${inp("ic","İç kapı no")}${inp("dis","Dış kapı no")}${inp("eposta","E-mail")}${inp("yil","Muayene yılı")}</div>
       <div class="row" style="gap:14px;flex-wrap:wrap">${HTF_CHECKS.map(([k, lab]) => `<label class="row" style="gap:6px;font-size:.88rem"><input type="checkbox" data-htfc="${k}" ${H.checks[k] ? "checked" : ""}> ${lab}</label>`).join("")}</div>
       <h4 class="mfsec">Cihazlar (${H.rows.length})</h4>
-      <div class="row" style="gap:6px;flex-wrap:wrap;font-size:.84rem">${H.all.map(id => { const o = DEVID[id]; return o ? `<label class="chip" style="cursor:pointer"><input type="checkbox" data-htfd="${id}" ${inRows.has(id) ? "checked" : ""}> ${esc(o.d[2] || "?")} ${esc(o.d[4] || "")}</label>` : ""; }).join("")}<button class="btn sm" data-act="htfadd">+ Boş satır</button></div>
+      <div class="row" style="gap:6px;flex-wrap:wrap;font-size:.84rem">${H.all.map(id => { const o = DEVID[id]; return o ? `<label class="chip" style="cursor:pointer"><input type="checkbox" data-htfd="${id}" ${inRows.has(id) ? "checked" : ""}> ${esc(o.d[2] || "?")} ${esc(o.d[4] || "")}</label>` : ""; }).join("")}${st.isAdmin ? `<button class="btn sm" data-act="htfadd">+ Boş satır</button>` : ""}</div>
       <div class="tbl-wrap"><table class="rptbl htftbl"><thead><tr><th>S.No</th><th>Marka</th><th>Tip</th><th>Sınıf</th><th>Kapasite</th><th>Seri No</th><th>Üretim yılı</th><th>d Taksimat</th><th>e Mua. Sab.</th><th></th></tr></thead><tbody>
-        ${H.rows.map((r, i) => `<tr><td>${i + 1}</td>${["marka","tip","sinif","kap","seri","uretim","d","e"].map(c => `<td><input data-htfr="${i}" data-c="${c}" value="${esc(r[c])}" style="width:${c === "seri" ? 130 : c === "marka" || c === "tip" ? 100 : 64}px"></td>`).join("")}<td><button class="link" data-act="htfrm" data-i="${i}" style="color:var(--bad)">Sil</button></td></tr>`).join("")}
+        ${H.rows.map((r, i) => `<tr><td>${i + 1}</td>${["marka","tip","sinif","kap","seri","uretim","d","e"].map(c => { const ro = !st.isAdmin && r.id, miss = HTF_REQ.includes(c) && !String(r[c] || "").trim();
+          return `<td><input data-htfr="${i}" data-c="${c}" value="${esc(r[c])}" ${ro ? "readonly tabindex=-1" : ""} ${miss ? 'aria-invalid="true"' : ""} placeholder="${miss ? "zorunlu" : ""}" style="width:${c === "seri" ? 130 : c === "marka" || c === "tip" ? 100 : 64}px;${ro ? "background:var(--sunk);" : ""}${miss ? "border-color:var(--bad);" : ""}"></td>`; }).join("")}<td>${!st.isAdmin && r.id ? "" : `<button class="link" data-act="htfrm" data-i="${i}" style="color:var(--bad)">Sil</button>`}</td></tr>`).join("")}
       </tbody></table></div>
+      ${htfMissView()}
+      ${sigPad("htf", "Yetkili imzası", !!H.ctx)}
       <details><summary style="font-size:.86rem">Form başlığı ve alt bilgi (bir kez ayarlanır)</summary><div class="mfgrid" style="margin-top:8px">
         <label class="f">Kurum adı<input data-htff="ad" value="${esc(H.firma.ad)}"></label><label class="f wide">Alt bilgi (adres / telefon)<input data-htff="alt" value="${esc(H.firma.alt)}"></label><label class="f">E-posta<input data-htff="eposta" value="${esc(H.firma.eposta)}"></label></div></details>
-      <p class="muted" style="margin:0;font-size:.8rem">Formdaki değişiklikler yalnızca bu çıktı içindir; cihaz kaydını değiştirmek için yönetici “Kaydı düzenle”yi kullanır.</p>
+      <p class="muted" style="margin:0;font-size:.8rem">${st.isAdmin ? "Cihaz satırlarında boş olan alanları doldurursanız yazdırırken cihaz kaydına da işlenir." : "Cihaz bilgileri kayıttan gelir ve sahada değiştirilemez. Eksik bilgi için yukarıdan öneri gönderin."}</p>
     </div>
     <div class="mffoot"><span style="flex:1"></span><button class="btn" data-act="htfclose">İptal</button><button class="btn" data-act="htfprint">${(st.htf.a4next || 1) === 2 ? "A4 · 2. nüshayı yazdır" : "A4 yazdır / PDF (1. nüsha)"}</button><button class="btn primary" data-act="htf80">🖨 80 mm yazıcıya</button></div>
   </div></div>`;
@@ -2764,7 +2793,7 @@ function htfDoc(nus){
   .top{display:grid;grid-template-columns:1.3fr 1fr 1.1fr;gap:12px;margin-top:8px}.top table{width:100%;border-collapse:collapse}.top td{padding:3px 2px;vertical-align:top}.lb{white-space:nowrap;width:1%;padding-right:6px!important;background:#e9e9e9}
   .cbs div{display:flex;justify-content:space-between;gap:8px;padding:2px 0}.cb{display:inline-block;width:16px;height:16px;border:1px solid #000;text-align:center;line-height:15px;font-weight:700}
   .grp{margin-top:6px}table.dv{width:100%;border-collapse:collapse;margin-top:10px}table.dv th,table.dv td{border:1px solid #000;padding:5px 4px;height:24px;text-align:center}table.dv th{background:#e9e9e9}
-  .txt{margin-top:8px;line-height:1.5}.sign{display:flex;justify-content:space-between;margin-top:6px}.box{width:260px;height:70px;border-top:1px dotted #000;text-align:center;padding-top:4px}
+  .txt{margin-top:8px;line-height:1.5}.sign{display:flex;justify-content:space-between;margin-top:6px}.box{width:260px;text-align:center;flex:none}.box .im{height:66px;border-bottom:1px dotted #000;display:flex;align-items:flex-end;justify-content:center}.box img{max-height:64px;max-width:250px}
   .defs{font-size:10px;margin-top:6px}.ft{text-align:center;margin-top:8px;border-top:1px solid #000;padding-top:6px;font-size:12px}
   .nu{position:absolute;right:16px;top:6px;font-size:11px;font-weight:700;border:1px solid #000;padding:2px 6px}.frm{position:relative;page-break-after:always}.frm:last-of-type{page-break-after:auto}
   </style></head><body>${[nus || 1].map(nu => `<div class="frm"><div class="nu">${nu}. NÜSHA · ${nu === 1 ? "MÜŞTERİ" : "FİRMA"}</div>
@@ -2774,32 +2803,37 @@ function htfDoc(nus){
     <div class="cbs">${HTF_CHECKS.slice(0, 3).map(([k, lab]) => `<div><span>${lab}</span>${cb(k)}</div>`).join("")}<div class="grp"></div>${HTF_CHECKS.slice(3).map(([k, lab]) => `<div><span>${lab}</span>${cb(k)}</div>`).join("")}</div></div>
   <table class="dv"><thead><tr><th style="width:40px">S.No</th><th>Marka</th><th>Tip</th><th>Sınıf</th><th>Kapasite</th><th>Seri No</th><th>Üretim Yılı</th><th>d Taksimat</th><th>e Mua Sab.</th></tr></thead><tbody>
     ${Array.from({ length: n }, (_, i) => { const r = H.rows[i] || {}; return `<tr><td>${i + 1}</td><td>${esc(r.marka || "")}</td><td>${esc(r.tip || "")}</td><td>${esc(r.sinif || "")}</td><td>${esc(r.kap || "")}</td><td>${esc(r.seri || "")}</td><td>${esc(r.uretim || "")}</td><td>${esc(r.d || "")}</td><td>${esc(r.e || "")}</td></tr>`; }).join("")}</tbody></table>
-  <div class="sign"><div class="txt">Listede nitelikleri yazılı firmamızda kullanılmakta olan *(AWI / NAWI) tartı aletlerinin, <b>${esc(f.yil)}</b> yılı (Periyodik / Tamir Sonrası) muayenelerinin yapılması,<br>mühürleme işlemlerinin gerçekleşmesi ve muayene raporlarının düzenlenerek tarafımıza iletilmesi hususunda gereğini rica ederiz.</div><div class="box">Kaşe / İmza</div></div>
+  <div class="sign"><div class="txt">Listede nitelikleri yazılı firmamızda kullanılmakta olan *(AWI / NAWI) tartı aletlerinin, <b>${esc(f.yil)}</b> yılı (Periyodik / Tamir Sonrası) muayenelerinin yapılması,<br>mühürleme işlemlerinin gerçekleşmesi ve muayene raporlarının düzenlenerek tarafımıza iletilmesi hususunda gereğini rica ederiz.</div>${SIG.htf ? `<div class="box"><div class="im"><img src="${SIG.htf.url}" alt=""></div><div>${esc(f.yetkili)}</div><div style="font-size:10px">Yetkili imzası</div></div>` : ""}</div>
   <div class="defs">*AWI: Otomatik Tartı Aletleri: Kütle belirleme, Gravimetrik Dolum, kesintili toplayıcı, Sürekli Toplayıcı, Ray Kantarı.<br>NAWI: Otomatik Olmayan Tartı Aletleri: I. ve II. Sınıf Elektronik ve mekanik hassas teraziler, III. ve IV. Sınıf çıktı verebilme veya başka elektronik cihazlarla bağlantılı çalışabilme özelliğine sahip olan tartı aletleri.</div>
   <div class="ft">${esc(F.alt)}<br>e-mail: ${esc(F.eposta)}</div>
   </div>`).join("")}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`;
 }
-document.addEventListener("click", e => {
+document.addEventListener("click", async e => {
   const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
   if (a === "htf"){ const k = b.dataset.k, d = st.draft[k]; htfOpen(k, d ? d.done : null); }
   if (a === "htfbulk"){ const eff = [...cuEff()]; if (eff.length !== 1){ toast("Form için tek müşteri seçin"); return; } const ids = [...st.dsel].map(c => DEVBY[c]?.d[0]).filter(Boolean); htfOpen(eff[0], ids); }
   if (!st.htf) return;
   if (a === "htfclose" || (a === "htfback" && e.target === b)){ st.htf = null; render(); }
   if (a === "htfadd"){ st.htf.rows.push({ id: 0, marka: "", tip: "", sinif: "III", kap: "", seri: "", uretim: "", d: "", e: "" }); render(); }
+  if (a === "htfpropsend"){ const H = st.htf, ids = H.rows.filter(r => r.id && !infoPending(r.id) && HTF_REQ.some(c => !String(r[c] || "").trim())).map(r => r.id); b.disabled = true;
+    try { for (const id of ids) await propInfo(id, H.prop[id] || {}); await loadDynamic(); render(); toast("Eksik bilgiler yöneticinin onayına gönderildi"); }
+    catch(err){ b.disabled = false; toast("Gönderilemedi: " + err.message); } }
+  if (a === "htfrefresh"){ b.disabled = true; try { await infoRefresh(); render(); toast("Güncellendi"); } catch(err){ b.disabled = false; toast("Yenilenemedi: " + err.message); } }
   if (a === "htfrm"){ st.htf.rows.splice(+b.dataset.i, 1); render(); }
   if (a === "htfprint"){ if (!htfValid()) return; const w = window.open("", "_blank"); if (!w){ toast("Açılır pencere engellendi; tarayıcıda izin verin"); return; }
     w.document.write("<p style='font-family:sans-serif'>Form numarası alınıyor…</p>");
     const nus = st.htf.a4next || 1;
-    htfNumber().then(ok => { if (!ok){ w.close(); return; } if (nus === 1) htfMark(); lsSet("damga.htfFirma", st.htf.firma); w.document.open(); w.document.write(htfDoc(nus)); w.document.close();
+    htfNumber().then(async ok => { if (!ok){ w.close(); return; } if (nus === 1){ htfMark(); await htfSaveFill(); } lsSet("damga.htfFirma", st.htf.firma); w.document.open(); w.document.write(htfDoc(nus)); w.document.close();
       st.htf.a4next = nus === 1 ? 2 : 1; toast(nus === 1 ? "1. nüsha açıldı. Yazdırdıktan sonra “A4 2. nüsha” düğmesine basın." : "2. nüsha açıldı."); render(); }); }
 });
 document.addEventListener("input", e => { const t = e.target, H = st.htf; if (!H) return;
   if (t.dataset.htf === "dogum"){ const d = t.value.replace(/\D/g, "").slice(0, 8); const v = d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
     if (v !== t.value){ t.value = v; try { t.setSelectionRange(v.length, v.length); } catch(_){} } H.f.dogum = v; }
   else if (t.dataset.htf === "tc"){ const v = t.value.replace(/\D/g, "").slice(0, 11); if (v !== t.value) t.value = v; H.f.tc = v; }
-  else if (t.dataset.htf) H.f[t.dataset.htf] = t.value; else if (t.dataset.htfr) H.rows[+t.dataset.htfr][t.dataset.c] = t.value; else if (t.dataset.htff) H.firma[t.dataset.htff] = t.value; });
+  else if (t.dataset.htf) H.f[t.dataset.htf] = t.value; else if (t.dataset.htfr) H.rows[+t.dataset.htfr][t.dataset.c] = t.value; else if (t.dataset.htff) H.firma[t.dataset.htff] = t.value; else if (t.dataset.htfp){ (H.prop[t.dataset.htfp] = H.prop[t.dataset.htfp] || {})[t.dataset.c] = t.value; } });
 document.addEventListener("change", e => { const t = e.target, H = st.htf; if (!H) return;
   if (t.dataset.htfc){ H.checks[t.dataset.htfc] = t.checked; }
+  if (t.dataset.htfp){ (H.prop[t.dataset.htfp] = H.prop[t.dataset.htfp] || {})[t.dataset.c] = t.value; }
   if (t.dataset.htfd){ const id = +t.dataset.htfd; if (t.checked){ const o = DEVID[id]; if (o && !H.rows.some(r => r.id === id)) H.rows.push(htfDevRow(o)); } else H.rows = H.rows.filter(r => r.id !== id); render(); } });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && st.htf){ st.htf = null; render(); } });
 
@@ -2823,7 +2857,27 @@ function htfValid(){ const f = st.htf.f; const m = String(f.dogum || "").trim().
   if (!m || +m[1] < 1 || +m[1] > 31 || +m[2] < 1 || +m[2] > 12 || +m[3] < 1900 || +m[3] > new Date().getFullYear()){ toast("Doğum tarihini gün/ay/yıl olarak yazın (örn. 05/03/1980)"); document.querySelector('[data-htf="dogum"]')?.focus(); return false; }
   f.dogum = `${m[1].padStart(2, "0")}/${m[2].padStart(2, "0")}/${m[3]}`;
   if (!tcValid(f.tc)){ toast("Geçerli bir T.C. kimlik numarası yazın (11 hane)"); document.querySelector('[data-htf="tc"]')?.focus(); return false; }
+  const H = st.htf; if (!H.rows.length){ toast("Formda cihaz yok"); return false; }
+  const miss = H.rows.filter(r => HTF_REQ.some(c => !String(r[c] || "").trim()));
+  if (miss.length){ toast(`${miss.length} cihazın e / d / sınıf bilgisi eksik. ${st.isAdmin ? "Satırlardaki boş alanları doldurun." : "Eksik bilgiyi yöneticiye önerin; onaylanınca form yazdırılabilir."}`); document.querySelector(".htfmiss, [aria-invalid=true]")?.scrollIntoView({ block: "center" }); return false; }
+  if (H.ctx && !SIG.htf){ toast("Yetkilinin imzasını alın"); document.querySelector('canvas.sigpad[data-sig="htf"]')?.scrollIntoView({ block: "center" }); return false; }
   return true; }
+const HTF_REQ = ["e", "d", "sinif"];
+// saha: kayıtta e / d / sınıf eksik olan cihazlar için öneri (yönetici onayına)
+function htfMissView(){ const H = st.htf; if (st.isAdmin) return "";
+  const ids = H.rows.filter(r => r.id && HTF_REQ.some(c => !String(r[c] || "").trim())).map(r => r.id); if (!ids.length) return "";
+  return `<div class="card pad stack htfmiss" style="gap:8px;border-color:var(--bad)"><b>Eksik cihaz bilgisi (${ids.length}) · form bunlar olmadan yazdırılamaz</b>
+    <p class="muted" style="margin:0;font-size:.84rem">Cihaz plakasındaki e, d ve sınıf değerlerini yazıp yöneticiye gönderin. Onaylanınca “Onay durumunu yenile”ye basın.</p>
+    ${ids.map(id => { const o = DEVID[id], pend = infoPending(id); if (!o) return ""; return `<div class="share" style="gap:6px"><b style="font-size:.88rem">${esc(o.d[2] || "Cihaz")} ${esc(o.d[3] || "")} · S/N ${esc(o.d[4] || "—")}</b>
+      ${pend ? `<span class="st bekliyor">Onay bekliyor · e ${esc(pend.e || "—")} · d ${esc(pend.d || "—")} · sınıf ${esc(pend.sinif || "—")}</span>` : `<div class="mfgrid">${infoInputs(id, H.prop[id] || {}, "data-htfp")}</div>`}</div>`; }).join("")}
+    <div class="row">${ids.some(id => !infoPending(id)) ? `<button class="btn primary" data-act="htfpropsend">Onaya gönder</button>` : ""}<button class="btn" data-act="htfrefresh">🔄 Onay durumunu yenile</button></div></div>`; }
+// yönetici: formda doldurulan boş alanlar cihaz kaydına işlenir
+async function htfSaveFill(){ const H = st.htf; if (!H || !st.isAdmin) return;
+  const MAP = { marka: "marka", tip: "model", sinif: "sinif", kap: "max_cap", seri: "seri_no", d: "d", e: "e" };
+  for (const r of H.rows){ const o = r.id && DEVID[r.id]; if (!o) continue; const base = htfDevRow(o), patch = {};
+    Object.entries(MAP).forEach(([c, col]) => { const v = String(r[c] || "").trim(); if (v && !String(base[c] || "").trim()) patch[col] = v; });
+    if (/^(19|20)\d\d$/.test(String(r.uretim || "").trim()) && !base.uretim) patch.uretim_yili = +r.uretim;
+    try { await saveDevInfo(r.id, patch); } catch(err){ toast("Cihaz kaydı güncellenemedi: " + err.message); } } }
 function tcValid(s){ s = String(s || "").trim(); if (!/^[1-9]\d{10}$/.test(s)) return false; const d = [...s].map(Number);
   const o = d[0] + d[2] + d[4] + d[6] + d[8], e = d[1] + d[3] + d[5] + d[7]; if (((o * 7 - e) % 10 + 10) % 10 !== d[9]) return false;
   return d.slice(0, 10).reduce((a, b) => a + b, 0) % 10 === d[10]; }
@@ -2854,6 +2908,7 @@ const P80_LOGO = (() => { const i = new Image(); i.src = "antka-logo.png"; retur
 function p80lines(doc, cols){ const L = [];
   doc.forEach(x => { const w = x.big ? Math.floor(cols / 2) : cols;
     if (x.logo){ L.push({ s: "", logo: 1 }); return; }
+    if (x.img){ L.push({ s: "", img: x.img, iw: x.w || 0.55, px: x.px }); return; }
     if (x.hr){ L.push({ s: (x.hr === "=" ? "=" : "-").repeat(cols) }); return; }
     if (x.gap){ for (let i = 0; i < x.gap; i++) L.push({ s: "" }); return; }
     if (x.kv){ const k = x.kv[0] + ": ", v = String(x.kv[1] ?? ""); const ws = p80wrap(k + v, w); ws.forEach((s, i) => L.push({ s: i ? "  " + s : s, b: x.b })); return; }
@@ -2863,10 +2918,11 @@ function p80lines(doc, cols){ const L = [];
 function p80raster(doc){
   const C = p80cfg(), L = p80lines(doc, C.cols), W = C.cols <= 32 ? 384 : 576, fs = Math.floor(W / C.cols / 0.6), lh = Math.round(fs * 1.28);
   const logoOk = P80_LOGO.complete && P80_LOGO.naturalWidth > 0, LH = logoOk ? Math.round(Math.min(W * 0.55, 320) * P80_LOGO.naturalHeight / P80_LOGO.naturalWidth) + 8 : 0;
-  const H = L.reduce((h, l) => h + (l.logo ? LH : l.big ? lh * 2 : lh), 0) + 8;
+  const imH = l => { const im = l.img; if (!im || !im.complete || !im.naturalWidth) return 0; return Math.round(W * l.iw * im.naturalHeight / im.naturalWidth) + 6; };
+  const H = L.reduce((h, l) => h + (l.logo ? LH : l.img ? imH(l) : l.big ? lh * 2 : lh), 0) + 8;
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
   g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.fillStyle = "#000"; g.textBaseline = "top";
-  let y = 4; L.forEach(l => { if (l.logo){ if (logoOk){ const lw = Math.min(W * 0.55, 320), lhh = LH - 8; g.drawImage(P80_LOGO, (W - lw) / 2, y, lw, lhh); } y += LH; return; } const size = l.big ? fs * 2 : fs; g.font = `${l.b || l.big ? "bold " : ""}${size}px "DejaVu Sans Mono","Droid Sans Mono","Roboto Mono","Courier New",monospace`;
+  let y = 4; L.forEach(l => { if (l.img){ const ih = imH(l); if (ih){ const iw = Math.round(W * l.iw); g.imageSmoothingEnabled = !l.px; g.drawImage(l.img, Math.round((W - iw) / 2), y + 3, iw, ih - 6); g.imageSmoothingEnabled = true; } y += ih; return; } if (l.logo){ if (logoOk){ const lw = Math.min(W * 0.55, 320), lhh = LH - 8; g.drawImage(P80_LOGO, (W - lw) / 2, y, lw, lhh); } y += LH; return; } const size = l.big ? fs * 2 : fs; g.font = `${l.b || l.big ? "bold " : ""}${size}px "DejaVu Sans Mono","Droid Sans Mono","Roboto Mono","Courier New",monospace`;
     const w = g.measureText(l.s).width, x = l.a === "c" ? Math.max(0, (W - w) / 2) : l.a === "r" ? Math.max(0, W - w) : 0;
     g.fillText(l.s, x, y + (l.big ? 2 : 1)); y += l.big ? lh * 2 : lh; });
   const px = g.getImageData(0, 0, W, H).data, bw = W / 8, B = [0x1B,0x40];
@@ -2874,13 +2930,13 @@ function p80raster(doc){
     for (let yy = y0; yy < y0 + rows; yy++) for (let xb = 0; xb < bw; xb++){ let v = 0; for (let bit = 0; bit < 8; bit++){ const i = (yy * W + xb * 8 + bit) * 4; if (px[i] + px[i + 1] + px[i + 2] < 384) v |= 0x80 >> bit; } B.push(v); } }
   B.push(0x1B,0x64,4, 0x1D,0x56,0x42,0x00); return new Uint8Array(B);
 }
-function p80bytes(doc){ if (p80cfg().mode !== "text") return p80raster(doc); const C = p80cfg(), L = p80lines(doc, C.cols), B = [0x1B,0x40];
+function p80bytes(doc){ if (p80cfg().mode !== "text" || doc.some(x => x.img)) return p80raster(doc); const C = p80cfg(), L = p80lines(doc, C.cols), B = [0x1B,0x40];
   if (C.cp === "pc857") B.push(0x1B,0x74,13);
   L.filter(l => !l.logo).forEach(l => { B.push(0x1B,0x61, l.a === "c" ? 1 : l.a === "r" ? 2 : 0, 0x1B,0x45, l.b ? 1 : 0, 0x1D,0x21, l.big ? 0x11 : 0x00); B.push(...p80enc(l.s, C.cp), 0x0A); });
   B.push(0x1B,0x45,0, 0x1D,0x21,0, 0x1B,0x61,0, 0x1B,0x64,4, 0x1D,0x56,0x42,0x00);
   return new Uint8Array(B); }
 function p80preview(doc){ const C = p80cfg(), L = p80lines(doc, C.cols);
-  return `<div class="p80paper" style="--cols:${C.cols}">${L.map(l => l.logo ? `<div style="text-align:center;padding:4px 0"><img src="antka-logo.png" alt="" style="width:55%;filter:grayscale(1) contrast(2)"></div>` : `<div class="p80l${l.b ? " b" : ""}${l.big ? " big" : ""}" style="text-align:${l.a === "c" ? "center" : l.a === "r" ? "right" : "left"}">${esc(l.s) || "&nbsp;"}</div>`).join("")}</div>`; }
+  return `<div class="p80paper" style="--cols:${C.cols}">${L.map(l => l.img ? `<div style="text-align:center;padding:3px 0"><img src="${l.img.src}" alt="" style="width:${l.iw * 100}%;${l.px ? "image-rendering:pixelated" : ""}"></div>` : l.logo ? `<div style="text-align:center;padding:4px 0"><img src="antka-logo.png" alt="" style="width:55%;filter:grayscale(1) contrast(2)"></div>` : `<div class="p80l${l.b ? " b" : ""}${l.big ? " big" : ""}" style="text-align:${l.a === "c" ? "center" : l.a === "r" ? "right" : "left"}">${esc(l.s) || "&nbsp;"}</div>`).join("")}</div>`; }
 
 /* ---- Bluetooth (BLE) — Chrome/Android: navigator.bluetooth ---- */
 const P80_SERVICES = ["000018f0-0000-1000-8000-00805f9b34fb","e7810a71-73ae-499d-8c15-faa9aef0c3f2","49535343-fe7d-4ae5-8fa9-9fafd205e455","0000ff00-0000-1000-8000-00805f9b34fb",
@@ -2906,7 +2962,7 @@ function p80rawbt(bytes){ let bin = ""; bytes.forEach(b => bin += String.fromCha
 /* ---- tarayıcı yazdır (80 mm sayfa) ---- */
 function p80browser(doc0, title, tot = 1){ const C = p80cfg(), w = window.open("", "_blank"); if (!w){ toast("Açılır pencere engellendi"); return; }
   const L = Array.from({ length: tot }, (_, i) => p80lines(p80copy(doc0, i + 1, tot), C.cols).concat(i < tot - 1 ? [{ s: "", brk: 1 }] : [])).flat();
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:80mm auto;margin:3mm}body{margin:0;font:12px/1.35 "Courier New",monospace;width:72mm}.b{font-weight:700}.big{font-size:18px;font-weight:700}div{white-space:pre-wrap;word-break:break-word}.brk{page-break-after:always}</style></head><body>${L.map(l => l.logo ? `<div style="text-align:center"><img src="${APP_URL}antka-logo.png" style="width:55%"></div>` : `<div class="${l.b ? "b" : ""}${l.big ? " big" : ""}${l.brk ? " brk" : ""}" style="text-align:${l.a === "c" ? "center" : l.a === "r" ? "right" : "left"}">${esc(l.s) || "&nbsp;"}</div>`).join("")}<script>onload=()=>setTimeout(()=>print(),200)<\/script></body></html>`); w.document.close(); }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:80mm auto;margin:3mm}body{margin:0;font:12px/1.35 "Courier New",monospace;width:72mm}.b{font-weight:700}.big{font-size:18px;font-weight:700}div{white-space:pre-wrap;word-break:break-word}.brk{page-break-after:always}</style></head><body>${L.map(l => l.img ? `<div style="text-align:center"><img src="${l.img.src}" style="width:${l.iw * 100}%;${l.px ? "image-rendering:pixelated" : ""}"></div>` : l.logo ? `<div style="text-align:center"><img src="${APP_URL}antka-logo.png" style="width:55%"></div>` : `<div class="${l.b ? "b" : ""}${l.big ? " big" : ""}${l.brk ? " brk" : ""}" style="text-align:${l.a === "c" ? "center" : l.a === "r" ? "right" : "left"}">${esc(l.s) || "&nbsp;"}</div>`).join("")}<script>onload=()=>setTimeout(()=>print(),200)<\/script></body></html>`); w.document.close(); }
 
 /* ---- yazdırma penceresi (önizleme + Yazdır / İptal) ---- */
 function p80open(o){ st.p80 = Object.assign({ busy: false, err: "", copies: 2 }, o); render(); }
@@ -2937,7 +2993,9 @@ document.addEventListener("click", async e => {
   if (a === "p80close" || (a === "p80back" && e.target === b)){ if (P.next > 1 && P.next <= (P.copies || 1) && !confirm(`${P.next}. nüsha henüz yazdırılmadı. Yine de kapatılsın mı?`)) return; st.p80 = null; render(); return; }
   if (a !== "p80go") return;
   // nüshalar ayrı ayrı basılır: 1. nüsha sonrası kağıt koparılır, 2. nüsha düğmeyle gönderilir (tek parça çıkmaz)
-  const tot = P.copies || 1, n = P.next || 1, doc = P.build(), one = p80copy(doc, n, tot), bytes = p80bytes(one), m = b.dataset.m;
+  const tot = P.copies || 1, n = P.next || 1, doc = P.build(), one = p80copy(doc, n, tot), m = b.dataset.m;
+  await Promise.all([P80_LOGO, ...one.filter(x => x.img).map(x => x.img)].map(im => im.decode ? im.decode().catch(() => {}) : null));
+  const bytes = p80bytes(one);
   try {
     if (m === "ble"){ P.busy = true; P.err = ""; render(); await p80ble(bytes); }
     else if (m === "rawbt") p80rawbt(bytes); else p80browser(one, `${P.title}${tot > 1 ? ` · ${n}. nüsha` : ""}`, 1);
@@ -2960,21 +3018,22 @@ function tutOpen(k){
   const now = new Date(), T = { k, tarih: now.toLocaleDateString("tr-TR") + " " + now.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
     musteri: titleTR(l.n), lokasyon: `${titleTR(l.a)} ${titleTR(l.i)}/${titleTR(l.il)}`, metin: TUT_TXT, ids: devs.map(d => d[0]), all: devs.map(d => d[0]),
     duzenleyen: st.profile?.ad || "", yetkili: "", kurum: htfFirma().ad || "" };
-  st.tut = T;
+  st.tut = T; delete SIG.tut_duz; delete SIG.tut_yet;
   p80open({ title: "Tutanak", editor: tutEditor, build: tutDoc, after: async () => { await tutSave(); } });
 }
 function tutEditor(){ const T = st.tut, inp = (k, lab, w) => `<label class="f${w ? " wide" : ""}">${lab}<input data-tut="${k}" value="${esc(T[k])}"></label>`;
   return `<div class="mfgrid">${inp("tarih","Tarih")}${inp("musteri","Müşteri",1)}${inp("lokasyon","Lokasyon",1)}${inp("duzenleyen","Düzenleyen (saha)")}${inp("yetkili","Firma yetkilisi")}</div>
     <label class="f" style="margin-top:8px">Açıklama<textarea data-tut="metin" rows="3">${esc(T.metin)}</textarea></label>
     <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px;font-size:.84rem">${T.all.map(id => { const o = DEVID[id]; return o ? `<label class="chip" style="cursor:pointer"><input type="checkbox" data-tutd="${id}" ${T.ids.includes(id) ? "checked" : ""}> ${esc(o.d[2] || "?")} ${esc(o.d[3] || "")} ${esc(o.d[4] || "")}</label>` : ""; }).join("")}</div>
+    <div class="mfgrid" style="margin-top:8px">${sigPad("tut_duz", "Düzenleyen imzası")}${sigPad("tut_yet", "Firma yetkilisi imzası")}</div>
     <p class="muted" style="font-size:.78rem;margin:6px 0 0">Yazdırınca durak “Adreste yok” olarak kaydedilir ve tutanak notu sonuca eklenir.</p>`; }
 function tutDoc(){ const T = st.tut;
   return [ { logo: 1 }, ...(T.kurum ? [{ t: T.kurum, a: "c", b: 1 }] : []), { t: "TUTANAKTIR", a: "c", big: 1 }, { hr: "=" },
     { kv: ["Tarih", T.tarih] }, { kv: ["Müşteri", T.musteri], b: 1 }, { kv: ["Lokasyon", T.lokasyon] }, { hr: "-" },
     { t: "Cihaz(lar):", b: 1 }, ...T.ids.map((id, i) => { const d = DEVID[id]?.d || []; return { t: `${i + 1}) ${d[2] || "-"} ${d[3] || ""} · S/N ${d[4] || "-"}` }; }), { hr: "-" },
     { t: T.metin }, { gap: 1 },
-    { kv: ["Düzenleyen", T.duzenleyen] }, { t: "İmza:" }, { gap: 2 },
-    { kv: ["Firma yetkilisi", T.yetkili] }, { t: "Kaşe / İmza:" }, { gap: 3 }, { hr: "-" } ]; }
+    { kv: ["Düzenleyen", T.duzenleyen] }, ...sigLines("tut_duz", 0.5), { gap: 1 },
+    { kv: ["Firma yetkilisi", T.yetkili] }, ...sigLines("tut_yet", 0.5), { hr: "-" } ]; }
 async function tutSave(){ const T = st.tut, p = st.plans.find(x => x.id === st.fieldPlan); if (!p) return;
   const devTxt = T.ids.map(id => { const d = DEVID[id]?.d || []; return `${d[2] || ""} ${d[4] || ""}`.trim(); }).join(", ");
   const r = { planId: p.id, k: T.k, st: "adresteyok", done: [], note: `Tutanak düzenlendi (${T.tarih}): ${devTxt}`.slice(0, 500), by: st.me, at: new Date().toISOString() };
@@ -2994,10 +3053,10 @@ function htf80Doc(){ const H = st.htf, f = H.f, F = H.firma;
     { t: `CİHAZLAR (${H.rows.length})`, b: 1 },
     ...H.rows.flatMap((r, i) => [{ t: `${i + 1}) ${r.marka} ${r.tip}  Sınıf ${r.sinif}`, b: 1 }, { t: `   Kap. ${r.kap || "-"}  S/N ${r.seri || "-"}` }, { t: `   Üretim ${r.uretim || "-"}  d ${r.d || "-"}  e ${r.e || "-"}` }]),
     { hr: "-" }, { t: `Listede nitelikleri yazılı firmamızda kullanılmakta olan (AWI/NAWI) tartı aletlerinin ${f.yil} yılı (Periyodik / Tamir Sonrası) muayenelerinin yapılması, mühürleme işlemlerinin gerçekleşmesi ve muayene raporlarının düzenlenerek tarafımıza iletilmesi hususunda gereğini rica ederiz.` },
-    { gap: 1 }, { t: "Kaşe / İmza:" }, { gap: 4 }, { hr: "-" }, { t: F.alt, a: "c" }, { t: F.eposta, a: "c" } ]; }
+    { gap: 1 }, ...(SIG.htf ? [{ t: `Yetkili: ${f.yetkili}`, a: "c" }, ...sigLines("htf", 0.6)] : []), { hr: "-" }, { t: F.alt, a: "c" }, { t: F.eposta, a: "c" } ]; }
 document.addEventListener("click", async e => { const b = e.target.closest('[data-act="htf80"]'); if (!b || !st.htf) return; if (!htfValid()) return;
   b.disabled = true; const okNo = await htfNumber(); b.disabled = false; if (!okNo) return; lsSet("damga.htfFirma", st.htf.firma);
-  const keep = st.htf; p80open({ title: "Hizmet Talep Formu", editor: () => `<p class="muted" style="margin:0;font-size:.86rem">Önizleme sağda. Bir alanı değiştirmek için İptal'e basın; form açık kalır, düzenleyip tekrar yazdırın.</p>`, build: () => { const cur = st.htf; st.htf = keep; const d = htf80Doc(); st.htf = cur; return d; }, after: async () => { const cur = st.htf; st.htf = keep; htfMark(); st.htf = cur; }, final: async () => { st.htf = null; } }); st.htf = keep; render(); });
+  const keep = st.htf; p80open({ title: "Hizmet Talep Formu", editor: () => `<p class="muted" style="margin:0;font-size:.86rem">Önizleme sağda. Bir alanı değiştirmek için İptal'e basın; form açık kalır, düzenleyip tekrar yazdırın.</p>`, build: () => { const cur = st.htf; st.htf = keep; const d = htf80Doc(); st.htf = cur; return d; }, after: async () => { const cur = st.htf; st.htf = keep; htfMark(); await htfSaveFill(); st.htf = cur; }, final: async () => { st.htf = null; } }); st.htf = keep; render(); });
 /* ---------------- içerdeki veriyi temizle: e-posta koduyla doğrulama + sunucuda yetki kontrolü (purge_data) ---------------- */
 function viewPurge(){
   const P = st.purge; if (!P) return "";
@@ -3041,6 +3100,167 @@ document.addEventListener("click", async e => {
 });
 document.addEventListener("change", e => { if (e.target.name === "pgscope" && st.purge){ st.purge.scope = e.target.value; render(); } });
 document.addEventListener("input", e => { if (!st.purge) return; if (e.target.id === "pg-code") st.purge.code = e.target.value; if (e.target.id === "pg-confirm") st.purge.confirm = e.target.value; });
+/* ---------------- QR etiket: cihazdaki mevcut etiket okutulup eşleştirilir (değişmez) · etiketi olmayana sahada Antka QR basılır ---------------- */
+const LBL_KAY = { mevcut: "Mevcut etiket", antka: "Antka QR etiketi" };
+function labelBadge(d){ return d[27] ? `<span class="st tamam" title="${esc(d[27])}">🏷 ${d[28] === "antka" ? "QR basıldı" : "Etiket bağlı"}</span>` : `<span class="st bekliyor">Etiket yok</span>`; }
+function labelActs(d){
+  if (d[27]) return `<span class="muted" style="font-size:.8rem">🏷 ${LBL_KAY[d[28]] || "Etiket"} bağlı</span>`;
+  return `<span class="row" style="gap:6px"><button type="button" class="btn sm" data-act="lblscan" data-id="${d[0]}">📷 Mevcut etiketi okut</button><button type="button" class="btn sm" data-act="lblprint" data-id="${d[0]}">🖨 QR bas</button></span>`;
+}
+// okutulan içerikten cihazı bul: bağlı etiket → Antka QR kodu (EL-000123) → panel linki (#c-…)
+function labelFind(txt){ const t = String(txt || "").trim(); if (!t) return null;
+  const all = Object.values(DEVID), hit = all.find(o => o.d[27] && o.d[27] === t); if (hit) return hit;
+  const m = t.match(/(EL-\d{6})/) || t.match(/#c-([A-Z0-9-]+)/i); if (m && DEVBY[m[1]]) return DEVBY[m[1]];
+  return all.find(o => o.d[11] === t.toUpperCase()) || null; }
+const isAntkaQR = t => /[?&]k=EL-\d{6}-/.test(t) || new RegExp("^" + String(APP_URL).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "#c-").test(t);
+function labelLocal(id, txt, kay){ const o = DEVID[id]; if (o){ o.d[27] = txt; o.d[28] = kay; } const r = RAW.devs.find(x => x.id === id); if (r){ r.etiket = txt; r.etiket_kaynak = kay; } }
+async function labelLink(id, txt, kay){
+  try { await q(sb.rpc("link_label", { p_device: id, p_etiket: txt, p_kaynak: kay })); }
+  catch(err){ throw new Error(/link_label/.test(err.message) && /function|exist/i.test(err.message) ? "etiket altyapısı kurulu değil (supabase/damga-etiket.sql çalıştırılmalı)" : err.message); }
+  labelLocal(id, txt, kay); }
+
+/* ---- kamera ile okutma (BarcodeDetector; yoksa jsQR) ---- */
+const SCAN = { stream: null, timer: null };
+function scanOpen(id){ st.scan = { id: id || null, err: "", busy: false }; render(); setTimeout(scanStart, 60); }
+function scanStop(){ clearTimeout(SCAN.timer); SCAN.timer = null; if (SCAN.stream){ SCAN.stream.getTracks().forEach(t => t.stop()); SCAN.stream = null; } }
+function scanClose(){ scanStop(); st.scan = null; render(); }
+function viewScan(){ const S = st.scan; if (!S) return ""; const o = S.id ? DEVID[S.id] : null;
+  return `<div class="mfback" data-act="scanback"><div class="mfdlg card" role="dialog" aria-modal="true" aria-label="Etiket okut" style="max-width:520px">
+    <div class="mfhead"><div><div class="eyebrow">${o ? "Mevcut etiketi bu cihaza bağla" : "Etiketi okutup cihazı bul"}</div><h3 style="margin:2px 0 0">${o ? `${esc(o.d[2] || "Cihaz")} ${esc(o.d[3] || "")} · S/N ${esc(o.d[4] || "—")}` : "Etiket okut"}</h3></div><button class="btn sm" data-act="scanclose" aria-label="Kapat">✕</button></div>
+    <div class="mfbody"><div class="scanbox"><video id="scanv" playsinline muted autoplay></video><div class="scanaim" aria-hidden="true"></div></div>
+      <p class="muted" style="margin:0;font-size:.84rem">Kamerayı cihazdaki QR etiketine tutun; okununca otomatik ${o ? "bağlanır. Bağlanan etiket sonradan değiştirilemez (yalnızca yönetici)" : "cihaz kartı açılır"}.</p>
+      ${S.err ? `<div class="warnbox">${esc(S.err)}</div>` : ""}
+      <details ${S.err ? "open" : ""}><summary style="font-size:.86rem">Okunmuyor mu? Etiketteki numarayı elle yazın</summary><div class="row" style="margin-top:6px"><input id="scanman" type="text" autocomplete="off" placeholder="Etiket no / kod" style="flex:1 1 200px"><button class="btn sm" data-act="scanman">Kullan</button></div></details></div>
+    <div class="mffoot"><span style="flex:1"></span><button class="btn" data-act="scanclose">Kapat</button></div></div></div>`; }
+let jsqrLoad = null;
+function loadJsQR(){ if (window.jsQR) return Promise.resolve(); return jsqrLoad || (jsqrLoad = new Promise((ok, no) => { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"; s.onload = ok; s.onerror = () => { jsqrLoad = null; no(new Error("QR okuyucu yüklenemedi")); }; document.head.appendChild(s); })); }
+async function scanStart(){ const v = document.getElementById("scanv"); if (!v || !st.scan) return;
+  const fail = m => { if (!st.scan) return; st.scan.err = m; scanStop(); render(); };
+  if (!navigator.mediaDevices?.getUserMedia) return fail("Bu tarayıcı kameraya erişemiyor. Etiketteki numarayı elle yazın.");
+  try { SCAN.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false }); v.srcObject = SCAN.stream; await v.play(); }
+  catch(err){ return fail(err.name === "NotAllowedError" ? "Kamera izni verilmedi. Tarayıcı ayarlarından bu siteye kamera izni verin ya da numarayı elle yazın." : "Kamera açılamadı: " + err.message); }
+  let det = null;
+  if ("BarcodeDetector" in window){ try { const f = await BarcodeDetector.getSupportedFormats(); if (f.includes("qr_code")) det = new BarcodeDetector({ formats: f.filter(x => ["qr_code","data_matrix","code_128","ean_13"].includes(x)) }); } catch(_){} }
+  if (!det){ try { await loadJsQR(); } catch(err){ return fail(err.message + ". Numarayı elle yazın."); } }
+  const cv = document.createElement("canvas"), g = cv.getContext("2d", { willReadFrequently: true });
+  const tick = async () => { if (!SCAN.stream || !st.scan) return; let txt = null;
+    try { if (det){ const r = await det.detect(v); if (r.length) txt = r[0].rawValue; }
+      else if (window.jsQR && v.videoWidth){ const k = Math.min(1, 720 / v.videoWidth); cv.width = v.videoWidth * k | 0; cv.height = v.videoHeight * k | 0; g.drawImage(v, 0, 0, cv.width, cv.height);
+        const im = g.getImageData(0, 0, cv.width, cv.height), r = jsQR(im.data, im.width, im.height, { inversionAttempts: "attemptBoth" }); if (r && r.data) txt = r.data; } } catch(_){}
+    if (txt){ try { navigator.vibrate?.(80); } catch(_){} scanStop(); scanFound(txt); return; }
+    SCAN.timer = setTimeout(tick, 160); };
+  tick(); }
+async function scanFound(txt){ const S = st.scan; if (!S) return; txt = String(txt).trim();
+  if (!S.id){ const o = labelFind(txt); if (!o){ S.err = `Bu etiket sistemde bir cihaza bağlı değil: “${txt.slice(0, 80)}”. Cihazın durağından “Mevcut etiketi okut” ile bağlayın.`; render(); return; }
+    scanClose(); st.devCode = o.d[11]; st.view = "cihaz"; st.evReason = null; try { history.replaceState(null, "", "#c-" + o.d[11]); } catch(_){} render(); window.scrollTo(0, 0); return; }
+  const o = DEVID[S.id]; if (!o){ scanClose(); return; }
+  const other = labelFind(txt); if (other && other !== o && other.d[27] === txt){ S.err = `Bu etiket başka bir cihaza bağlı: ${titleTR(other.l.n)} · ${other.d[2] || ""} S/N ${other.d[4] || "—"}`; render(); return; }
+  if (!confirm(`Etiket bu cihaza bağlansın mı?\n\n${o.d[2] || ""} ${o.d[3] || ""} · S/N ${o.d[4] || "—"}\nEtiket: ${txt.slice(0, 120)}\n\nBağlandıktan sonra saha ekibi değiştiremez.`)){ S.err = ""; render(); setTimeout(scanStart, 60); return; }
+  try { await labelLink(o.d[0], txt, isAntkaQR(txt) ? "antka" : "mevcut"); scanClose(); toast("Etiket cihaza bağlandı"); }
+  catch(err){ S.err = "Bağlanamadı: " + err.message; render(); } }
+
+/* ---- etiketi olmayan cihaz: 80 mm yazıcıdan Antka QR etiketi ---- */
+function lblDoc(id){ const o = DEVID[id]; if (!o) return []; const d = o.d, url = qrURL(d[11]);
+  if (!o._qrImg || o._qrUrl !== url){ const qq = qrcode(0, "M"); qq.addData(url); qq.make(); const img = new Image(); img.src = qq.createDataURL(8, 2); o._qrImg = img; o._qrUrl = url; }
+  return [ { logo: 1 }, { t: "PERİYODİK MUAYENE · DAMGA", a: "c", b: 1 }, { img: o._qrImg, w: 0.6, px: 1 }, { t: d[11], a: "c", big: 1 }, { hr: "-" },
+    { t: titleTR(String(o.l.n).split(" · ")[0]), a: "c", b: 1 }, { t: `${d[2] || ""} ${d[3] || ""}`.trim() || "-", a: "c" }, { t: `S/N ${d[4] || "-"}`, a: "c" },
+    { t: `Max ${d[12] || "-"} · e ${d[18] || "-"} · d ${d[22] || "-"} · Sınıf ${d[29] || d[16] || "-"}`, a: "c" }, { gap: 1 },
+    { t: "Damga durumunu görmek için QR kodu okutun.", a: "c" }, { t: "ANTKA KALİBRASYON · info@antka.com.tr", a: "c" } ]; }
+function lblPrint(id){ const o = DEVID[id]; if (!o) return; if (!window.qrcode){ toast("QR kütüphanesi yüklenemedi; sayfayı yenileyin"); return; }
+  if (o.d[27]){ toast("Bu cihazın etiketi zaten bağlı"); return; }
+  p80open({ title: "QR etiketi", copies: 1, build: () => lblDoc(id),
+    editor: () => `<p class="muted" style="margin:0;font-size:.86rem">${esc(o.d[2] || "")} ${esc(o.d[3] || "")} · S/N ${esc(o.d[4] || "—")}<br>Yazdırınca bu QR kodu cihaza bağlanır. Etiketi cihazın görünen bir yerine yapıştırın.</p>`,
+    after: async () => { try { await labelLink(id, qrURL(o.d[11]), "antka"); } catch(err){ toast("Etiket basıldı fakat kaydedilemedi: " + err.message); } } }); }
+
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
+  if (a === "lblscan"){ e.preventDefault(); scanOpen(+b.dataset.id); }
+  if (a === "lblfind"){ e.preventDefault(); scanOpen(null); }
+  if (a === "lblprint"){ e.preventDefault(); lblPrint(+b.dataset.id); }
+  if (a === "lblunlink"){ const id = +b.dataset.id; if (!confirm("Bu cihazın etiket bağı kaldırılsın mı? Sahada yeniden okutulabilir ya da yeni QR basılabilir.")) return;
+    try { await q(sb.rpc("unlink_label", { p_device: id })); labelLocal(id, "", ""); render(); toast("Etiket bağı kaldırıldı"); } catch(err){ toast("Kaldırılamadı: " + err.message); } }
+  if (!st.scan) return;
+  if (a === "scanclose" || (a === "scanback" && e.target === b)) scanClose();
+  if (a === "scanman"){ const v = (document.getElementById("scanman")?.value || "").trim(); if (!v){ toast("Etiket numarasını yazın"); return; } scanStop(); scanFound(v); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && st.scan) scanClose(); });
+
+/* ---------------- cihaz bilgileri: saha değiştiremez · eksik e / d / sınıf sahadan önerilir, yönetici onaylar ---------------- */
+const INFO_REQ = [["e","e (muayene taksimatı)"],["d","d (taksimat)"],["sinif","Sınıf"]];
+const devInfoVal = (d, k) => String(k === "e" ? d[18] : k === "d" ? d[22] : d[29] || "").trim();
+const devMissing = d => INFO_REQ.filter(([k]) => !devInfoVal(d, k)).map(([k]) => k === "sinif" ? "sınıf" : k);
+const infoPending = id => (st.reqs || []).find(r => r.tur === "bilgi" && r.hedef_device === id && r.durum === "bekliyor");
+const missBadge = d => { const m = devMissing(d); return m.length ? ` <span class="st tekrar" title="Hizmet talep formu için zorunlu">${m.join(" / ")} eksik</span>` : ""; };
+// yönetici cihaz kaydını doğrudan günceller (yalnızca verilen alanlar)
+const DEV_COL = { marka: [2], model: [3], seri_no: [4], max_cap: [5, 12], sinif: [16, 29], e: [18], d: [22] };
+async function saveDevInfo(id, patch){ patch = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)); if (!Object.keys(patch).length) return;
+  await q(sb.from("devices").update(patch).eq("id", id));
+  const o = DEVID[id], r = RAW.devs.find(x => x.id === id); if (r) Object.assign(r, patch);
+  if (o) Object.entries(patch).forEach(([k, v]) => (DEV_COL[k] || []).forEach(i => o.d[i] = v ?? "")); }
+async function propInfo(id, vals){ const o = DEVID[id]; if (!o) throw new Error("cihaz bulunamadı");
+  const v = Object.fromEntries(INFO_REQ.map(([k]) => [k, String(vals[k] || "").trim()]));
+  if (INFO_REQ.some(([k]) => !devInfoVal(o.d, k) && !v[k])) throw new Error("eksik alanların hepsini doldurun");
+  try { await q(sb.from("device_requests").insert({ tur: "bilgi", hedef_device: id, business_id: o.l.k, plan_id: st.fieldPlan || null, donem: YEAR, marka: o.d[2] || "-", model: o.d[3] || "", seri_no: o.d[4] || "",
+    max_cap: o.d[12] || "", e: v.e, d: v.d, sinif: v.sinif, created_by: st.me })); }
+  catch(err){ throw new Error(/tur|hedef_device|column/.test(err.message) ? "bilgi talebi altyapısı kurulu değil (supabase/damga-etiket.sql çalıştırılmalı)" : err.message); } }
+function infoInputs(id, vals, attr){ const o = DEVID[id]; return INFO_REQ.map(([k, lab]) => { const cur = devInfoVal(o.d, k), v = vals[k] ?? cur;
+  return k === "sinif" ? `<label class="f">${lab}${cur ? "" : " *"}<select ${attr}="${id}" data-c="${k}"><option value="">Seçin</option>${["I","II","III","IIII"].map(s => `<option ${v === s ? "selected" : ""}>${s}</option>`).join("")}</select></label>`
+    : `<label class="f">${lab}${cur ? "" : " *"}<input ${attr}="${id}" data-c="${k}" value="${esc(v)}" placeholder="örn. ${k === "e" ? "5 g" : "2 g"}" autocomplete="off"></label>`; }).join(""); }
+// cihaz kartı: saha → eksikse öneri formu · yönetici → doğrudan düzenleme
+function devInfoCard(o, role){ const d = o.d, id = d[0], miss = devMissing(d), pend = infoPending(id); st.infoDraft = st.infoDraft || {}; const dr = st.infoDraft[id] || {};
+  if (role === "admin") return `<article class="card pad stack" style="gap:8px"><h3>Cihaz bilgileri (yönetici)</h3>
+    <div class="mfgrid">${infoInputs(id, dr, "data-info")}</div><div class="row"><button class="btn primary" data-act="infosave" data-id="${id}">Kaydet</button>${miss.length ? `<span class="muted" style="font-size:.84rem">${miss.join(" / ")} eksik · hizmet talep formu bunlar olmadan çıkmaz</span>` : ""}</div></article>`;
+  if (!miss.length) return "";
+  return `<article class="card pad stack" style="gap:8px;border-color:var(--wait)"><h3>Eksik cihaz bilgisi</h3>
+    ${pend ? `<div class="savings" style="font-size:.88rem">Öneriniz yönetici onayı bekliyor (e ${esc(pend.e || "—")} · d ${esc(pend.d || "—")} · sınıf ${esc(pend.sinif || "—")}).</div><div><button class="btn sm" data-act="inforefresh">🔄 Onay durumunu yenile</button></div>`
+      : `<p class="muted" style="margin:0;font-size:.86rem">${miss.join(" / ")} kayıtlı değil. Cihaz plakasından okuyup yöneticiye gönderin; onaylanınca hizmet talep formu yazdırılabilir.</p>
+    <div class="mfgrid">${infoInputs(id, dr, "data-info")}</div><div class="row"><button class="btn primary" data-act="infoprop" data-id="${id}">Onaya gönder</button></div>`}</article>`; }
+async function infoRefresh(){ await loadDynamic(); await reloadDevices(); if (st.htf) st.htf.rows = st.htf.rows.map(r => r.id && DEVID[r.id] ? htfDevRow(DEVID[r.id]) : r); }
+document.addEventListener("input", e => { const t = e.target; if (t.dataset.info){ st.infoDraft = st.infoDraft || {}; (st.infoDraft[t.dataset.info] = st.infoDraft[t.dataset.info] || {})[t.dataset.c] = t.value; } });
+document.addEventListener("change", e => { const t = e.target; if (t.dataset.info){ st.infoDraft = st.infoDraft || {}; (st.infoDraft[t.dataset.info] = st.infoDraft[t.dataset.info] || {})[t.dataset.c] = t.value; } });
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
+  if (a === "infosave" || a === "infoprop"){ const id = +b.dataset.id, o = DEVID[id], dr = (st.infoDraft || {})[id] || {}; if (!o) return; b.disabled = true;
+    try { if (a === "infosave"){ const patch = {}; INFO_REQ.forEach(([k]) => { if (dr[k] !== undefined) patch[k] = String(dr[k]).trim(); }); await saveDevInfo(id, patch); toast("Cihaz bilgileri kaydedildi"); }
+      else { await propInfo(id, dr); await loadDynamic(); toast("Öneri yöneticinin onayına gönderildi"); }
+      delete st.infoDraft[id]; render(); }
+    catch(err){ b.disabled = false; toast((a === "infosave" ? "Kaydedilemedi: " : "Gönderilemedi: ") + err.message); } }
+  if (a === "inforefresh"){ b.disabled = true; try { await infoRefresh(); render(); toast("Güncellendi"); } catch(err){ b.disabled = false; toast("Yenilenemedi: " + err.message); } }
+});
+/* ---------------- ekranda imza: Hizmet Talep Formu ve Tutanak (A4 ve 80 mm çıktıya basılır, veritabanına kaydedilmez) ---------------- */
+const SIG = {};   // id -> { url, img }
+function sigPad(id, label, req){
+  return `<div class="sigwrap"><div class="row" style="justify-content:space-between;align-items:center"><span style="font-size:.86rem;font-weight:600">${esc(label)}${req ? " *" : ""}</span><button type="button" class="link" data-act="sigclear" data-id="${id}">Temizle</button></div>
+    <canvas class="sigpad" data-sig="${id}" width="640" height="220" aria-label="${esc(label)} alanı"></canvas>
+    <small class="muted" data-sigst="${id}">${SIG[id] ? "İmza alındı ✓" : "Parmağınızla ya da kalemle bu alana imza atın"}</small></div>`;
+}
+// render() sonrası tuval yeniden oluşur: alınmış imza geri çizilir
+function sigRestore(){ document.querySelectorAll("canvas.sigpad").forEach(cv => { const s = SIG[cv.dataset.sig]; if (!s || !s.full) return;
+  const draw = () => { const g = cv.getContext("2d"); g.clearRect(0, 0, cv.width, cv.height); g.drawImage(s.full, 0, 0); };
+  s.full.complete ? draw() : (s.full.onload = draw); }); }
+const sigLines = (id, w = 0.55) => SIG[id] ? [{ img: SIG[id].img, w }] : [];
+function sigPt(cv, e){ const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * cv.width / r.width, y: (e.clientY - r.top) * cv.height / r.height }; }
+// mürekkebin bulunduğu bölge kırpılır; baskıda boş kenar kalmaz
+function sigTrim(cv){ const g = cv.getContext("2d"), { width: W, height: H } = cv, px = g.getImageData(0, 0, W, H).data; let x0 = W, y0 = H, x1 = -1, y1 = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (px[(y * W + x) * 4 + 3] > 40){ if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0 || (x1 - x0) * (y1 - y0) < 60) return null;
+  const p = 6; x0 = Math.max(0, x0 - p); y0 = Math.max(0, y0 - p); x1 = Math.min(W - 1, x1 + p); y1 = Math.min(H - 1, y1 + p);
+  const c = document.createElement("canvas"); c.width = x1 - x0 + 1; c.height = y1 - y0 + 1; const cg = c.getContext("2d"); cg.fillStyle = "#fff"; cg.fillRect(0, 0, c.width, c.height); cg.drawImage(cv, x0, y0, c.width, c.height, 0, 0, c.width, c.height);
+  return c.toDataURL("image/png"); }
+function sigStatus(id){ const el = document.querySelector(`[data-sigst="${id}"]`); if (el) el.textContent = SIG[id] ? "İmza alındı ✓" : "Parmağınızla ya da kalemle bu alana imza atın";
+  const pv = document.querySelector(".p80prev"); if (pv && st.p80){ const P = st.p80; pv.innerHTML = `<div class="muted" style="font-size:.78rem;margin-bottom:6px">${P.copies > 1 ? `${P.copies} nüsha ayrı ayrı basılır · sıradaki: <b>${P.next || 1}. nüsha</b>` : "1 nüsha"}</div>` + p80preview(p80copy(P.build(), P.next || 1, P.copies || 1)); } }
+let sigCur = null;
+document.addEventListener("pointerdown", e => { const cv = e.target.closest?.("canvas.sigpad"); if (!cv) return; e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch(_){}
+  const g = cv.getContext("2d"); g.lineWidth = 3.4; g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = "#000";
+  const p = sigPt(cv, e); g.beginPath(); g.arc(p.x, p.y, 1.6, 0, Math.PI * 2); g.fillStyle = "#000"; g.fill(); sigCur = { cv, g, last: p }; });
+document.addEventListener("pointermove", e => { if (!sigCur) return; e.preventDefault(); const { cv, g } = sigCur, p = sigPt(cv, e);
+  g.beginPath(); g.moveTo(sigCur.last.x, sigCur.last.y); g.lineTo(p.x, p.y); g.stroke(); sigCur.last = p; }, { passive: false });
+const sigEnd = () => { if (!sigCur) return; const { cv } = sigCur, id = cv.dataset.sig; sigCur = null;
+  const url = sigTrim(cv); if (!url){ delete SIG[id]; sigStatus(id); return; }
+  const img = new Image(); img.src = url; const full = new Image(); full.src = cv.toDataURL("image/png"); SIG[id] = { url, img, full }; sigStatus(id); };
+document.addEventListener("pointerup", sigEnd); document.addEventListener("pointercancel", sigEnd);
+document.addEventListener("click", e => { const b = e.target.closest('[data-act="sigclear"]'); if (!b) return; e.preventDefault(); const id = b.dataset.id; delete SIG[id];
+  const cv = document.querySelector(`canvas.sigpad[data-sig="${id}"]`); if (cv) cv.getContext("2d").clearRect(0, 0, cv.width, cv.height); sigStatus(id); });
 /* ---------------- boot & giriş ---------------- */
 function showScreen(id){ ["setup","login","loading","app"].forEach(s => { const el = document.getElementById("scr-" + s); if (el) el.hidden = s !== id; }); }
 function loginMsg(m, ok){ const el = $("#lmsg"); if (el){ el.textContent = m || ""; el.className = "lmsg" + (ok ? " ok" : ""); } }
