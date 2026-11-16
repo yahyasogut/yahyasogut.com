@@ -1,4 +1,4 @@
-/* Antka Damga Takip · yahyasogut.com/damga · v24 */
+/* Antka Damga Takip · yahyasogut.com/damga · v25 */
 (function(){
 "use strict";
 const CFG = window.DAMGA_CONFIG || {};
@@ -2518,11 +2518,16 @@ async function smsDiag(){
     if (r.status === 404) add(false, "sms-gonder fonksiyonu bulunamadı", "Supabase → Edge Functions'ta fonksiyon adı birebir “sms-gonder” olmalı ve Deploy edilmiş olmalı.");
     else if (r.status === 401) add(false, "Fonksiyon oturumu reddetti (401)", "Sayfadan çıkış yapıp tekrar girin. Sürerse fonksiyonun “Verify JWT” ayarı açık kalmalı, anahtarlar config.js ile aynı projeye ait olmalı.");
     else if (r.status === 403) add(false, "Yalnızca yönetici SMS gönderebilir (403)", "Bu hesabın rolü admin olmalı.");
+    else if (r.status === 546) add(false, "Fonksiyon kaynak sınırına takıldı (546)", "Eski sms-gonder kodu Sanal Santral'dan yanıt beklerken zaman aşımına uğruyor. damga-sms-fonksiyonlar.zip içindeki güncel sms-gonder/index.ts'i yapıştırıp Deploy edin; yeni kod en fazla 8 sn bekler ve hangi adresin yanıt verdiğini burada gösterir.");
     else if (!r.ok) add(false, `Fonksiyon hata verdi (${r.status})`, (j && (j.error || j.message || j.msg)) || "Supabase → Edge Functions → sms-gonder → Logs bölümüne bakın.");
     else if (j && j.ok){ add(true, "sms-gonder fonksiyonu çalışıyor", "Adres: " + (j.api || ""));
       add(!!j.secrets.SS_API_KEY, "SS_API_KEY (API şifresi) tanımlı", j.secrets.SS_API_KEY ? "" : "Edge Functions → Secrets → SS_API_KEY adıyla ss_live_… anahtarını ekleyin.");
       add(!!j.secrets.SS_USERNAME, "SS_USERNAME (API kullanıcı adı)", j.secrets.SS_USERNAME ? "" : "Zorunlu: Sanal Santral SMS API kullanıcı adı. Şifre SS_API_KEY'e yazılır (API Basic Authentication ile çalışıyor).");
       add(!!j.secrets.SS_SENDER, "SS_SENDER (gönderici başlığı)", j.secrets.SS_SENDER ? "" : "Zorunlu: Sanal Santral'da onaylı gönderici başlığı (Senders listesindeki ad, birebir).");
+      if (j.tried){ (j.tried || []).forEach(x => add(x.status > 0 && x.status < 500, `Sanal Santral ${x.url.replace(/^https?:\/\//, "")}`, x.status ? `HTTP ${x.status}` : "Yanıt yok (bağlantı kurulamadı)"));
+        const c = j.credit; if (c && c.status){ const err = c.body && c.body.err, cr = c.body && c.body.data; add(c.status === 200 && !(err && (err.code || err.message)), "Kullanıcı adı / şifre (kredi sorgusu)", c.status === 200 && !(err && (err.code || err.message)) ? "Kredi: " + (typeof cr === "object" ? JSON.stringify(cr).slice(0, 120) : cr) + ` · kullanılan adres: ${j.base}` : `HTTP ${c.status}: ${(err && (err.message || err.code)) || JSON.stringify(c.body).slice(0, 160)} · SS_USERNAME / SS_API_KEY değerlerini kontrol edin.`); }
+        else if (j.tried.length && j.tried.every(x => !x.status)) add(false, "Sanal Santral sunucusuna ulaşılamıyor", "Supabase sunucusundan hiçbir adres yanıt vermedi. Sanal Santral'a, IP kısıtlaması olup olmadığını ve API'nin dış erişime açık portunu sorun.");
+        if (j.senders && j.senders.status === 200){ const s = JSON.stringify(j.senders.body?.data ?? j.senders.body); add(true, "Gönderici başlıkları", s.slice(0, 160)); } }
       add(!!j.secrets.SEND_SMS_HOOK_SECRET, "SEND_SMS_HOOK_SECRET (giriş kodu kancası)", j.secrets.SEND_SMS_HOOK_SECRET ? "" : "Telefonla giriş için: sms-otp fonksiyonu + Authentication → Auth Hooks → Send SMS hook → üretilen secret bu adla eklenmeli."); }
     else add(false, "Fonksiyon eski sürüm", "damga-sms-fonksiyonlar.zip içindeki güncel sms-gonder/index.ts ile yeniden Deploy edin.");
   } catch(e){ add(false, "Fonksiyona ulaşılamadı", "sms-gonder Supabase'de yüklü değil ya da açılışta hata veriyor. Edge Functions listesinde sms-gonder görünüyor mu? Görünüyorsa Logs'taki kırmızı satırı kontrol edin."); }
