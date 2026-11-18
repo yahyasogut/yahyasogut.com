@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<base href="/damga/">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Antka Damga Takip</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#1F2024">
+<link rel="icon" href="antka-icon.png">
+<link rel="apple-touch-icon" href="antka-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:wdth,wght@100..125,400..800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="app.css?v=26">
+</head>
+<body>
+<section id="scr-setup" class="screen" hidden>
+  <div class="setup stack">
+    <div class="wm" role="img" aria-label="Antka Kalibrasyon"></div>
+    <h1>Kurulum tamamlanmadı</h1>
+    <p>Bu sayfanın çalışması için <code>public/damga/config.js</code> dosyasına Supabase adresi ve anahtarı yazılmalı. Adımlar <code>docs/DAMGA-KURULUM.md</code> dosyasında.</p>
+  </div>
+</section>
+<section id="scr-login" class="screen" hidden>
+  <div class="auth">
+    <div class="wm" role="img" aria-label="Antka Kalibrasyon"></div>
+    <div><div class="eyebrow">Periyodik muayene · rota · QR takip</div><h1>Damga Takip girişi</h1></div>
+    <div class="seg" role="tablist" aria-label="Giriş yöntemi" style="align-self:flex-start">
+      <button class="segb" type="button" id="tab-phone" aria-pressed="true">Telefon (SMS)</button>
+      <button class="segb" type="button" id="tab-mail" aria-pressed="false">E-posta</button>
+    </div>
+    <form id="phoneForm" class="card pad">
+      <label class="f">Cep telefonu<input id="lphone" type="tel" inputmode="tel" autocomplete="tel" placeholder="05xx xxx xx xx" required></label>
+      <button class="btn primary" type="submit" style="justify-content:center">SMS kodu gönder</button>
+      <p class="muted" style="font-size:.8rem;margin:0">Numaranız yöneticiniz tarafından ekip listesine eklenmiş olmalı.</p>
+    </form>
+    <form id="codeForm" class="card pad" hidden>
+      <div class="muted" style="font-size:.88rem" id="codeInfo"></div>
+      <label class="f">Doğrulama kodu<input id="lcode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="6 haneli kod" required></label>
+      <button class="btn primary" type="submit" style="justify-content:center">Doğrula ve gir</button>
+      <div class="row" style="justify-content:space-between"><button class="link" type="button" id="resend" disabled>Kodu tekrar gönder</button><button class="link" type="button" id="chgPhone">Numarayı değiştir</button></div>
+    </form>
+    <form id="loginForm" class="card pad" hidden>
+      <label class="f">E-posta<input id="lemail" type="email" autocomplete="username" required></label>
+      <label class="f">Şifre<input id="lpass" type="password" autocomplete="current-password" required></label>
+      <button class="btn primary" type="submit" style="justify-content:center">Giriş yap</button>
+      <button class="link" type="button" id="forgot" style="align-self:flex-start">Şifremi unuttum</button>
+    </form>
+    <form id="newPassForm" class="card pad" hidden>
+      <label class="f">Yeni şifre (en az 8 karakter)<input id="npass" type="password" minlength="8" autocomplete="new-password" required></label>
+      <button class="btn primary" type="submit" style="justify-content:center">Şifreyi kaydet</button>
+    </form>
+    <div id="lmsg" class="lmsg" role="status"></div>
+    <p class="muted" style="font-size:.8rem">ANTKA KALİBRASYON · Hesabınızı yöneticiniz açar.</p>
+  </div>
+</section>
+<section id="scr-loading" class="screen"><div class="center"><div><div class="mk" style="width:40px;margin:0 auto 12px"></div><div id="loadmsg">Yükleniyor…</div></div></div></section>
+<section id="scr-app" class="screen" hidden>
+  <header class="bar"><div class="bar-in">
+    <div class="logo"><div class="wm" role="img" aria-label="Antka Kalibrasyon"></div><span class="appname">Damga Takip</span></div>
+    <nav class="tabs" id="tabs" aria-label="Bölümler"></nav>
+    <div class="who" id="who"></div>
+  </div></header>
+  <main id="main"></main>
+  <footer class="sitefoot"><div class="sitefoot-in"><div class="wm" role="img" aria-label="Antka Kalibrasyon"></div>
+    <div><b>ANTKA KALİBRASYON</b><br>Muratpaşa Mah. 567 Sk. Barış Apt. 58/A Muratpaşa / ANTALYA</div>
+    <div>Tel: <a href="tel:+902422440967">0 242 244 0 967</a> · Gsm: <a href="tel:+905538440967">0 553 844 0 967</a><br>E-posta: <a href="mailto:info@antka.com.tr">info@antka.com.tr</a></div></div></footer>
+</section>
+<div class="toast" id="toast" hidden></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="config.js?v=1"></script>
+<script src="mah.js?v=26"></script>
+<script src="tr-yer.js?v=26"></script>
+<script src="app.js?v=26"></script>
+</body>
+</html>
